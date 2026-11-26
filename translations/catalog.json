@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "publicationVersionFloor": "0.4.20",
   "parts": {
     "base": {
       "schema": 1,

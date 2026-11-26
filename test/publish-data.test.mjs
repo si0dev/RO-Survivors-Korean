@@ -43,3 +43,15 @@ test('retiring an old fallback dictionary republishes identical verified records
  assert.equal(Object.hasOwn(JSON.parse(next.raw),'legacy'),false);
  assert.equal((await preparePublication(pack,next)).changed,false);
 });
+
+test('repository migration advances the publication version even when data is unchanged',async()=>{
+ const first=await preparePublication(pack);
+ const migrated=await preparePublication(pack,first,{},'0.4.20');
+ assert.equal(migrated.changed,true);
+ assert.equal(migrated.manifest.translationVersion,'0.4.20');
+ assert.equal(migrated.manifest.translationHash,await sha256(migrated.raw));
+ assert.deepEqual(JSON.parse(migrated.raw).entries,pack.entries);
+ assert.equal((await preparePublication(pack,migrated,{},'0.4.20')).changed,false);
+ const next=await preparePublication({...pack,entries:{[id]:entry('수정')}},migrated,{},'0.4.20');
+ assert.equal(next.manifest.translationVersion,'0.4.21');
+});
