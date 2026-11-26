@@ -1,5 +1,5 @@
 import {extractSnapshot,identify,compare,sha256,validateRecords,wikiTranslationLookup} from './core.mjs';
-import {createSession,UPDATE_INTERVAL_MS,compareTranslationVersions,ENGINE_UPDATE_LABEL,createEngineUpdate} from './session.mjs';
+import {createSession,UPDATE_INTERVAL_MS,compareTranslationVersions,ENGINE_UPDATE_LABEL,createEngineUpdate,stateLabel} from './session.mjs';
 import {installLanguageAdapter} from './language-adapter.mjs';
 
 const STORAGE='ro-ko:v3:';
@@ -118,10 +118,8 @@ function showStatus(state,engineVersion){
     const span=document.createElement('span');
     span.textContent=prefix()+text;span.style.color=color;parts.push(span);
   }
-  if(!inGame){
-    if(state.scanFailed)add('번역 상태 확인 불가','var(--ro-ko-warning)');
-    else if(state.hasMissing)add('일부 미번역','var(--ro-ko-warning)');
-  }
+  const label=stateLabel(state);
+  if(!inGame&&label)add(label,'var(--ro-ko-warning)');
   if(state.engineUpdated)add('업데이트 완료','var(--ro-ko-success)');
   if(state.engineUpdateAvailable){
     const link=document.createElement('a');

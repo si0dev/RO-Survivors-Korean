@@ -5,7 +5,6 @@ import {identify} from '../src/core.mjs';
 
 const origin='https://ro-survivors.com';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-const norm=s=>s.trim().replace(/\s+/g,' ');
 const sha=s=>createHash('sha256').update(s).digest('hex');
 try {
  const page=await browser.newPage({locale:'en-US'});
@@ -91,7 +90,7 @@ try {
  for(const {id,label} of names){
   const item=nav.locator('button[data-sec='+JSON.stringify(id)+']');
   if(await item.count()!==1)throw Error('Missing or ambiguous category: '+label);
-  await item.click();await settle();await collect();
+  await item.click();await settle();
   const seen=new Set();
   const attrs=['data-sjob','data-job','data-pane-tab'];
   async function scan(depth=0,path=[]){

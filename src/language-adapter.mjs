@@ -20,14 +20,9 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   const newsDictionary=new Map(Object.entries(newsEntries));
   const wikiTranslate=createWikiTranslator(wikiEntries);
   const inWiki=el=>!!el?.closest('#wk-nav, #wk-detail, #wk-search, #wk-close');
-  const lookup = (s) => dictionary.get(s);
-  const translate = (value, news=false) => {
-    if (typeof value !== 'string' || !value.trim()) return value;
-    const s = value.trim();
-    let result = news ? newsDictionary.get(s.replace(/\s+/g,' ')) ?? lookup(s) : lookup(s);
-    if (result === undefined) {
-      // Explicit numeric labels. Preserve original quantities and punctuation.
-      const rules = [
+  const lookup = s => dictionary.get(s);
+  // Build reusable rules once rather than for each untranslated string.
+  const rules = [
         [/^(Points remaining|Remaining points|Puntos restantes):?\s*(\d+)$/i, m => `남은 포인트: ${m[2]}`],
         [/^(Base Lv\.?|Base Level)\s*(\d+)$/i, m => `Base Lv ${m[2]}`],
         [/^(Job Lv\.?|Job Level)\s*(\d+)$/i, m => `Job Lv ${m[2]}`],
@@ -38,7 +33,12 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
         [/^([+][0-9]+ )?(.+?)( \[[0-9]+\])$/, m => lookup(m[2]) ? `${m[1] || ''}${lookup(m[2])}${m[3]}` : undefined],
         [/^(\+\d+) (.+)$/, m => lookup(m[2]) ? `${m[1]} ${lookup(m[2])}` : undefined],
         [/^(.+?) (Card|Egg)$/, m => lookup(m[1]) ? `${lookup(m[1])} ${m[2] === 'Card' ? '카드' : '알'}` : undefined],
-      ];
+  ];
+  const translate = (value, news=false) => {
+    if (typeof value !== 'string' || !value.trim()) return value;
+    const s = value.trim();
+    let result = news ? newsDictionary.get(s.replace(/\s+/g,' ')) ?? lookup(s) : lookup(s);
+    if (result === undefined) {
       for (const [re, fn] of rules) {
         const m = re.exec(s);
         if (m) { result = fn(m); if (result !== undefined) break; }

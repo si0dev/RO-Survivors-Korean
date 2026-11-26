@@ -4,9 +4,8 @@ const file=process.argv[2],version=process.argv[3];if(!file||!version)throw Erro
 import {loadParts,saveParts} from './records.mjs';
 const work=JSON.parse(await readFile(file,'utf8'));
 const {base,extra}=await loadParts();
-const data=extra;
-if(data.version===version)throw Error('Bump translation version');
-let count=0;const approvedRows=[];
+if(extra.version===version)throw Error('Bump translation version');
+const approvedRows=[];
 for(const row of work.rows){
   if(row.approved!==true)continue;
   const r=await identify(row);
@@ -17,8 +16,8 @@ for(const row of work.rows){
   target.entries[r.id]=record;
   // One logical ID may have two original positions. Keep both views identical.
   if(Object.hasOwn(base.entries,r.id)&&Object.hasOwn(extra.entries,r.id))extra.entries[r.id]=record;
-  approvedRows.push(r);count++;
+  approvedRows.push(r);
 }
-if(!count)throw Error('No approved translations');
-data.version=version;data.gameBuild=work.build;
-await saveParts(base,extra,approvedRows);console.log('Imported '+count+' approved translations');
+if(!approvedRows.length)throw Error('No approved translations');
+extra.version=version;extra.gameBuild=work.build;
+await saveParts(base,extra,approvedRows);console.log('Imported '+approvedRows.length+' approved translations');
