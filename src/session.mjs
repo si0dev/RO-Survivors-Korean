@@ -20,10 +20,10 @@ export const ENGINE_UPDATE_LABEL='새 한국어 패치가 있습니다. 업데�
 export function stateLabel({hasMissing,scanFailed}){
   return scanFailed?'번역 상태 확인 불가':hasMissing?'일부 미번역':'';
 }
-// Dependency-injected storage/network/scan adapters for a future userscript entry.
+// Dependency-injected storage/network/scan adapters.
 export function createSession({read,write,check,download,scan,notify,verify}){
-  let active=null, result=null, ready=false, busy=false, started=false;
-  const emit=()=>notify({hasMissing:!!result?.hasMissing,scanFailed:!!result?.scanFailed,updateReady:ready,label:stateLabel({hasMissing:result?.hasMissing,scanFailed:result?.scanFailed})});
+  let result=null, busy=false, started=false;
+  const emit=()=>notify({hasMissing:!!result?.hasMissing,scanFailed:!!result?.scanFailed});
   async function poll(){
     if(busy)return;
     busy=true;
@@ -35,8 +35,6 @@ export function createSession({read,write,check,download,scan,notify,verify}){
         if(!await verify(pack,manifest))throw Error('Translation integrity check failed');
         await write('translation',{hash:manifest.translationHash,version:manifest.translationVersion,pack});
       }
-      const current=await read('translation');
-      ready=!!active&&!!current&&current.hash!==active.hash;
     } catch{/* offline: keep previous cache and notice */}
     finally{busy=false;emit();}
   }
@@ -44,7 +42,7 @@ export function createSession({read,write,check,download,scan,notify,verify}){
     if(started)throw Error('Session already started');
     started=true;
     await poll();
-    active=await read('translation');
+    const active=await read('translation');
     if(!active){result={scanFailed:true};emit();return null;}
     const previous=await read('scan');
     if(shouldScan({navigationType,build,translationVersion:active.hash,previous})){
@@ -53,7 +51,7 @@ export function createSession({read,write,check,download,scan,notify,verify}){
         await write('scan',result);
       } catch {result={scanFailed:true};}
     } else result=previous;
-    ready=false;emit();return active.pack;
+    emit();return active.pack;
   }
   return {start,poll,getScanResult:()=>result};
 }

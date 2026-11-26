@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          import { extractSnapshot, worklist, readNewsReleases } from './src/core.mjs';
+          import { extractSnapshot, worklist, identify } from './src/core.mjs';
           import { loadRecords } from './tools/records.mjs';
           const origin = 'https://ro-survivors.com';
           async function get(url) {
@@ -55,10 +55,13 @@ jobs:
           if(errors.length || !files.some(f=>/\/build\/main-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/build\/talents-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/manifest\.json$/.test(new URL(f.url).pathname))) throw Error('Incomplete resources');
           const snapshot=extractSnapshot(files);
           if(snapshot.newsScanFailed) throw Error('Latest news extraction failed');
-          const release=readNewsReleases(files)[0].title;
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
-          console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
-          if(errors.length || !files.some(f=>/\/manifest\.json$/.test(new URL(f.url).pathname)) || snapshot.newsScanFailed) throw Error('Incomplete extraction');
+          console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
+          // Include historical news so intentionally retained news is not marked absent.
+          const seen=new Set([...rows,...await Promise.all(snapshot.newsHistory.map(identify))].map(r=>r.id));
+          const unmatched=Object.entries(records.entries).filter(([id,r])=>r.scope!=='wiki'&&!seen.has(id));
+          console.log('AUDIT '+JSON.stringify({build:snapshot.build,scope:'game-talents-news',unmatched:unmatched.length}));
+          for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
           for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
           NODE

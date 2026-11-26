@@ -116,9 +116,12 @@ try {
  }
  const records=await loadRecords();
  const wiki=new Map(Object.values(records.entries).filter(v=>v.scope==='wiki').map(v=>[v.sourceHash,v.ko]));
- const missing=[];
- for(const key of source)if(!wiki.has(sha(key)))missing.push(await identify({kind:'wiki',key,en:key}));
+ const hashes=new Set(),missing=[];
+ for(const key of source){const hash=sha(key);hashes.add(hash);if(!wiki.has(hash))missing.push(await identify({kind:'wiki',key,en:key}));}
  console.log('WIKI SUMMARY '+JSON.stringify({build:currentBuild,categories:covered.length,tabs:tabCount,total:source.size,matched:source.size-missing.length,missing:missing.length}));
  if(covered.length<20||tabCount<72||source.size<1700)throw Error('Incomplete wiki coverage');
+ const unmatched=Object.entries(records.entries).filter(([,r])=>r.scope==='wiki'&&!hashes.has(r.sourceHash));
+ console.log('AUDIT '+JSON.stringify({build:currentBuild,scope:'wiki',unmatched:unmatched.length}));
+ for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
  for(const row of missing)console.log('WIKIROW '+JSON.stringify(row));
 } finally {await browser.close();}

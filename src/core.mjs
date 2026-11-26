@@ -114,14 +114,15 @@ export function extractSnapshot(files) {
         for(const item of Object.values(section??{})) if(typeof item?.name==='string') names.add(item.name);
       }
     }
-    let latestNews=[],newsHistory=[],newsScanFailed=false;
+    let latestNews=[],newsHistory=[],newsRelease=null,newsScanFailed=false;
     try {
       const releases=readNewsReleases(js);
+      newsRelease=releases[0].title;
       latestNews=releases[0].rows;
       const latestKeys=new Set(latestNews.map(row=>row.key));
       newsHistory=[...new Map(releases.slice(1).flatMap(release=>release.rows).filter(row=>!latestKeys.has(row.key)).map(row=>[row.key,row])).values()];
     } catch {newsScanFailed=true;}
-    return {build:[...builds][0],rows:[...ui,...[...names].sort().map(key=>({kind:'name',key,en:key})),...latestNews],newsHistory,newsScanFailed};
+    return {build:[...builds][0],rows:[...ui,...[...names].sort().map(key=>({kind:'name',key,en:key})),...latestNews],newsHistory,newsRelease,newsScanFailed};
   }
   throw Error('Unsupported game language-table layout');
 }
