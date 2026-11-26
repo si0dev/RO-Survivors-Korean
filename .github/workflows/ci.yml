@@ -1,0 +1,102 @@
+name: Validate Korean translation
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - name: Verify legacy-to-catalog migration
+        shell: bash
+        run: |
+          if git cat-file -e HEAD^1:translations/records.json 2>/dev/null; then
+            node tools/verify-structure.mjs "$(git rev-parse HEAD^1)"
+          else
+            echo 'No legacy management files in parent; normal catalog validation applies.'
+          fi
+      - run: npm run build
+      - run: node --check dist/ro-ko.user.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: translation-build
+          path: dist/
+  publish-data:
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-translation-data
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run build
+      - name: Publish verified translation data and engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest=$(git ls-remote --exit-code origin refs/heads/main | cut -f1)
+          if [ "$latest" != "$GITHUB_SHA" ]; then
+            echo "Skipping superseded main commit."
+            exit 0
+          fi
+          previous=$(mktemp -d)
+          output=$(mktemp -d)
+          if git ls-remote --exit-code origin refs/heads/translation-data >/dev/null; then
+            git fetch origin refs/heads/translation-data:refs/remotes/origin/translation-data
+            git show origin/translation-data:ko.json > "$previous/ko.json"
+            git show origin/translation-data:manifest.json > "$previous/manifest.json"
+            node tools/publish-data.mjs "$previous"
+            if git cat-file -e origin/translation-data:ro-ko.meta.js; then
+              git show origin/translation-data:ro-ko.meta.js > "$previous/ro-ko.meta.js"
+              git cat-file -e origin/translation-data:ro-ko.user.js
+              node tools/publish-engine.mjs "$previous/ro-ko.meta.js"
+            else
+              node tools/publish-engine.mjs
+            fi
+            exists=true
+          else
+            rc=$?
+            if [ "$rc" -ne 2 ]; then exit "$rc"; fi
+            node tools/publish-data.mjs
+            node tools/publish-engine.mjs
+            exists=false
+          fi
+          cp dist/published/{ko.json,manifest.json} "$output/"
+          if [ -f dist/published/ro-ko.meta.js ]; then
+            cp dist/published/{ro-ko.meta.js,ro-ko.user.js} "$output/"
+          fi
+          if [ "$exists" = true ]; then
+            git switch -C translation-data origin/translation-data
+          else
+            git switch --orphan translation-data
+          fi
+          cp "$output/"{ko.json,manifest.json} .
+          git add ko.json manifest.json
+          if [ -f "$output/ro-ko.meta.js" ]; then
+            cp "$output/"{ro-ko.meta.js,ro-ko.user.js} .
+            git add ro-ko.meta.js ro-ko.user.js
+          fi
+          if git diff --cached --quiet; then
+            echo "Translation and engine unchanged; no publication."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Publish Korean patch updates"
+          git push origin HEAD:refs/heads/translation-data

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "parts": {
+    "base": {
+      "schema": 1,
+      "version": "0.3.17",
+      "gameBuild": "6b5475ee1"
+    },
+    "extra": {
+      "schema": 1,
+      "version": "0.3.25",
+      "gameBuild": "7c004f793"
+    }
+  }
+}

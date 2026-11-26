@@ -1,0 +1,5 @@
+private/
+dist/
+node_modules/
+ro-survivors-source*.json
+ro-survivors-ko-translation-worklist*.json

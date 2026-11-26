@@ -1,0 +1,16 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {sha256} from '../src/core.mjs';
+const {version:engineVersion}=JSON.parse(await readFile('package.json','utf8'));
+import {loadRecords} from './records.mjs';
+const pack=await loadRecords();
+const content=JSON.stringify(pack);
+const hash=await sha256(content);
+await mkdir('dist',{recursive:true});
+await writeFile('dist/ko.json',content);
+await writeFile('dist/manifest.json',JSON.stringify({schema:1,translationVersion:pack.version,gameBuild:pack.gameBuild,translationHash:hash,file:'ko.json'},null,2)+'\n');
+const modules=['core','session','language-adapter','browser'];
+const body=(await Promise.all(modules.map(async file=>(await readFile('src/'+file+'.mjs','utf8')).replace(/^import[^\n]*\n/gm,'').replace(/^export /gm,'')))).join('\n');
+const metadata=['// ==UserScript==','// @name RO Survivors 한국어 (비공식)','// @namespace local.ro-survivors.ko','// @version '+engineVersion,'// @description 비공식 팬 번역. 게임 운영자와 무관하며 사용 허용 여부는 확인되지 않았습니다.','// @match https://ro-survivors.com/*','// @match https://www.ro-survivors.com/*','// @run-at document-start','// @grant none','// @updateURL https://raw.githubusercontent.com/si0dev/RO-Survivors-Korean/translation-data/ro-ko.meta.js','// @downloadURL https://raw.githubusercontent.com/si0dev/RO-Survivors-Korean/translation-data/ro-ko.user.js','// @noframes','// ==/UserScript=='].join('\n');
+await writeFile('dist/ro-ko.meta.js',metadata+'\n');
+await writeFile('dist/ro-ko.user.js',metadata+'\n(()=>{\n"use strict";\n'+body+'\nvoid startBrowser('+content+','+JSON.stringify(engineVersion)+');\n})();\n');
+console.log('Built '+Object.keys(pack.entries).length+' approved entries');

@@ -1,0 +1,13 @@
+import {execFileSync} from 'node:child_process';
+import assert from 'node:assert/strict';
+import {loadParts,mergeRecords} from './records.mjs';
+const ref=process.argv[2];
+if(!ref||!/^[a-f0-9]{7,64}$/.test(ref))throw Error('Usage: node tools/verify-structure.mjs BASELINE_COMMIT_SHA');
+const read=path=>JSON.parse(execFileSync('git',['show',ref+':'+path],{encoding:'utf8',maxBuffer:16*1024*1024}));
+const oldBase=read('translations/records.json'),oldExtra=read('translations/records-extra.json');
+const {base,extra}=await loadParts();
+assert.equal(JSON.stringify(base),JSON.stringify(oldBase),'Original base metadata, record values or order changed');
+assert.equal(JSON.stringify(extra),JSON.stringify(oldExtra),'Original extra metadata, record values or order changed');
+const before=mergeRecords(oldBase,oldExtra),after=mergeRecords(base,extra);
+assert.equal(JSON.stringify(after),JSON.stringify(before),'Original merged output changed');
+console.log('Verified exact baseline: '+Object.keys(after.entries).length+' logical IDs');

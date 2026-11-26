@@ -1,0 +1,64 @@
+name: Extract game translation changes
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/extract-source.yml'
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch public game resources and parse in memory
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { extractSnapshot, worklist, readNewsReleases } from './src/core.mjs';
+          import { loadRecords } from './tools/records.mjs';
+          const origin = 'https://ro-survivors.com';
+          async function get(url) {
+            const r = await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(20000)});
+            if(!r.ok || new URL(r.url).origin !== origin) throw Error('HTTP '+r.status+' for '+new URL(url).pathname);
+            return r.text();
+          }
+          const html = await get(origin+'/');
+          const talents = await get(origin+'/talents.html');
+          const queue = new Set();
+          function add(raw,base) {
+            try {
+              const u=new URL(raw,base);
+              if(u.origin===origin && (/\.m?js$/i.test(u.pathname)||/\/assets\/manifest\.json$/i.test(u.pathname))) queue.add(u.href);
+            } catch {}
+          }
+          for(const m of (html+'\n'+talents).matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/gi)) add(m[1],origin+'/');
+          add('/assets/manifest.json',origin);
+          const files=[],errors=[];
+          for(const url of queue) {
+            if(files.length+errors.length>=100) throw Error('Resource limit reached');
+            try {
+              const content=await get(url);
+              files.push({url,content,size:Buffer.byteLength(content)});
+              if(/\.m?js$/i.test(new URL(url).pathname)) {
+                for(const m of content.matchAll(/["']((?:\.\.?\/|\/build\/|\/assets\/)[^"'\s]{1,200}\.m?js(?:\?[^"'\s]*)?)["']/g)) add(m[1],url);
+              }
+            } catch(e) {errors.push({url,error:e.message});}
+          }
+          console.log('Resources fetched:',files.length,'errors:',errors.length);
+          console.log('JS:',files.filter(f=>/\.m?js$/i.test(new URL(f.url).pathname)).length,'manifest:',files.filter(f=>/\/manifest\.json$/.test(new URL(f.url).pathname)).length);
+          if(errors.length || !files.some(f=>/\/build\/main-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/build\/talents-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/manifest\.json$/.test(new URL(f.url).pathname))) throw Error('Incomplete resources');
+          const snapshot=extractSnapshot(files);
+          if(snapshot.newsScanFailed) throw Error('Latest news extraction failed');
+          const release=readNewsReleases(files)[0].title;
+          const records=await loadRecords();
+          const rows=await worklist(snapshot,records.entries);
+          console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
+          if(errors.length || !files.some(f=>/\/manifest\.json$/.test(new URL(f.url).pathname)) || snapshot.newsScanFailed) throw Error('Incomplete extraction');
+          for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
+          NODE

@@ -1,0 +1,11 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {extractSnapshot,worklist} from '../src/core.mjs';
+const input=process.argv[2];if(!input)throw Error('Usage: node tools/extract.mjs private/source.json');
+const doc=JSON.parse(await readFile(input,'utf8'));
+import {loadRecords} from './records.mjs';
+const records=await loadRecords();
+const snapshot=extractSnapshot(doc.files);
+const rows=await worklist(snapshot,records.entries);
+await mkdir('private',{recursive:true});
+await writeFile('private/worklist.json',JSON.stringify({build:snapshot.build,rows},null,2)+'\n');
+console.log(JSON.stringify({build:snapshot.build,total:rows.length,ui:rows.filter(r=>r.kind==='ui').length,names:rows.filter(r=>r.kind==='name').length,translated:rows.filter(r=>r.status==='translated').length,drafts:rows.filter(r=>r.ko&&!r.approved).length}));
