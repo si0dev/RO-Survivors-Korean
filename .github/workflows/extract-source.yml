@@ -21,6 +21,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { extractSnapshot, worklist, identify } from './src/core.mjs';
+          import { sourceSnapshot, findPageBundle } from './src/browser.mjs';
           import { loadRecords } from './tools/records.mjs';
           const origin = 'https://ro-survivors.com';
           async function get(url) {
@@ -58,10 +59,24 @@ jobs:
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
           console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
-          // Include historical news so intentionally retained news is not marked absent.
-          const seen=new Set([...rows,...await Promise.all(snapshot.newsHistory.map(identify))].map(r=>r.id));
+          // Audit both runtime entry points, not only the first shared map in the combined extraction.
+          const seen=new Set(rows.map(r=>r.id));
+          const cached=new Map(files.map(f=>[f.url,f.content]));
+          const read=async url=>cached.get(url)??await get(url);
+          let complete=true;
+          for(const [kind,page] of [['main',origin+'/'],['talents',origin+'/talents.html']]){
+            try{
+              const url=findPageBundle([...cached.keys()],page);
+              if(!url)throw Error('Entry bundle missing');
+              const scoped=await sourceSnapshot({kind,url,build:snapshot.build,content:cached.get(url)},read);
+              for(const row of [...scoped.rows,...scoped.newsHistory])seen.add((await identify(row)).id);
+              console.log('AUDIT_PAGE '+JSON.stringify({kind,rows:scoped.rows.length,build:scoped.build}));
+            }catch(e){complete=false;console.log('AUDIT_PAGE '+JSON.stringify({kind,error:e.message}));}
+          }
+          // Keep historical news in the inventory regardless of page-specific rendering.
+          for(const row of snapshot.newsHistory)seen.add((await identify(row)).id);
           const unmatched=Object.entries(records.entries).filter(([id,r])=>r.scope!=='wiki'&&!seen.has(id));
-          console.log('AUDIT '+JSON.stringify({build:snapshot.build,scope:'game-talents-news',unmatched:unmatched.length}));
+          console.log('AUDIT '+JSON.stringify({build:snapshot.build,scope:'game-talents-news',complete,unmatched:unmatched.length}));
           for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
           for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
           NODE
