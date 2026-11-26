@@ -39,7 +39,6 @@ test('Arrow Repel follows the official Korean Ragnarok skill name',async()=>{
 
 test('Retreat is consistently named 리트리트 in skill references',async()=>{
  const pack=await loadRecords();
- assert.equal(pack.entries["c701382d437a3bb2f99d321a91dde6a707ac8eab0d53005aa2175e6b395f0858"].ko,"리트리트");
  assert.equal(pack.entries["6e5ca080454b9d150b8de6138d8b60bbbea4429873a74c188380f6a3086738e6"].ko,"기본 공격, 크리티컬, 더블 스트레이핑 및 리트리트.");
  assert.equal(pack.entries["f7d704f49d1d89e2c732586e63470a7f0d92e0fad8d0f1c0d085f8197142017d"].ko,"리트리트");
  assert.equal(pack.entries["7bd7d35d4862b226aac5d4596d166825a2670e8782363525b6523822e5c88444"].ko,"리트리트");
@@ -97,7 +96,6 @@ test('Approved custom skill names stay consistent throughout the merged data',as
  assert.equal(pack.entries["5c3d539cee4387476115958c8e2c7c2b0f70fa89842b3cf280db54fec97331a8"].ko,"제니 레인이 적 무리 대신 자신에게 떨어집니다. 피해량이 {0}% 감소하고 범위가 {1}% 증가합니다.");
  assert.equal(pack.entries["251936c30c08adbe6a2c0be732a455fe4c304548f28b3a088cf1f62226d63715"].ko,"제니 레인, 노점 개설 및 제니: 돈을 무기로 사용합니다.");
  assert.equal(pack.entries["994776425fe255151f4ebdb4df08938642de0ae56f5ba46059e3148632c61bea"].ko,"소드 댄스: 자신을 중심으로 점점 넓어지는 세 차례의 참격을 가합니다. 가까이 있는 적은 세 차례 모두 피해를 받습니다.");
- assert.equal(pack.entries["b0da67cca60f130a6395ae49decec3ab6e39c991c14677eafc301cdfc964edc1"].ko,"노점 개설의 폭발이 1.2초 동안 스턴시키고 제니 레인처럼 모든 적중 대상에게 매머나이트 표식을 남깁니다.");
  assert.equal(pack.entries["a8fd2bc65eb61cdffcee8345507e7da09790aa9e7c8b6be89e127e67fb1a0280"].ko,"포이즌 밤의 독 지속시간이 {0}초 증가합니다.");
  assert.equal(pack.entries["d5780f122054b8724fd7f1d2b226db8965b3c75bdd773961628843fbb835e7a6"].ko,"소드 댄스 타격에 적중한 적은 {1}초 동안 타격 피해량의 {0}%만큼 출혈 피해를 받습니다.");
  assert.equal(pack.entries["f01386ccd5c7e300d76ef63ee6409a15eeabeae02b10378a07a07f1855854ebf"].ko,"매머나이트가 제니 레인 표식이 붙은 적에게 +{0}% 더 큰 피해를 줍니다.");

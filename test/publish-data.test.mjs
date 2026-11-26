@@ -21,7 +21,17 @@ test('publish only data changes, advance version automatically and verify hash',
 test('reject corrupt previous data and accidental loss of records',async()=>{
  const first=await preparePublication(pack);
  await assert.rejects(()=>preparePublication(pack,{...first,raw:first.raw+' '}),/Invalid previous/);
- await assert.rejects(()=>preparePublication({...pack,entries:{}},first),/count decreased/);
+ await assert.rejects(()=>preparePublication({...pack,entries:{}},first),/Unapproved translation removal/);
+});
+
+test('only explicitly retired IDs with matching old source hashes may be removed',async()=>{
+ const first=await preparePublication(pack);
+ const replacement={...pack,entries:{['c'.repeat(64)]:entry('추가')}};
+ await assert.rejects(()=>preparePublication(replacement,first),/Unapproved translation removal/);
+ await assert.rejects(()=>preparePublication(replacement,first,{[id]:'d'.repeat(64)}),/Unapproved translation removal/);
+ const result=await preparePublication(replacement,first,{[id]:pack.entries[id].sourceHash});
+ assert.equal(result.changed,true);
+ assert.deepEqual(JSON.parse(result.raw).entries,replacement.entries);
 });
 
 test('retiring an old fallback dictionary republishes identical verified records',async()=>{

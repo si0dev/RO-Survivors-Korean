@@ -40,8 +40,11 @@ export function expandCatalog(catalog,files,common){
  const slots=[[],[]],decisions={},refs={},members=new Map(),seen=new Set();
  for(const name of fileNames)for(const [id,item] of Object.entries(files[name])){
   check(/^[a-f0-9]{64}$/.test(id)&&!seen.has(id)&&plain(item)&&plain(item.record),"Invalid or duplicate catalog ID: "+id);seen.add(id);
-  const {positions,type,reason,record}=item;
-  check(reasons.has(reason)&&partition(id,record,type)===name,"Incorrect classification: "+id);
+  const {positions,reason}=item;
+  const type=name==="news"?"news":name.endsWith("-fixed")?"fixed":"variable";
+  const {scope,...fields}=item.record;
+  const record=Object.hasOwn(item.record,"placeholders")?item.record:{...fields,placeholders:[],...(scope===undefined?{}:{scope})};
+  check((item.type===undefined||item.type===type)&&reasons.has(reason)&&partition(id,record,type)===name,"Incorrect classification: "+id);
   check(Array.isArray(positions)&&positions.length===2&&positions.some(p=>p!==null),"Missing original position: "+id);
   let value=record;
   if(typeof record.ko!=="string"){
@@ -121,7 +124,14 @@ export async function loadRecords(){
 }
 function formatManagementFile(name,data){
  if(name==='catalog')return JSON.stringify(data,null,2)+'\n';
- const lines=Object.entries(data).map(([id,item])=>'  '+JSON.stringify(id)+': '+JSON.stringify(item));
+ const lines=Object.entries(data).map(([id,item])=>{
+  if(fileNames.includes(name)){
+   const {type,record,...metadata}=item;
+   const {placeholders,...fields}=record;
+   item={...metadata,record:placeholders.length?record:fields};
+  }
+  return '  '+JSON.stringify(id)+': '+JSON.stringify(item);
+ });
  return lines.length?'{\n'+lines.join(',\n')+'\n}\n':'{}\n';
 }
 

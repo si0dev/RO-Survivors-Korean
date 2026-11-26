@@ -5,7 +5,6 @@ import {identify} from '../src/core.mjs';
 
 const origin='https://ro-survivors.com';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
-const norm=s=>s.trim().replace(/\s+/g,' ');
 const sha=s=>createHash('sha256').update(s).digest('hex');
 try {
  const page=await browser.newPage({locale:'en-US'});
@@ -91,7 +90,7 @@ try {
  for(const {id,label} of names){
   const item=nav.locator('button[data-sec='+JSON.stringify(id)+']');
   if(await item.count()!==1)throw Error('Missing or ambiguous category: '+label);
-  await item.click();await settle();await collect();
+  await item.click();await settle();
   const seen=new Set();
   const attrs=['data-sjob','data-job','data-pane-tab'];
   async function scan(depth=0,path=[]){
@@ -117,9 +116,12 @@ try {
  }
  const records=await loadRecords();
  const wiki=new Map(Object.values(records.entries).filter(v=>v.scope==='wiki').map(v=>[v.sourceHash,v.ko]));
- const missing=[];
- for(const key of source)if(!wiki.has(sha(key)))missing.push(await identify({kind:'wiki',key,en:key}));
+ const hashes=new Set(),missing=[];
+ for(const key of source){const hash=sha(key);hashes.add(hash);if(!wiki.has(hash))missing.push(await identify({kind:'wiki',key,en:key}));}
  console.log('WIKI SUMMARY '+JSON.stringify({build:currentBuild,categories:covered.length,tabs:tabCount,total:source.size,matched:source.size-missing.length,missing:missing.length}));
  if(covered.length<20||tabCount<72||source.size<1700)throw Error('Incomplete wiki coverage');
+ const unmatched=Object.entries(records.entries).filter(([,r])=>r.scope==='wiki'&&!hashes.has(r.sourceHash));
+ console.log('AUDIT '+JSON.stringify({build:currentBuild,scope:'wiki',unmatched:unmatched.length}));
+ for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
  for(const row of missing)console.log('WIKIROW '+JSON.stringify(row));
 } finally {await browser.close();}

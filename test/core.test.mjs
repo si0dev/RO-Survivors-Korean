@@ -32,13 +32,13 @@ test('download pending update silently without changing active translation or re
  const session=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>{if(fail)throw Error('offline');return {translationHash:latest,translationVersion:latest}},download:async m=>m.translationHash,verify:async()=>true,scan:async()=>{scans++;return {hasMissing:true}},notify:v=>notice=v});
  assert.equal(await session.start({navigationType:'navigate',build:'build'}), '0.3.1');
  assert.equal(scans,1);assert.equal(notice.hasMissing,true);
- latest='0.3.2';await session.poll();assert.equal(notice.updateReady,true);assert.equal(notice.label,'일부 미번역');
+ latest='0.3.2';await session.poll();assert.equal(stateLabel(notice),'일부 미번역');assert.equal(Object.hasOwn(notice,'updateReady'),false);
  assert.equal(cache.get('translation').version,'0.3.2');
- fail=true;await session.poll();assert.equal(notice.updateReady,true);
+ fail=true;await session.poll();assert.equal(cache.get('translation').version,'0.3.2');assert.equal(stateLabel(notice),'일부 미번역');
  assert.equal(scans,1);
  const reloaded=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>{throw Error('offline')},download:async()=>null,verify:async()=>true,scan:async()=>{scans++;return {hasMissing:false}},notify:v=>notice=v});
  assert.equal(await reloaded.start({navigationType:'reload',build:'build'}),'0.3.2');
- assert.equal(notice.updateReady,false);assert.equal(notice.label,'');
+ assert.equal(stateLabel(notice),'');
  assert.equal(scans,2);
 });
 
@@ -70,9 +70,9 @@ test('corrupt or older remote data does not replace the cache',async()=>{
  await session.start({navigationType:'navigate',build:'game'});
  assert.equal(downloads,0);
  version='0.4.2';await session.poll();
- assert.equal(downloads,1);assert.equal(cache.get('translation').hash,'old');assert.equal(notice.updateReady,false);
+ assert.equal(downloads,1);assert.equal(cache.get('translation').hash,'old');assert.equal(stateLabel(notice),'');
  valid=true;await session.poll();
- assert.equal(cache.get('translation').hash,'new');assert.equal(notice.updateReady,true);
+ assert.equal(cache.get('translation').hash,'new');assert.equal(stateLabel(notice),'');
 });
 
 test('news extraction skips drafts, normalizes text and keeps latest separate from history',async()=>{
@@ -119,6 +119,12 @@ test('literal MATK status label is extracted only when present',async()=>{
  const fixture='// RO Survivors Build 1234567\n'+['en','zh','pt','ja'].map(k=>'const '+k+'='+map+','+k+'Names='+map+';').join('\n')+'\nconst languages={es:null,en:en,"zh-TW":zh,"pt-BR":pt,ja:ja};';
  const snapshot=content=>extractSnapshot([{url:'https://example.test/game.js',content}]);
  assert.equal(snapshot(fixture).rows.some(r=>r.kind==='ui'&&r.key==='MATK'),false);
+ assert.equal(snapshot(fixture).newsRelease,null);
+ const news='\nconst news='+String.fromCharCode(96)+['# Changelog','English version of CHANGELOG.md','## Beta 1.2 — date','- New release','## Beta 1.1 — date','- Old release'].join('\n')+String.fromCharCode(96)+';';
+ const withNews=snapshot(fixture+news);
+ assert.equal(withNews.newsRelease,'Beta 1.2 — date');
+ assert.equal(withNews.newsScanFailed,false);
+ assert.ok(withNews.newsHistory.some(r=>r.en==='Old release'));
  const row=snapshot(fixture+'\nconst stats=[["MATK",t=>t.matk,"int"]];').rows.find(r=>r.kind==='ui'&&r.key==='MATK');
  assert.deepEqual(row,{kind:'ui',key:'MATK',en:'MATK'});
  assert.equal((await identify(row)).id,'86d3e7c31f49ae65d0ed9b41226d31e848df6a2e3b5684afb394b1fc671ff2ff');
