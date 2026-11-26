@@ -1,4 +1,19 @@
 import {createWikiTranslator} from './core.mjs';
+// Gear pickups compose the quality and item name at runtime, outside the language table.
+const lootQualities = [['Común','Common'],['Poco común','Uncommon'],['Raro','Rare'],['Épico','Epic'],['Legendario','Legendary']];
+export function translateLootToast(value, parent, lookup, translate) {
+  if (typeof value !== 'string' || !parent?.matches('#toasts > .toast.q')) return value;
+  const match = /^(\s*)([^:\n]+):([ \t]+)(\S[^\n]*?)(\s*)$/.exec(value);
+  if (!match) return value;
+  const [,leading,quality,separator,item,trailing] = match;
+  for (const [es,en] of lootQualities) {
+    const ko = lookup(es) ?? lookup(en);
+    if (quality === es || quality === en || quality === ko) {
+      return leading + (ko ?? quality) + ':' + separator + translate(item) + trailing;
+    }
+  }
+  return value;
+}
 export function installLanguageAdapter(entries,engineVersion,newsEntries={},wikiEntries={}) {
   if (window.__roKoLocal) return;
   const dictionary=new Map(Object.entries(entries));
@@ -116,7 +131,8 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       }).catch(()=>{});
       return;
     }
-    const next = translate(v,!!node.parentElement?.closest('#news-body, #news-tabs'));
+    const loot = translateLootToast(v,node.parentElement,lookup,translate);
+    const next = loot === v ? translate(v,!!node.parentElement?.closest('#news-body, #news-tabs')) : loot;
     if (v !== next) { originals.set(node, [v,next]); node.nodeValue = next; }
   }
   function translateAttr(el, key) {
