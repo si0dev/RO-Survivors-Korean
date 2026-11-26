@@ -5,7 +5,7 @@ import {sha256,validateRecords} from '../src/core.mjs';
 import {compareTranslationVersions} from '../src/session.mjs';
 
 const payload = ({version,...data})=>JSON.stringify(data);
-export async function preparePublication(pack,previous=null){
+export async function preparePublication(pack,previous=null,retired={}){
   validateRecords(pack);
   const sourceHash=await sha256(payload(pack));
   if(previous){
@@ -13,7 +13,9 @@ export async function preparePublication(pack,previous=null){
     const old=validateRecords(JSON.parse(raw));
     if(manifest.schema!==1||manifest.file!=='ko.json'||manifest.translationVersion!==old.version||manifest.translationHash!==await sha256(raw))throw Error('Invalid previous publication');
     if(await sha256(payload(old))===sourceHash)return {raw,manifest,changed:false};
-    if(Object.keys(pack.entries).length<Object.keys(old.entries).length)throw Error('Translation record count decreased');
+    for(const [id,record] of Object.entries(old.entries)){
+      if(!Object.hasOwn(pack.entries,id)&&(!Object.hasOwn(retired,id)||retired[id]!==record.sourceHash))throw Error('Unapproved translation removal: '+id);
+    }
   }
   let version='0.4.0';
   if(previous){
@@ -34,7 +36,8 @@ async function main(){
   const previousDir=process.argv[2];
   const pack=JSON.parse(await readFile('dist/ko.json','utf8'));
   const previous=previousDir?{raw:await readFile(resolve(previousDir,'ko.json'),'utf8'),manifest:JSON.parse(await readFile(resolve(previousDir,'manifest.json'),'utf8'))}:null;
-  const result=await preparePublication(pack,previous);
+  const {retired={}}=JSON.parse(await readFile('translations/catalog.json','utf8'));
+  const result=await preparePublication(pack,previous,retired);
   await mkdir('dist/published',{recursive:true});
   await writeFile('dist/published/ko.json',result.raw);
   await writeFile('dist/published/manifest.json',JSON.stringify(result.manifest,null,2)+'\n');
