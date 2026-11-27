@@ -54,6 +54,22 @@ jobs:
           console.log('Resources fetched:',files.length,'errors:',errors.length);
           console.log('JS:',files.filter(f=>/\.m?js$/i.test(new URL(f.url).pathname)).length,'manifest:',files.filter(f=>/\/manifest\.json$/.test(new URL(f.url).pathname)).length);
           if(errors.length || !files.some(f=>/\/build\/main-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/build\/talents-[^/]+\.js$/.test(new URL(f.url).pathname)) || !files.some(f=>/\/manifest\.json$/.test(new URL(f.url).pathname))) throw Error('Incomplete resources');
+          const mf=JSON.parse(files.find(f=>/\/manifest\.json$/.test(new URL(f.url).pathname)).content);
+          console.log('MANIFEST_SECTIONS '+JSON.stringify(Object.keys(mf)));
+          for(const id of [2527,2986]){
+            console.log('ITEM_RECORD '+JSON.stringify({id,item:mf.items?.[id]}));
+            const refs=[];
+            function walk(o,p,depth=0){if(!o||typeof o!=='object'||depth>8||refs.length>=50)return;for(const [k,v] of Object.entries(o)){if(p.length===0&&k==='items')continue;const path=[...p,k];if(k===String(id)||v===id||v===String(id))refs.push({path:path.join('.'),value:typeof v==='object'?Object.keys(v):v});if(typeof v==='object')walk(v,path,depth+1);}}
+            walk(mf,[]);
+            console.log('MANIFEST_ITEM_REFS '+JSON.stringify({id,refs}));
+            for(const f of files.filter(x=>/\.m?js$/.test(new URL(x.url).pathname))){
+              const re=new RegExp('\\b(?:'+id+'|0x'+id.toString(16)+')\\b','gi');
+              const hits=[...f.content.matchAll(re)];if(hits.length)console.log('BUNDLE_ITEM_REFS '+JSON.stringify({id,path:new URL(f.url).pathname,count:hits.length,contexts:hits.slice(0,12).map(h=>f.content.slice(Math.max(0,h.index-90),h.index+h[0].length+90))}));
+            }
+          }
+          const main=files.find(f=>/\/build\/main-[^/]+\.js$/.test(new URL(f.url).pathname)).content;
+          const at=main.indexOf('const l=r[0],d=r.flatMap');
+          if(at>=0)console.log('WIKI_DROP_SOURCE '+JSON.stringify(main.slice(Math.max(0,at-3800),at)));
           const snapshot=extractSnapshot(files);
           if(snapshot.newsScanFailed) throw Error('Latest news extraction failed');
           const records=await loadRecords();
@@ -104,15 +120,3 @@ jobs:
           for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
           for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
           NODE
-
-  wiki-nine-dom:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
-      - run: node tools/wiki-nine-audit.mjs # bounded heading lookup
