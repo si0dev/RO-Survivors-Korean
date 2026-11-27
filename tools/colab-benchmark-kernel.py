@@ -49,14 +49,29 @@ def invoke(args,limit,on_line=None):
                 if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
             return p.wait(timeout=max(0.1,deadline-time.monotonic())),"".join(lines)
         except subprocess.TimeoutExpired:
-            p.kill();p.wait()
+            p.kill();p.wait();t.join(timeout=5)
+            while True:
+                try: line=q.get_nowait()
+                except queue.Empty: break
+                if line is None: break
+                lines.append(line)
+                if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
             return 124,"".join(lines)+"\nTimeoutError\n"
         finally:
             if p.poll() is None: p.kill();p.wait()
             t.join(timeout=5)
 def safe_progress(line,emit):
-    if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart))",line):
+    if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart)|CACHE_COPY_PERCENT=(?:manifest|model|llama|cudart):(?:100|[0-9]{1,2}))",line):
         emit(line,flush=True)
+    # Only numeric, fixed-schema fields; never echo raw CLI logs.
+    for marker,keys in (("LOCAL_MODEL_COPY=",("bytes","copy_seconds","verify_seconds")),("INDEX_GPU_DIAGNOSTIC=",("server_gpu_mib","gpu_free_mib","gpu_total_mib"))):
+        if not line.startswith(marker): continue
+        try:
+            data=json.loads(line[len(marker):])
+            values={key:data[key] for key in keys}
+            if all(type(v) in (int,float) and 0<=v<10**12 for v in values.values()):
+                emit(marker+json.dumps(values),flush=True)
+        except (ValueError,KeyError,TypeError): pass
 def report_failure(phase,raw,probe,emit):
     category=transport.classify(raw)
     emit("COLAB_KERNEL_FAILURE="+phase+":"+category,flush=True)
@@ -67,11 +82,11 @@ def report_failure(phase,raw,probe,emit):
     except Exception as exc:
         emit("COLAB_FAILURE_ASSIGNMENT_QUERY_FAILED="+type(exc).__name__,flush=True)
     # Respect quota, access restrictions and deterministic local failures.
-    if re.search(r"invalid_grant|invalid_scope|quota exceeded|usage limit|compute units|resource exhausted|rate limit|\b429\b|permission denied|access denied|CACHE_(?:NOT_READY|SIZE_MISMATCH)|HASH_MISMATCH|ENGINE_(?:ASSET_UNAVAILABLE|ARGUMENTS_FAILED|DEPENDENCY_FAILED|OPTION_UNAVAILABLE)|FULL_GPU_OFFLOAD_UNCONFIRMED|GPU_MODEL_MEMORY_NOT_VERIFIED|RCLONE_BOOTSTRAP_AUTH|LOCAL_MODEL_COPY_(?:AUTH_FAILED|ACCESS_DENIED|QUOTA)|RCLONE_VERSION_MISMATCH",raw,re.I):
+    if re.search(r"invalid_grant|invalid_scope|quota exceeded|usage limit|compute units|resource exhausted|rate limit|\b429\b|permission denied|access denied|CACHE_(?:NOT_READY|SIZE_MISMATCH)|HASH_MISMATCH|ENGINE_(?:ASSET_UNAVAILABLE|ARGUMENTS_FAILED|DEPENDENCY_FAILED|OPTION_UNAVAILABLE)|FULL_GPU_OFFLOAD_UNCONFIRMED|GPU_MODEL_MEMORY_NOT_VERIFIED|RCLONE_BOOTSTRAP_AUTH|LOCAL_MODEL_COPY_(?:AUTH_FAILED|ACCESS_DENIED|QUOTA)|RCLONE_VERSION_MISMATCH|RCLONE_BOOTSTRAP_HTTP_429",raw,re.I):
         return 1
     if category=="AUTH":
         return 1
-    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT") or re.search(r"RCLONE_BOOTSTRAP_CONNECTION|LOCAL_MODEL_COPY_TIMEOUT",raw):
+    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT") or re.search(r"RCLONE_BOOTSTRAP_CONNECTION|RCLONE_BOOTSTRAP_HTTP_50[234]|LOCAL_MODEL_COPY_TIMEOUT",raw):
         return 75
     return 1
 def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,probe=assignment_count,emit=print,batch_size=4):

@@ -57,7 +57,7 @@ checkpoint_count() {
 }
 release_session() {
   timeout 60 "${cli[@]}" stop -s "$gpu" >"$tmp/stop.log" 2>&1 </dev/null || true
-  timeout 180 python benchmark/tools/colab-session-cleanup.py POST
+  timeout 180 python benchmark/tools/colab-session-cleanup.py POST || return $?
   allocation_started=0
   rm -f "$tmp/sessions.json"
 }
@@ -69,7 +69,7 @@ export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$1.conf"
 # The CLI handles its own bounded retries of transient server failures.
 export COLAB_CLI_ASSIGN_RETRIES=3
 echo "COLAB_PHASE=GPU_ALLOCATION"
-check gpu-session 600 "${cli[@]}" new -s "$gpu" --gpu T4 || { session_rc=$?; return 0; }
+check gpu-session 600 "${cli[@]}" new -s "$gpu" --gpu T4 || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|service unavailable|502|503|504" "$tmp/gpu-session.log" && ! grep -Eqi "401|403|412|429|quota|usage limit|permission denied|invalid_grant|TooManyAssignmentsError|resource exhausted" "$tmp/gpu-session.log"; then session_rc=75; fi; return 0; }
 # Refresh on the runner immediately before passing a short-lived credential.
 python - <<'PY'
 import configparser,json,os,pathlib
@@ -141,6 +141,14 @@ unset COLAB_ADC_JSON
 }
 prepare_cache() {
   check cache-preflight 2400 python benchmark/tools/colab-cache-populate.py
+  python - "$tmp/cache-preflight.log" <<'PY'
+import json,sys
+for line in open(sys.argv[1]):
+    if line.startswith("CACHE_PREPARED="):
+        obj=json.loads(line.split("=",1)[1])
+        assert obj["mode"] in ("hit","created","repaired")
+        print("CACHE_PREPARED="+json.dumps({"mode":obj["mode"],"bytes":int(obj["bytes"]),"seconds":float(obj["seconds"])}),flush=True)
+PY
   python benchmark/tools/colab-benchmark-bootstrap.py "$tmp" "$HOME/.cache/ro-llm/rclone"
 }
 run_benchmark() {

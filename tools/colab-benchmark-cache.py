@@ -1,4 +1,4 @@
-import os,json,time,tempfile,pathlib,hashlib,uuid,requests,shutil,subprocess,re
+import os,json,time,tempfile,pathlib,hashlib,uuid,requests,shutil,subprocess,re,threading
 TAG="b12343"
 REPO="IndexTeam/Index-Translate-9B-GGUF"
 MODEL="Index-Translate-9B.Q6_K.gguf"
@@ -26,10 +26,25 @@ def copy_asset(config,name,local_path,entry=None):
     complete=False
     try:
         try:
-            result=subprocess.run([RCLONE,"--config",config,"copyto",
-                REMOTE+"/"+name,
-                str(local_path),"--contimeout","30s","--timeout","120s",
-                "--retries","1","--low-level-retries","1"],capture_output=True,timeout=900)
+            args=[RCLONE,"--config",config,"copyto",REMOTE+"/"+name,str(local_path),
+                "--contimeout","30s","--timeout","120s","--retries","1","--low-level-retries","1",
+                "--stats","5s","--stats-one-line","--stats-log-level","NOTICE"]
+            messages=[]
+            with subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True,errors="replace") as copy:
+                def copy_logs():
+                    for line in copy.stderr:
+                        messages.append(line)
+                        # Extract only the percentage, never raw remote paths.
+                        match=re.search(r"Transferred:.*?,\s*(\d{1,3})%",line)
+                        if match and 0<=int(match[1])<=100:
+                            print(f"CACHE_COPY_PERCENT={kind}:{int(match[1])}",flush=True)
+                thread=threading.Thread(target=copy_logs,daemon=True)
+                thread.start()
+                try: code=copy.wait(timeout=900)
+                finally:
+                    if copy.poll() is None: copy.kill();copy.wait()
+                    thread.join(timeout=5)
+            result=type("CopyResult",(),{"returncode":code,"stderr":"".join(messages).encode()})()
         except subprocess.TimeoutExpired:
             raise RuntimeError("LOCAL_MODEL_COPY_TIMEOUT") from None
         if result.returncode:
