@@ -1,0 +1,69 @@
+name: LLM dependency cache preparation (CPU only)
+on:
+  pull_request:
+    branches: [test/colab-adc-smoke]
+    paths:
+      - '.github/workflows/llm-dependency-cache.yml'
+      - '.github/actions/llm-dependencies/**'
+      - 'tools/colab-benchmark-*.py'
+      - 'tools/colab-requirements.txt'
+permissions:
+  contents: read
+concurrency:
+  group: ro-llm-dependency-cache-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/llm-dependency-cache' && github.event.pull_request.user.login == 'si0dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: benchmark
+      - uses: actions/checkout@v4
+        with:
+          ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
+          persist-credentials: false
+          path: reference
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore and install LLM CI dependencies
+        uses: ./benchmark/.github/actions/llm-dependencies
+        with:
+          reference-dir: reference
+      - name: Independent translation and evaluation Mock tests
+        run: python benchmark/tools/colab-benchmark-test.py -v
+      - name: Confirm dependency preparation
+        run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
+  restore-test:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: benchmark
+      - uses: actions/checkout@v4
+        with:
+          ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
+          persist-credentials: false
+          path: reference
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore and install LLM CI dependencies
+        uses: ./benchmark/.github/actions/llm-dependencies
+        with:
+          reference-dir: reference
+      - name: Confirm dependency restore
+        run: echo "LLM_DEPENDENCY_RESTORE_TEST_DONE"

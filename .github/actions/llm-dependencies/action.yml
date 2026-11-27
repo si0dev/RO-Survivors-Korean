@@ -1,0 +1,85 @@
+name: LLM dependency cache
+description: Restore public dependency downloads without caching credentials or translation data.
+inputs:
+  reference-dir:
+    description: Directory containing the checked-out reference project
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Restore Python wheelhouse
+      id: wheels
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/ro-llm/wheels
+        key: ro-llm-wheels-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu24-py312-${{ hashFiles('benchmark/tools/colab-requirements.txt') }}
+    - name: Prepare Python wheelhouse
+      if: steps.wheels.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$HOME/.cache/ro-llm/wheels"
+        python -m pip wheel --disable-pip-version-check --wheel-dir "$HOME/.cache/ro-llm/wheels" -r benchmark/tools/colab-requirements.txt
+    - name: Install Python dependencies offline
+      shell: bash
+      run: |
+        set -euo pipefail
+        python -m pip install --disable-pip-version-check --no-index --find-links "$HOME/.cache/ro-llm/wheels" -r benchmark/tools/colab-requirements.txt
+        python -m pip check
+        colab --help >/dev/null
+        echo "LLM_PYTHON_CACHE_HIT=${{ steps.wheels.outputs.cache-hit }}"
+    - name: Save verified Python wheelhouse
+      if: steps.wheels.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ro-llm/wheels
+        key: ${{ steps.wheels.outputs.cache-primary-key }}
+    - name: Ensure rclone is available on runner
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v rclone >/dev/null 2>&1; then
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone
+        fi
+        rclone version
+    - name: Restore npm package cache
+      id: npm
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.npm/_cacache
+        key: ro-llm-npm-v1-${{ runner.os }}-${{ runner.arch }}-node22-playwright1.56.1-${{ hashFiles('reference/package.json') }}
+    - name: Install Playwright
+      shell: bash
+      working-directory: ${{ inputs.reference-dir }}
+      run: |
+        set -euo pipefail
+        npm install --prefer-offline --no-save --package-lock=false playwright@1.56.1
+        npx playwright --version
+        echo "LLM_NPM_CACHE_HIT=${{ steps.npm.outputs.cache-hit }}"
+    - name: Save npm package cache
+      if: steps.npm.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.npm/_cacache
+        key: ${{ steps.npm.outputs.cache-primary-key }}
+    - name: Restore Chromium binaries
+      id: browser
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ro-llm-chromium-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu24-playwright1.56.1
+    - name: Ensure Chromium and system dependencies
+      shell: bash
+      working-directory: ${{ inputs.reference-dir }}
+      run: |
+        set -euo pipefail
+        npx playwright install --with-deps chromium
+        node --input-type=module -e "import {chromium} from 'playwright'; const b=await chromium.launch({headless:true}); await b.close()"
+        echo "LLM_CHROMIUM_CACHE_HIT=${{ steps.browser.outputs.cache-hit }}"
+    - name: Save verified Chromium binaries
+      if: steps.browser.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ steps.browser.outputs.cache-primary-key }}
