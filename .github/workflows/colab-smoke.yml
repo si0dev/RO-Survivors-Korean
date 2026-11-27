@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/colab-smoke.yml'
+      - 'tools/colab-benchmark-*'
 permissions:
   contents: read
 concurrency:
@@ -34,30 +35,15 @@ jobs:
         uses: ./benchmark/.github/actions/llm-dependencies
         with:
           reference-dir: reference
+          browser: 'false'
       - name: Independent translation contract and evaluation tests
         run: |
           python benchmark/tools/colab-benchmark-test.py -v
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
-      - name: Extract and select approved reference pairs
+      - name: Prepare fixed approved reference pairs offline
         shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -m 700 "$RUNNER_TEMP/ro-benchmark"
-          cd reference
-          npm run build
-          node --input-type=module <<'NODE'
-          import {readFile,writeFile} from 'node:fs/promises';
-          const path='tools/extract-wiki.mjs';
-          const code=await readFile(path,'utf8');
-          const marker=' const records=await loadRecords();';
-          if(!code.includes(marker))throw Error('Extractor layout changed');
-          await writeFile(path,code.replace(marker, " await (await import('node:fs/promises')).writeFile(process.env.RUNNER_TEMP+'/ro-benchmark/wiki.json',JSON.stringify({build:currentBuild,views:[...views]}));\n"+marker));
-          NODE
-          node tools/extract-wiki.mjs
-          cd ..
-          node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
-          rm "$RUNNER_TEMP/ro-benchmark/wiki.json"
+        run: node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
       - name: Run 200-pair translation benchmark using local SSD
         shell: bash
         env:

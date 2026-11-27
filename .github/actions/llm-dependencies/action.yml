@@ -4,6 +4,10 @@ inputs:
   reference-dir:
     description: Directory containing the checked-out reference project
     required: true
+  browser:
+    description: Install browser dependencies only for workflows requiring live extraction
+    required: false
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -44,12 +48,14 @@ runs:
         fi
         rclone version
     - name: Restore npm package cache
+      if: inputs.browser == 'true'
       id: npm
       uses: actions/cache/restore@v4
       with:
         path: ~/.npm/_cacache
         key: ro-llm-npm-v1-${{ runner.os }}-${{ runner.arch }}-node22-playwright1.56.1-${{ hashFiles('reference/package.json') }}
     - name: Install Playwright
+      if: inputs.browser == 'true'
       shell: bash
       working-directory: ${{ inputs.reference-dir }}
       run: |
@@ -58,18 +64,20 @@ runs:
         npx playwright --version
         echo "LLM_NPM_CACHE_HIT=${{ steps.npm.outputs.cache-hit }}"
     - name: Save npm package cache
-      if: steps.npm.outputs.cache-hit != 'true'
+      if: inputs.browser == 'true' && steps.npm.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ~/.npm/_cacache
         key: ${{ steps.npm.outputs.cache-primary-key }}
     - name: Restore Chromium binaries
+      if: inputs.browser == 'true'
       id: browser
       uses: actions/cache/restore@v4
       with:
         path: ~/.cache/ms-playwright
         key: ro-llm-chromium-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu24-playwright1.56.1
     - name: Ensure Chromium and system dependencies
+      if: inputs.browser == 'true'
       shell: bash
       working-directory: ${{ inputs.reference-dir }}
       run: |
@@ -78,7 +86,7 @@ runs:
         node --input-type=module -e "import {chromium} from 'playwright'; const b=await chromium.launch({headless:true}); await b.close()"
         echo "LLM_CHROMIUM_CACHE_HIT=${{ steps.browser.outputs.cache-hit }}"
     - name: Save verified Chromium binaries
-      if: steps.browser.outputs.cache-hit != 'true'
+      if: inputs.browser == 'true' && steps.browser.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
         path: ~/.cache/ms-playwright
