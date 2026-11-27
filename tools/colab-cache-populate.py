@@ -109,15 +109,21 @@ def upload_verified(p,e):
         print("CACHE_UPLOAD_RETRY",e["kind"],attempt,"verification",flush=True)
         time.sleep(15*attempt)
 def valid(d,files):
-    if d.get("schema")!=2 or d.get("repo")!=REPO or d.get("engine")!=TAG: return False
-    entries=d.get("files",[])
-    if len(entries)!=3 or {x["kind"] for x in entries}!={"model","llama","cudart"}: return False
+    if not isinstance(d,dict) or d.get("schema")!=2 or d.get("repo")!=REPO or d.get("engine")!=TAG: return False
+    entries=d.get("files")
+    if not isinstance(entries,list) or len(entries)!=3: return False
+    if any(not isinstance(e,dict) for e in entries): return False
+    if sorted(str(e.get("kind")) for e in entries)!=["cudart","llama","model"]: return False
+    names=set()
     for e in entries:
-        name=e["name"]
-        if pathlib.PurePath(name).name!=name or name in (".","..") or len(e.get("sha256",""))!=64 or len(e.get("md5",""))!=32: return False
+        name=e.get("name")
+        if not isinstance(name,str) or not name or pathlib.PurePath(name).name!=name or name in (".","..") or name in names: return False
+        names.add(name)
+        if type(e.get("size")) is not int or e["size"]<=0: return False
+        if not isinstance(e.get("sha256"),str) or not re.fullmatch(r"[a-f0-9]{64}",e["sha256"]): return False
+        if not isinstance(e.get("md5"),str) or not re.fullmatch(r"[a-f0-9]{32}",e["md5"]): return False
         if e["kind"]=="model" and (name!=MODEL or e["size"]<7_000_000_000): return False
-        if not check_existing(e,files.get(name)): return False
-    return True
+    return all(check_existing(e,files.get(e["name"])) for e in entries)
 def main():
     t=time.monotonic()
     print("CACHE_STAGE: listing",flush=True)
@@ -126,10 +132,17 @@ def main():
     mode="created"
     if "manifest.json" in files:
         print("CACHE_STAGE: verify_manifest",flush=True)
-        d=json.loads(rc("cat",REMOTE+"/manifest.json"))
-        if not valid(d,files): raise RuntimeError("CACHE_MANIFEST_MISMATCH")
-        mode="hit"
-    else:
+        raw=rc("cat",REMOTE+"/manifest.json")
+        try:
+            d=json.loads(raw)
+        except (ValueError, UnicodeError):
+            d=None
+        if valid(d,files):
+            mode="hit"
+        else:
+            mode="repaired"
+            print("CACHE_STAGE: repair_invalid_manifest",flush=True)
+    if mode!="hit":
         print("CACHE_STAGE: source_metadata",flush=True)
         revision,entries=metadata()
         for e,url in entries:
@@ -143,8 +156,9 @@ def main():
                     remember(e,f)
                     print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)
                     continue
-                actual=remote_digest(e["name"])
-                if actual["size"]==e["size"] and actual["sha256"]==e["sha256"]:
+                # A known mismatching SHA256 already proves corruption; do not stream it again.
+                actual=remote_digest(e["name"]) if not h.get("sha256") or h["sha256"]==e["sha256"] else None
+                if actual and actual["size"]==e["size"] and actual["sha256"]==e["sha256"]:
                     e["md5"]=actual["md5"]
                     remember(e,f)
                     print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)

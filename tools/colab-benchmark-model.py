@@ -26,19 +26,7 @@ if globals().get("MODEL_SOURCE_MODE","local")=="local":
     local_path=root/MODEL
     if shutil.disk_usage(root).free < entry["size"]+1024**3:
         raise RuntimeError("LOCAL_DISK_SPACE_INSUFFICIENT")
-    copy_start=time.monotonic()
-    print("LOCAL_MODEL_COPY_START",flush=True)
-    result=subprocess.run(["rclone","--config",CONFIG,"copyto",
-        "rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1/"+MODEL,
-        str(local_path),"--contimeout","30s","--timeout","120s",
-        "--retries","1","--low-level-retries","3"],capture_output=True,timeout=900)
-    if result.returncode:
-        raise RuntimeError("LOCAL_MODEL_COPY_FAILED")
-    copy_seconds=time.monotonic()-copy_start
-    verify_start=time.monotonic()
-    if local_path.stat().st_size!=entry["size"] or hash_file(local_path)!=entry["sha256"]:
-        raise RuntimeError("LOCAL_MODEL_HASH_MISMATCH")
-    verify_seconds=time.monotonic()-verify_start
+    copy_seconds,verify_seconds=copy_verified_model(CONFIG,local_path,entry)
     print("LOCAL_MODEL_COPY="+json.dumps({"bytes":entry["size"],"copy_seconds":round(copy_seconds,1),"verify_seconds":round(verify_seconds,1)}),flush=True)
     model_path=local_path
 libs=sorted({str(p.parent) for p in root.rglob("*.so*")})

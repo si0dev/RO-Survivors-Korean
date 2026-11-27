@@ -119,21 +119,85 @@ class CacheTests(Offline):
         del files[self.model]
         self.assertFalse(self.populate.valid(self.manifest, files))
 
-    def test_existing_bad_cache_stops_without_download_or_upload(self):
+    def exercise_repair(self, corrupt_manifest=None, damaged=None, download_bytes=None):
+        # Simulate Drive's directory, upload verification, and manifest publication.
         files = dict(self.files)
-        del files[self.model]
+        raw = json.dumps(self.manifest).encode() if corrupt_manifest is None else corrupt_manifest
         files["manifest.json"] = {}
-        with patch.object(self.populate, "listing", return_value=files), \
-             patch.object(self.populate, "rc", side_effect=[b"", json.dumps(self.manifest).encode()]) as rc, \
-             patch.object(self.populate, "metadata") as metadata, \
-             patch.object(self.populate, "upload_verified") as upload:
-            with self.assertRaisesRegex(RuntimeError, "CACHE_MANIFEST_MISMATCH"):
+        if damaged == "missing":
+            del files["llama.tar.gz"]
+        elif damaged == "hash":
+            files["llama.tar.gz"] = {"Size": 3, "Hashes": {"SHA-256": "0"*64, "MD5": "0"*32}}
+        elif damaged == "size":
+            files["llama.tar.gz"] = {"Size": 2, "Hashes": {}}
+        uploads = []
+        def rc(*args, **kwargs):
+            nonlocal raw
+            if args[0] == "mkdir": return b""
+            if args[0] == "cat" and args[1].endswith("/manifest.json"): return raw
+            if args[0] == "copyto":
+                name = args[2].rsplit("/",1)[-1]
+                data = Path(args[1]).read_bytes()
+                uploads.append(name)
+                if name == "manifest.json":
+                    raw = data
+                else:
+                    files[name] = {"Size":len(data),"Hashes":{
+                        "SHA-256":hashlib.sha256(data).hexdigest(),"MD5":hashlib.md5(data).hexdigest()}}
+                return b""
+            self.fail("Unexpected remote operation: " + args[0])
+        if download_bytes is not None:
+            response=Mock()
+            response.__enter__=Mock(return_value=response)
+            response.__exit__=Mock(return_value=False)
+            response.iter_content.return_value=[download_bytes]
+            self.requests.get.side_effect=None
+            self.requests.get.return_value=response
+        with patch.object(self.populate,"listing",side_effect=lambda:dict(files)), \
+             patch.object(self.populate,"metadata",return_value=("mock",[(dict(e),e["name"]) for e in self.entries])), \
+             patch.object(self.populate,"rc",side_effect=rc), \
+             patch.object(self.populate,"remote_digest") as digest:
+            if download_bytes == b"bad":
+                with self.assertRaisesRegex(AssertionError,"DOWNLOAD_HASH_MISMATCH"):
+                    self.populate.main()
+                self.assertEqual(uploads,[])
+                self.assertFalse((self.tmp/"llama.tar.gz").exists())
+                return
+            self.populate.main()
+            self.assertEqual(json.loads(raw),self.manifest)
+            self.assertTrue(self.populate.valid(json.loads(raw),files))
+            self.assertEqual(uploads, (["llama.tar.gz"] if damaged else [])+["manifest.json"])
+            digest.assert_not_called()
+            if damaged:
+                self.requests.get.assert_called_once()
+                self.assertEqual(self.requests.get.call_args.args[0],"llama.tar.gz")
+            else:
+                self.requests.get.assert_not_called()
+
+    def test_corrupt_manifest_rebuilt_without_redownloading_valid_files(self):
+        for raw in (b"{broken",b"[]",b'{"schema":2}',json.dumps({**self.manifest,"files":[None,1,{}]}).encode()):
+            with self.subTest(raw=raw):
+                self.exercise_repair(corrupt_manifest=raw)
+
+    def test_missing_cache_asset_is_recovered(self):
+        self.exercise_repair(damaged="missing",download_bytes=b"abc")
+
+    def test_same_size_corrupted_asset_is_recovered(self):
+        self.exercise_repair(damaged="hash",download_bytes=b"abc")
+
+    def test_truncated_asset_is_recovered(self):
+        self.exercise_repair(damaged="size",download_bytes=b"abc")
+
+    def test_corrupted_replacement_never_published(self):
+        self.exercise_repair(damaged="hash",download_bytes=b"bad")
+
+    def test_manifest_read_auth_error_is_not_treated_as_cache_corruption(self):
+        with patch.object(self.populate,"listing",return_value={"manifest.json":{}}), \
+             patch.object(self.populate,"rc",side_effect=[b"",RuntimeError("RCLONE_FAILED:401")]), \
+             patch.object(self.populate,"metadata") as metadata:
+            with self.assertRaisesRegex(RuntimeError,"RCLONE_FAILED:401"):
                 self.populate.main()
             metadata.assert_not_called()
-            upload.assert_not_called()
-            self.assertEqual([c.args[0] for c in rc.call_args_list], ["mkdir", "cat"])
-            self.requests.get.assert_not_called()
-
     def test_missing_manifest_recovers_verified_existing_files(self):
         published = {}
         def rc(*args, **kwargs):
@@ -167,6 +231,56 @@ class CacheTests(Offline):
                 rc.assert_called_once()
                 info.assert_not_called()
                 sleep.assert_not_called()
+
+    def test_local_model_copy_auth_failure_removes_partial_file_and_redacts(self):
+        copy=self.runtime()["copy_verified_model"]
+        dest=self.tmp/"local.gguf"
+        entry={"size":3,"sha256":hashlib.sha256(b"abc").hexdigest()}
+        for stderr,category in ((b"401 Unauthorized private-error","LOCAL_MODEL_COPY_AUTH_FAILED"),
+                                (b"token expired; no refresh token private-error","LOCAL_MODEL_COPY_AUTH_FAILED"),
+                                (b"invalid_grant private-error","LOCAL_MODEL_COPY_AUTH_FAILED"),
+                                (b"403 permission denied private-error","LOCAL_MODEL_COPY_ACCESS_DENIED")):
+            with self.subTest(stderr=stderr):
+                def run(*args,**kwargs):
+                    dest.write_bytes(b"partial")
+                    return Mock(returncode=1,stderr=stderr)
+                with patch("subprocess.run",side_effect=run) as call:
+                    with self.assertRaisesRegex(RuntimeError,"^"+category+"$"):
+                        copy("mock.conf",dest,entry)
+                    call.assert_called_once()
+                    self.assertIn("--low-level-retries",call.call_args.args[0])
+                    self.assertFalse(dest.exists())
+                    self.assertNotIn("private-error",self.log.getvalue())
+
+    def test_local_model_copy_success_and_hash_failure(self):
+        copy=self.runtime()["copy_verified_model"]
+        dest=self.tmp/"local.gguf"
+        entry={"size":3,"sha256":hashlib.sha256(b"abc").hexdigest()}
+        for data in (b"abc",b"bad"):
+            def run(*args,**kwargs):
+                dest.write_bytes(data)
+                return Mock(returncode=0,stderr=b"")
+            with patch("subprocess.run",side_effect=run):
+                if data==b"abc":
+                    copy("mock.conf",dest,entry)
+                    self.assertEqual(dest.read_bytes(),data)
+                    dest.unlink()
+                else:
+                    with self.assertRaisesRegex(RuntimeError,"LOCAL_MODEL_HASH_MISMATCH"):
+                        copy("mock.conf",dest,entry)
+                    self.assertFalse(dest.exists())
+
+    def test_local_model_copy_timeout_removes_partial_file(self):
+        import subprocess
+        copy=self.runtime()["copy_verified_model"]
+        dest=self.tmp/"local.gguf"
+        def run(*args,**kwargs):
+            dest.write_bytes(b"partial")
+            raise subprocess.TimeoutExpired("rclone",900)
+        with patch("subprocess.run",side_effect=run):
+            with self.assertRaisesRegex(RuntimeError,"LOCAL_MODEL_COPY_TIMEOUT"):
+                copy("mock.conf",dest,{"size":3,"sha256":"a"*64})
+            self.assertFalse(dest.exists())
 
 
 class AuthTests(Offline):
