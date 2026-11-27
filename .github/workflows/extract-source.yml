@@ -90,6 +90,24 @@ jobs:
               if(positions.length)console.log('GEAR_CALL '+JSON.stringify({file:new URL(f.url).pathname,term,count:positions.length,contexts:positions.map(at=>code.slice(Math.max(0,at-160),at+230))}));
             }
           }
+          const shared=files.find(f=>f.content.includes('function ug(t)')&&f.content.includes('Ma.manifest.items'));
+          const main=files.find(f=>/\/build\/main-/.test(new URL(f.url).pathname));
+          if(shared&&main){
+            const ex=[...shared.content.matchAll(/(?:^|[;}])export\s*\{([^}]+)\}/g)].flatMap(m=>m[1].split(','));
+            const aliases=ex.filter(x=>/^\s*(?:ug|a\$|s\$|Sp)\s+as\s+/.test(x));
+            console.log('NAME_EXPORTS '+JSON.stringify(aliases));
+            for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname)&&f!==shared)){
+              const imports=[...f.content.matchAll(/import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g)].filter(m=>m[2].includes(new URL(shared.url).pathname.split('/').pop()));
+              for(const [,spec] of imports)for(const alias of aliases){
+                const exported=alias.trim().split(/\s+as\s+/)[1];
+                const binding=spec.split(',').map(x=>x.trim().split(/\s+as\s+/)).find(x=>x[0]===exported);
+                if(!binding)continue;
+                const local=binding[1]??binding[0],esc=local.replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\$&');
+                const hits=[...f.content.matchAll(new RegExp('(?<![\\w$])'+esc+'\\(','g'))];
+                console.log('NAME_USES '+JSON.stringify({file:new URL(f.url).pathname,alias,local,count:hits.length,contexts:hits.slice(0,35).map(m=>f.content.slice(Math.max(0,m.index-170),m.index+230))}));
+              }
+            }
+          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));
