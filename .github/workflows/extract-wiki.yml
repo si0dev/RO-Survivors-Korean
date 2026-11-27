@@ -12,6 +12,7 @@ on:
       - 'translations/**'
       - 'package.json'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     branches: [main]
     paths:
       - '.github/workflows/extract-wiki.yml'
@@ -19,10 +20,14 @@ on:
       - 'src/**'
       - 'translations/**'
       - 'package.json'
+concurrency:
+  group: wiki-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   extract-wiki:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:

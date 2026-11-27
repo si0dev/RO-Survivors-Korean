@@ -59,6 +59,30 @@ jobs:
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
           console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
+          // Verify composed equipment labels against current public resources, without retaining the source.
+          const {buildScanDictionary}=await import('./src/browser.mjs');
+          const {createGearNameTranslator}=await import('./src/language-adapter.mjs');
+          const currentMain=findPageBundle(files.map(f=>f.url),origin+'/');
+          const current=await sourceSnapshot({kind:'main',url:currentMain,build:snapshot.build,content:files.find(f=>f.url===currentMain).content},async url=>files.find(f=>f.url===url)?.content??await get(url));
+          const identified=await Promise.all(current.rows.map(identify));
+          const {nameDictionary}=buildScanDictionary(identified,[],records);
+          const suffixes=[...new Set(files.flatMap(f=>/\.m?js$/.test(new URL(f.url).pathname)?[...f.content.matchAll(/\b(?:str|agi|vit|int|dex|luk)\s*:\s*\{\s*bonus\s*:\s*[\w$]+\s*,\s*suffix\s*:\s*"([^"]+)"/g)].map(m=>m[1]):[]))];
+          if(!suffixes.length)throw Error('Stat affix source not found');
+          const manifest=JSON.parse(files.find(f=>/\/assets\/manifest\.json$/.test(new URL(f.url).pathname)).content);
+          const names=[...new Set(Object.values(manifest.items??{}).map(item=>item.name).filter(name=>typeof name==='string'))];
+          const translateGear=createGearNameTranslator(nameDictionary);
+          let checked=0,failed=0;
+          for(const name of names)for(const suffix of suffixes){
+            const item=nameDictionary[name],affix=nameDictionary[suffix];
+            if(!item||!affix){failed++;continue;}
+            for(const refine of ['', '+7 ']){
+              checked++;
+              const expected=refine+affix+' '+item;
+              if(translateGear(refine+name+' '+suffix)!==expected)failed++;
+            }
+          }
+          console.log('GEAR_VALIDATION '+JSON.stringify({items:names.length,affixes:suffixes.length,checked,failed}));
+          if(failed)throw Error('Equipment composition verification failed');
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));

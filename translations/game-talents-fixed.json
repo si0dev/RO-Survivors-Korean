@@ -1073,5 +1073,11 @@
   "9db1c919348836d277526831a3c97e53c1a6dbfa310ee2ed3260ee0a3d70f6a7": {"positions":[5127,null],"reason":"stable-label","record":{"sourceHash":"4c629e5d131d7b23c4e823feb51c69f4ccbb6b6a265ede0fa891ec769bc9d3d4","ko":"회피율"}},
   "15d1d7e17fcb8aafb341b6c653c0134b60cc898dad0b1458a3c7ae3a9e7fda99": {"positions":[5128,null],"reason":"stable-label","record":{"sourceHash":"f26b274cfd39fbc25285cacf7c182f4ae0b8411eea97a18a03d4874f3428325c","ko":"최대 HP"}},
   "191f6f2da2d4ffd7a68735cf972b450de9ffc822e5d4fc3249def82b79003d9b": {"positions":[5129,null],"reason":"stable-label","record":{"sourceHash":"d81ea1595a0453780e68c2988980d28cccabbe2a774e77725c4e66a56f073fd4","ko":"방어력"}},
-  "ba3362289ab495ad465ca239e82eb481536dc4d1efd4cff247ace69ddaadbd2d": {"positions":[5130,null],"reason":"stable-label","record":{"sourceHash":"151d3570b6ad402307fde038f0bb37b3c96f9e751b3f5dd33364cb368c240924","ko":"스턴 확률"}}
+  "ba3362289ab495ad465ca239e82eb481536dc4d1efd4cff247ace69ddaadbd2d": {"positions":[5130,null],"reason":"stable-label","record":{"sourceHash":"151d3570b6ad402307fde038f0bb37b3c96f9e751b3f5dd33364cb368c240924","ko":"스턴 확률"}},
+  "71358753965d602f08e44b5beb101b54fb6a53db0520ec53c9417a7bf787b9a6": {"positions":[null,2980],"reason":"import-name","record":{"sourceHash":"143d2d7f8da2c0f6d1d70f13a97d69caddca7b7f851a8036a70d566e9cc1659a","ko":"힘의"}},
+  "daabdacbaff9e53cc84ea282a6e40f24afde30aa70bd5074610ad687870dfce2": {"positions":[null,2981],"reason":"import-name","record":{"sourceHash":"254d0b27e0c919d7ea731eaf4bb27c29efb3262d95dcedcbcd041da18fe5b4d1","ko":"민첩의"}},
+  "d9ea3bf0386f34ca0fe57c86f46ab67f58bb1a17492fcb8e56251581f5c4707c": {"positions":[null,2982],"reason":"import-name","record":{"sourceHash":"dc541c225389681af7ff847dea9f5fc2c992822362aad00294236d4bd97bd728","ko":"체력의"}},
+  "2030e6297b9448192a82d72cea2b85c0d35fb1b8d32a132c22ab170929c740ec": {"positions":[null,2983],"reason":"import-name","record":{"sourceHash":"ac7a3cc428c323dda13545331085c7a1070e87fa052f01c69806725824b5e2a6","ko":"지능의"}},
+  "00b28405761231829ec77b08fdfa636118603d7ff9b71cabb184f43fda87a6d0": {"positions":[null,2984],"reason":"import-name","record":{"sourceHash":"b385c7f94b48b2a70443c1ee5d03910a8d6692e87dff74c81a6e0a79dc8a6f0f","ko":"손재주의"}},
+  "ffcf6066fd4dae9f949b348f2c681ee4cecf2e5e449cdf329c62d0130c055c0b": {"positions":[null,2985],"reason":"import-name","record":{"sourceHash":"9cb698f6576f501c33848186a49bee324cbff775e713acfb6df56fdc045914ac","ko":"행운의"}}
 }

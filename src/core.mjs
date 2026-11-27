@@ -106,6 +106,10 @@ export function extractSnapshot(files) {
     }
     // These are additional static names, not a complete item/monster inventory.
     for(const m of code.matchAll(/\b[A-Za-z_$][\w$]*\(\{id:"([^"]+)",name:"([^"]+)"/g)) names.add(m[2]);
+    // Stat affixes are literal name suffixes outside the normal language table.
+    for(const {content:source} of js){
+      for(const match of source.matchAll(/\b(?:str|agi|vit|int|dex|luk)\s*:\s*\{\s*bonus\s*:\s*[\w$]+\s*,\s*suffix\s*:\s*"([^"]+)"/g))names.add(match[1]);
+    }
     // The resource manifest contains the original item and card names.
     for(const f of files){
       if(!/\/manifest\.json$/i.test(new URL(f.url).pathname)) continue;
