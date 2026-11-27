@@ -101,9 +101,9 @@ async function scanWiki(korean=false){
  for(const label of labels.slice(0,7)){
   await page.locator('#wk-search').fill(label);
   await page.waitForFunction(()=>!!document.querySelector('#wk-detail .wk-result')||document.querySelector('#wk-detail .info-panel')?.textContent.includes('Nothing found'),null,{timeout:10000});
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(700);
   const results=await detail.locator('.wk-result').evaluateAll(els=>els.map(e=>({id:e.dataset.res,heading:e.querySelector('b')?.textContent,snippet:e.querySelector('small')?.textContent})));
-  console.log('SEARCH_AUDIT '+JSON.stringify({label,results,heading:await detail.locator('h1,h2,h3,.wk-title').first().textContent().catch(()=>null)}));
+  console.log('SEARCH_AUDIT '+JSON.stringify({label,results,heading:await detail.evaluate(el=>el.querySelector('h1,h2,h3,.wk-title')?.textContent??null)}));
   await page.locator('#wk-search').fill('');
   await page.waitForTimeout(300);
  }
