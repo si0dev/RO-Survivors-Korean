@@ -13,7 +13,7 @@ jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 50
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -41,13 +41,23 @@ jobs:
           export RO_CACHE_TMP="$tmp"
           export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.conf"
           gpu="ro-translate-$GITHUB_RUN_ID"
+          allocation_started=0
           cleanup() {
-            for session in "$gpu"; do
-              timeout 60 "${cli[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null || true
-            done
+            local result=$?
+            trap - EXIT
+            if [ "$allocation_started" = 1 ]; then
+              timeout 60 "${cli[@]}" stop -s "$gpu" >"$tmp/stop.log" 2>&1 </dev/null || true
+              # Also clear an orphan assignment when allocation timed out before local state was saved.
+              if ! timeout 180 python benchmark/tools/colab-session-cleanup.py POST; then
+                result=1
+              fi
+            fi
             rm -rf "$tmp"
+            exit "$result"
           }
           trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
           export GOOGLE_APPLICATION_CREDENTIALS="$tmp/adc.json"
           python - <<'PY'
           import os,json
@@ -106,17 +116,9 @@ jobs:
           python benchmark/tools/colab-drive-auth.py
           unset RCLONE_CONFIG_SECRET
           check auth 90 "${cli[@]}" sessions
-          # Read-only account-wide usage check; never log raw account information.
-          if timeout 90 "${cli[@]}" usage </dev/null >"$tmp/usage.log" 2>&1; then
-            python - "$tmp/usage.log" <<'PY'
-          import re,sys
-          s=open(sys.argv[1],errors="replace").read()
-          m=re.search(r"Active assignments:\s*(\d+)",s,re.I)
-          print("COLAB_ACTIVE_ASSIGNMENTS="+(m.group(1) if m else "UNKNOWN"))
-          PY
-          else
-            echo "COLAB_USAGE_QUERY_UNAVAILABLE"
-          fi
+          # Exclusive account: no GPU request until all existing sessions are released.
+          timeout 180 python benchmark/tools/colab-session-cleanup.py PRE
+          allocation_started=1
           # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
           # The CLI handles its own bounded retries of transient server failures.
           export COLAB_CLI_ASSIGN_RETRIES=3
@@ -186,7 +188,7 @@ jobs:
                   for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
                       if category in line: print("Diagnostic category: "+category)
           PY
-          check gpu-stop 90 "${cli[@]}" stop -s "$gpu"
+          # EXIT trap handles session release and verifies zero even on failure.
           if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
           grep -qx ENGINE_SMOKE_DONE "$tmp/translation.log" || { echo "Engine smoke completion marker missing"; exit 1; }
           echo "engine-smoke: PASS"
