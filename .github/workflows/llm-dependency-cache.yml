@@ -6,6 +6,8 @@ on:
       - '.github/workflows/llm-dependency-cache.yml'
       - '.github/actions/llm-dependencies/**'
       - 'tools/colab-benchmark-*.py'
+      - 'tools/colab-benchmark-*.mjs'
+      - 'tools/colab-benchmark-fixture.json'
       - 'tools/colab-requirements.txt'
 permissions:
   contents: read
@@ -14,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume') && github.event.pull_request.user.login == 'si0dev'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark') && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -37,11 +39,14 @@ jobs:
         uses: ./benchmark/.github/actions/llm-dependencies
         with:
           reference-dir: reference
+          browser: 'false'
       - name: Independent translation and evaluation Mock tests
         run: |
           python benchmark/tools/colab-benchmark-test.py -v
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
+      - name: Validate frozen sample and reject changed source/reference
+        run: node benchmark/tools/colab-benchmark-fixture-check.mjs reference
       - name: Confirm dependency preparation
         run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
   restore-test:
@@ -68,5 +73,6 @@ jobs:
         uses: ./benchmark/.github/actions/llm-dependencies
         with:
           reference-dir: reference
+          browser: 'false'
       - name: Confirm dependency restore
         run: echo "LLM_DEPENDENCY_RESTORE_TEST_DONE"
