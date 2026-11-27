@@ -41,7 +41,7 @@ def engine_diagnostic(stage,output,rc):
     }
     missing=sorted(set(re.findall(r"\b(?:lib[A-Za-z0-9_+.-]+\.so(?:\.[0-9]+)*)\s*=>\s*not found",output)))
     symbols=sorted(set(re.findall(r"\bGLIBC(?:XX)?_[0-9.]+",output)))[:12]
-    flags=sorted(set(re.findall(r"--(?:fit|no-mmap|log-verbosity|log-file|jinja|chat-template-kwargs|n-gpu-layers|ctx-size|parallel|host|port)\b",output))) if re.search(patterns["invalid_argument"],output,re.I) else []
+    flags=sorted(set(re.findall(r"--(?:fit|no-mmap|load-mode|reasoning|log-verbosity|log-file|jinja|chat-template-kwargs|n-gpu-layers|ctx-size|parallel|host|port)\b",output))) if re.search(patterns["invalid_argument"],output,re.I) else []
     categories=[k for k,v in patterns.items() if re.search(v,output,re.I)]
     d={"stage":stage,"returncode":rc,"categories":categories,"missing_libraries":missing,"glibc_versions":symbols,"flags":flags}
     print("ENGINE_DIAGNOSTIC="+json.dumps(d,separators=(",",":")),flush=True)
@@ -61,10 +61,14 @@ if help_result.returncode:
     raise RuntimeError("ENGINE_HELP_FAILED")
 # Only pass optional flags advertised by this exact cached binary.
 help_text=help_result.stdout
-cmd=[str(server),"-m",str(model_path),"-ngl","all","--no-mmap","-c","8192","-np","2","--host","127.0.0.1","--port","18080"]
-for flag,values in (("--fit",["off"]),("--log-verbosity",["4"]),("--log-file",[str(root/"llama.log")]),("--jinja",[]),("--chat-template-kwargs",['{"enable_thinking":false}'])):
+cmd=[str(server),"-m",str(model_path),"-ngl","all","--load-mode","none","-c","8192","-np","2","--host","127.0.0.1","--port","18080"]
+for flag,values in (("--fit",["off"]),("--log-verbosity",["4"]),("--log-file",[str(root/"llama.log")]),("--jinja",[]),("--reasoning",["off"])):
     if re.search(r"(?<![\w-])"+re.escape(flag)+r"(?![\w-])",help_text): cmd.extend([flag,*values])
     else: print("ENGINE_OPTION_UNAVAILABLE "+flag,flush=True)
+# Validate the entire actual option list before starting model loading.
+option_check=run_check(cmd+["--help"],"arguments")
+if option_check.returncode:
+    raise RuntimeError("ENGINE_ARGUMENTS_FAILED")
 server_log=open(root/"server.log","w+")
 proc=subprocess.Popen(cmd,stdout=server_log,stderr=subprocess.STDOUT,env=env)
 atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
@@ -109,7 +113,7 @@ else:
     print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED",flush=True)
 print("MODEL_LOAD_SECONDS "+str(round(time.monotonic()-load_start,1)),flush=True)
 print("MODEL_READY",flush=True)
-# --no-mmap does not require persistent model file mappings, but keep mount until server exits.
+# --load-mode none does not require persistent model file mappings, but keep mount until server exits.
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
 glossary={
     "Only new":"신규만","Signature":"대표 스킬","Discovery":"아이템 희귀도",

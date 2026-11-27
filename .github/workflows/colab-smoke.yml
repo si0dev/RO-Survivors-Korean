@@ -153,7 +153,7 @@ jobs:
           for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
               body+=(root/name).read_text()+"\n"
           model=(root/"colab-benchmark-model.py").read_text()
-          marker="# --no-mmap does not require persistent model file mappings"
+          marker="# --load-mode none does not require persistent model file mappings"
           assert model.count(marker)==1
           body+=model.split(marker,1)[0]
           body+='\nprint("ENGINE_SMOKE_DONE",flush=True)\n'
@@ -185,7 +185,7 @@ jobs:
                           print("ENGINE_DIAGNOSTIC="+json.dumps({k:d[k] for k in keys}))
                       except (ValueError,KeyError,TypeError): pass
                   if re.fullmatch(r"ENGINE_OPTION_UNAVAILABLE --[a-z-]+",line.strip()): print(line.strip())
-                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
+                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","ENGINE_ARGUMENTS_FAILED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
                       if category in line: print("Diagnostic category: "+category)
           PY
           # EXIT trap handles session release and verifies zero even on failure.
