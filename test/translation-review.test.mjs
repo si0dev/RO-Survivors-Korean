@@ -59,7 +59,7 @@ test('Caltrops skill is 칼트롭스 while physical traps and Demoralizing Shout
  assert.equal(pack.entries["72feadd6d620ec3e897e4cb9f5f064a0674d007af3c24d8f176c9b9c5e43eb2c"].ko,"마름쇠 +{0}개");
  assert.equal(pack.entries["5bcef99fad9e22490021bba560b88681da9d97435ddbf85388c4092b85fb618b"].ko,"날카로운 마름쇠: 밟은 적에게 출혈을 일으킵니다(초당 피해량 {0})");
  assert.equal(pack.entries["729512c59f3860ff58f908c993eeaa473f3a4d432272fd33b1d3640eb6e812cd"].ko,"코팅된 마름쇠");
- assert.equal(pack.entries["07e9c06c5716911f5aa1be8671d69920200ab44cc3eee4f5eaf6319d7026f164"].ko,"보루: 인듀어가 지속되는 동안 최대 HP의 {0}%에 해당하는 피해를 흡수하는 보호막이 생깁니다. 파괴되거나 종료되면 폭발하여 흡수한 피해를 주변 적에게 돌려주고 사기 저하의 함성과 프로보크를 무료로 시전합니다.");
+ assert.equal(pack.entries["a6d6f66e57f4022b5c7c741f04c272817aa3bdd53a23fbe5793a3537cd4e8430"].ko,"보루: 인듀어가 지속되는 동안 최대 HP의 {0}%에 해당하는 피해를 흡수하는 보호막이 생깁니다. 파괴되거나 종료되면 폭발하여 흡수한 피해의 두 배를 주변 적에게 돌려주고 사기 저하의 함성과 프로보크를 무료로 시전합니다.");
  assert.equal(pack.entries["13971020535fc8e2fbfe53551f2e04e520b452bf4d099844b2d497c08408cf99"].ko,"마름쇠가 독을 부여합니다: 초당 피해량 {0}.");
  assert.equal(pack.entries["7c6c458bd47932f243fb0a54fe1df65e36af0050e0a7a6bfe161d836ee10b0bb"].ko,"사기 저하의 함성이 적의 피해량을 {0}% 더 감소시킵니다.");
  assert.equal(pack.entries["1cd1cd8576a3b98126f4cfd5357491c59f8c87224ce77f6d3d70873b7a36bdbb"].ko,"자신과 적 사이에 마름쇠를 원형으로 뿌립니다. 밟은 적은 피해를 받고 둔화됩니다.");
@@ -95,7 +95,7 @@ test('Approved custom skill names stay consistent throughout the merged data',as
  assert.equal(pack.entries["79ea10ebfd7a5f5e9e8d44e507e81da9ebf5630e7d06e329cc5aa92885421cc3"].ko,"소드 댄스의 참격이 1회 증가하고 피해량 +{0}%.");
  assert.equal(pack.entries["5c3d539cee4387476115958c8e2c7c2b0f70fa89842b3cf280db54fec97331a8"].ko,"제니 레인이 적 무리 대신 자신에게 떨어집니다. 피해량이 {0}% 감소하고 범위가 {1}% 증가합니다.");
  assert.equal(pack.entries["251936c30c08adbe6a2c0be732a455fe4c304548f28b3a088cf1f62226d63715"].ko,"제니 레인, 노점 개설 및 제니: 돈을 무기로 사용합니다.");
- assert.equal(pack.entries["994776425fe255151f4ebdb4df08938642de0ae56f5ba46059e3148632c61bea"].ko,"소드 댄스: 자신을 중심으로 점점 넓어지는 세 차례의 참격을 가합니다. 가까이 있는 적은 세 차례 모두 피해를 받습니다.");
+ assert.equal(pack.entries["5f2bf597a5affdf849295e033e1061ab3ea581c6db94db1d6e2da0af1bd93454"].ko,"소드 댄스: 자신을 중심으로 점점 넓어지는 세 차례의 참격을 가합니다. 가까이 있는 적은 세 차례 모두 적중하지만 첫 번째 참격만 전체 피해량을 가하고 나머지는 {0}%의 피해량을 가합니다.");
  assert.equal(pack.entries["a8fd2bc65eb61cdffcee8345507e7da09790aa9e7c8b6be89e127e67fb1a0280"].ko,"포이즌 밤의 독 지속시간이 {0}초 증가합니다.");
  assert.equal(pack.entries["d5780f122054b8724fd7f1d2b226db8965b3c75bdd773961628843fbb835e7a6"].ko,"소드 댄스 타격에 적중한 적은 {1}초 동안 타격 피해량의 {0}%만큼 출혈 피해를 받습니다.");
  assert.equal(pack.entries["f01386ccd5c7e300d76ef63ee6409a15eeabeae02b10378a07a07f1855854ebf"].ko,"매머나이트가 제니 레인 표식이 붙은 적에게 +{0}% 더 큰 피해를 줍니다.");
