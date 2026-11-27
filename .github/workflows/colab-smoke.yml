@@ -23,7 +23,7 @@ jobs:
           python-version: '3.12'
       - name: Install HTTP client
         run: python -m pip install --disable-pip-version-check requests
-      - name: Verify OAuth refresh and Drive API access only
+      - name: Verify OAuth and read-only access to existing model
         shell: bash
         env:
           RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG_V2 }}
@@ -34,6 +34,7 @@ jobs:
           trap 'rm -rf "$tmp"' EXIT
           export RO_CACHE_TMP="$tmp"
           python tools/colab-drive-auth.py
+          python tools/colab-drive-existing-cache.py
   smoke:
     # Temporarily disabled until the independent OAuth/API test succeeds.
     if: ${{ false }}
