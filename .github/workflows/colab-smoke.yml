@@ -35,7 +35,9 @@ jobs:
         with:
           reference-dir: reference
       - name: Independent translation contract and evaluation tests
-        run: python benchmark/tools/colab-benchmark-test.py -v
+        run: |
+          python benchmark/tools/colab-benchmark-test.py -v
+          python benchmark/tools/colab-benchmark-transport-test.py -v
       - name: Extract and select approved reference pairs
         shell: bash
         run: |
@@ -189,7 +191,7 @@ jobs:
           pathlib.Path(sys.argv[2]).write_text(body)
           PY
           rc=0
-          timeout 5700 "${cli[@]}" exec -s "$gpu" --timeout 5400 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
+          timeout 5700 python benchmark/tools/colab-benchmark-transport.py "$tmp/benchmark.py" "$tmp/translation.log" "$gpu" "$tmp/sessions.json" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" </dev/null || rc=$?
           python - "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:
