@@ -19,7 +19,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install official CLI
-        run: python -m pip install --disable-pip-version-check google-colab-cli==0.8.0
+        run: |
+          python -m pip install --disable-pip-version-check google-colab-cli==0.8.0 requests
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
@@ -57,16 +60,18 @@ jobs:
         shell: bash
         env:
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
+          RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG }}
         run: |
           set -euo pipefail
           umask 077
           tmp=$(mktemp -d)
           export XDG_CONFIG_HOME="$tmp/config"
           cli=(colab --auth=adc --config "$tmp/sessions.json")
-          cpu="ro-cache-$GITHUB_RUN_ID"
+          export RO_CACHE_TMP="$tmp"
+          export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.conf"
           gpu="ro-translate-$GITHUB_RUN_ID"
           cleanup() {
-            for session in "$cpu" "$gpu"; do
+            for session in "$gpu"; do
               timeout 60 "${cli[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null || true
             done
             rm -rf "$tmp"
@@ -115,51 +120,57 @@ jobs:
               exit "$rc"
             fi
           }
+          python - <<'PY'
+          import configparser,json,os,pathlib
+          p=pathlib.Path(os.environ["RO_CACHE_TMP"])
+          cfg=configparser.ConfigParser(interpolation=None)
+          cfg.read_string(os.environ["RCLONE_CONFIG_SECRET"])
+          assert cfg.sections()==["rocache"] and cfg["rocache"]["type"]=="drive" and cfg["rocache"]["scope"]=="drive.file"
+          t=json.loads(cfg["rocache"]["token"])
+          assert t.get("refresh_token")
+          t["expiry"]="2000-01-01T00:00:00Z"
+          cfg["rocache"]["token"]=json.dumps(t)
+          with (p/"drive.conf").open("w") as f: cfg.write(f)
+          PY
+          unset RCLONE_CONFIG_SECRET
+          python benchmark/tools/colab-cache-populate.py | tee "$tmp/cache-prepare.log"
           check auth 90 "${cli[@]}" sessions
-          check cache-session 120 "${cli[@]}" new -s "$cpu"
-          check cache-mount 120 "${cli[@]}" drivemount -s "$cpu" /content/drive
-          python - "$tmp/cache.py" <<'PY'
-          import sys,pathlib
-          code=pathlib.Path("benchmark/tools/colab-benchmark-cache.py").read_text()
-          code+="\npopulate()\n"
-          # Execute as one compiled unit and emit a bounded diagnostic even if the remote kernel swallows exceptions.
-          wrapper="import traceback,json\ntry:\n    exec(compile("+repr(code)+", 'ro_cache.py', 'exec'), globals())\n    from google.colab import drive as colab_drive\n    colab_drive.flush_and_unmount()\n    print('CACHE_FLUSHED_OK_271',flush=True)\nexcept BaseException as exc:\n    frames=traceback.extract_tb(exc.__traceback__)\n    print('CACHE_ERROR='+json.dumps({'type':type(exc).__name__,'line':frames[-1].lineno if frames else None,'code':getattr(exc,'errno',None)}),flush=True)\n    raise\n"
-          compile(wrapper,"wrapper.py","exec")
-          pathlib.Path(sys.argv[1]).write_text(wrapper)
-          PY
-          rc=0
-          timeout 2400 "${cli[@]}" exec -s "$cpu" --timeout 1800 -f "$tmp/cache.py" >"$tmp/cache-prepare.log" 2>&1 </dev/null || rc=$?
-          python - "$tmp/cache-prepare.log" <<'PY'
-          import re,json,sys
-          s=open(sys.argv[1],errors="replace").read()
-          print("CACHE_LOG_BYTES "+str(len(s.encode())))
-          for line in s.splitlines():
-              for marker,keys in (("CACHE_ERROR=",("type","line","code")),("CACHE_PREPARED=",("mode","bytes","seconds"))):
-                  if marker not in line: continue
-                  try:
-                      d,_=json.JSONDecoder().raw_decode(line.split(marker,1)[1])
-                      print(marker+json.dumps({k:d[k] for k in keys}))
-                  except (ValueError,KeyError,TypeError): pass
-              if re.fullmatch(r"CACHE_FILE_SAVED (model|llama|cudart) \d+",line.strip()): print(line.strip())
-          for name in ("SyntaxError","AssertionError","OSError","HTTPError","KeyError","ImportError","RuntimeError","Traceback","CACHE_SIZE_MISMATCH","DOWNLOAD_HASH_MISMATCH","DOWNLOAD_SIZE_MISMATCH","ENGINE_ASSET_UNAVAILABLE","DRIVE_NOT_MOUNTED","MY_DRIVE_NOT_FOUND","No space left","Quota exceeded"):
-              if name in s: print("CACHE_DIAGNOSTIC "+name)
-          PY
-          if [ "$rc" != 0 ]; then echo "cache-prepare: FAIL (exit $rc)"; exit "$rc"; fi
-          grep -qx 'CACHE_FLUSHED_OK_271' "$tmp/cache-prepare.log" || { echo "Cache flush not confirmed"; exit 1; }
-          echo "cache-prepare: PASS"
-          check cache-stop 90 "${cli[@]}" stop -s "$cpu"
           check gpu-session 180 "${cli[@]}" new -s "$gpu" --gpu T4
-          check gpu-mount 120 "${cli[@]}" drivemount -s "$gpu" /content/drive
+          # Refresh on the runner immediately before passing a short-lived credential.
+          python - <<'PY'
+          import configparser,json,os,pathlib
+          p=pathlib.Path(os.environ["RO_CACHE_TMP"])
+          c=configparser.ConfigParser(interpolation=None);c.read(p/"drive.conf")
+          t=json.loads(c["rocache"]["token"]);t["expiry"]="2000-01-01T00:00:00Z"
+          c["rocache"]["token"]=json.dumps(t)
+          with (p/"drive.conf").open("w") as f: c.write(f)
+          PY
+          check drive-refresh 120 rclone --config "$tmp/drive.conf" lsjson rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1 --files-only
+          python - <<'PY'
+          import configparser,json,os,pathlib,datetime
+          p=pathlib.Path(os.environ["RO_CACHE_TMP"])
+          c=configparser.ConfigParser(interpolation=None);c.read(p/"drive.conf")
+          t=json.loads(c["rocache"]["token"])
+          expiry=datetime.datetime.fromisoformat(t["expiry"].replace("Z","+00:00"))
+          assert (expiry-datetime.datetime.now(datetime.timezone.utc)).total_seconds()>1800
+          short=configparser.ConfigParser(interpolation=None)
+          short["rocache"]={"type":"drive","scope":"drive.file","token":json.dumps({k:t[k] for k in ("access_token","token_type","expiry")})}
+          with (p/"short.conf").open("w") as f: short.write(f)
+          PY
+          check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG"
+          rm -f "$tmp/short.conf" "$tmp/drive.conf"
           python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
-          import json,sys
+          import json,sys,os,pathlib
           inputs=json.load(open(sys.argv[1]))
           assert len(inputs)==200 and all("reference" not in row for row in inputs)
-          cache=open("benchmark/tools/colab-benchmark-cache.py").read()
-          code=open("benchmark/tools/colab-benchmark-model.py").read()
-          open(sys.argv[2],"w").write("import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\n"+cache+"\n"+code)
+          root=pathlib.Path("benchmark/tools")
+          body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
+          for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"): body+=(root/name).read_text()+"\n"
+          compile(body,"benchmark.py","exec")
+          pathlib.Path(sys.argv[2]).write_text(body)
           PY
           rc=0
-          timeout 5100 "${cli[@]}" exec -s "$gpu" -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
+          timeout 5100 "${cli[@]}" exec -s "$gpu" --timeout 4800 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
           python - "$tmp/cache-prepare.log" "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:
@@ -172,7 +183,8 @@ jobs:
                       except (ValueError,KeyError,TypeError): pass
                   m=re.search(r"MODEL_LOAD_SECONDS (\d+(?:\.\d+)?)",line)
                   if m: print("MODEL_LOAD_SECONDS "+m.group(1))
-                  if "INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED" in line: print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED")
+                  if line.strip() in ("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED","RCLONE_MODEL_MOUNT_OK","MODEL_READY"): print(line.strip())
+                  if re.fullmatch(r"RCLONE_TEST_ERROR:[a-z_]+:[A-Za-z]+",line.strip()): print(line.strip())
                   m=re.search(r"INDEX_FULL_GPU_OFFLOAD (\d+/\d+)",line)
                   if m: print("INDEX_FULL_GPU_OFFLOAD "+m.group(1))
                   for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
@@ -180,7 +192,7 @@ jobs:
           PY
           check gpu-stop 90 "${cli[@]}" stop -s "$gpu"
           if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
-          grep -q BENCHMARK_DONE "$tmp/translation.log" || { echo "Benchmark completion marker missing"; exit 1; }
+          grep -qx BENCHMARK_DONE "$tmp/translation.log" || { echo "Benchmark completion marker missing"; exit 1; }
           echo "translation: PASS"
           python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
       - name: Remove temporary benchmark source data

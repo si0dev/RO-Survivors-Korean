@@ -58,6 +58,7 @@ else:
     print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED",flush=True)
 print("MODEL_LOAD_SECONDS "+str(round(time.monotonic()-load_start,1)),flush=True)
 print("MODEL_READY",flush=True)
+# --no-mmap does not require persistent model file mappings, but keep mount until server exits.
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
 glossary={
     "Only new":"신규만","Signature":"대표 스킬","Discovery":"아이템 희귀도",
