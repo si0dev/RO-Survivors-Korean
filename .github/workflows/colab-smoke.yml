@@ -13,7 +13,7 @@ jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 125
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -27,7 +27,36 @@ jobs:
         with:
           persist-credentials: false
           path: benchmark
-      - name: Compare cached model via temporary Colab local disk
+      - uses: actions/checkout@v4
+        with:
+          ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
+          persist-credentials: false
+          path: reference
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract and select approved reference pairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/ro-benchmark"
+          cd reference
+          npm run build
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import {readFile,writeFile} from 'node:fs/promises';
+          const path='tools/extract-wiki.mjs';
+          const code=await readFile(path,'utf8');
+          const marker=' const records=await loadRecords();';
+          if(!code.includes(marker))throw Error('Extractor layout changed');
+          await writeFile(path,code.replace(marker, " await (await import('node:fs/promises')).writeFile(process.env.RUNNER_TEMP+'/ro-benchmark/wiki.json',JSON.stringify({build:currentBuild,views:[...views]}));\n"+marker));
+          NODE
+          node tools/extract-wiki.mjs
+          cd ..
+          node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
+          rm "$RUNNER_TEMP/ro-benchmark/wiki.json"
+      - name: Run 200-pair translation benchmark using local SSD
         shell: bash
         env:
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
@@ -146,23 +175,19 @@ jobs:
           PY
           check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG"
           rm -f "$tmp/short.conf" "$tmp/drive.conf"
-          python - "$tmp/benchmark.py" <<'PY'
-          import sys,os,pathlib
+          python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
+          import json,sys,os,pathlib
+          inputs=json.load(open(sys.argv[1]))
+          assert len(inputs)==200 and all("reference" not in row for row in inputs)
           root=pathlib.Path("benchmark/tools")
-          body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
-          body+="MODEL_SOURCE_MODE=\"local\"\n"
-          for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
+          body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
+          for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"):
               body+=(root/name).read_text()+"\n"
-          model=(root/"colab-benchmark-model.py").read_text()
-          marker="# --load-mode none does not require persistent model file mappings"
-          assert model.count(marker)==1
-          body+=model.split(marker,1)[0]
-          body+='\nprint("ENGINE_SMOKE_DONE",flush=True)\n'
-          compile(body,"engine-smoke.py","exec")
-          pathlib.Path(sys.argv[1]).write_text(body)
+          compile(body,"benchmark.py","exec")
+          pathlib.Path(sys.argv[2]).write_text(body)
           PY
           rc=0
-          timeout 2100 "${cli[@]}" exec -s "$gpu" --timeout 1980 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
+          timeout 5700 "${cli[@]}" exec -s "$gpu" --timeout 5400 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
           python - "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:
@@ -180,7 +205,7 @@ jobs:
                       except (ValueError,KeyError,TypeError): pass
                   m=re.search(r"MODEL_SERVER_SECONDS (\d+(?:\.\d+)?)",line)
                   if m: print("MODEL_SERVER_SECONDS "+m.group(1))
-                  if line.strip() in ("LOCAL_MODEL_COPY_START","LOCAL_COMPARISON_DONE"): print(line.strip())
+                  if line.strip() in ("LOCAL_MODEL_COPY_START","LOCAL_MODEL_READY"): print(line.strip())
                   m=re.search(r"MODEL_LOAD_SECONDS (\d+(?:\.\d+)?)",line)
                   if m: print("MODEL_LOAD_SECONDS "+m.group(1))
                   if line.strip() in ("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED","RCLONE_MODEL_MOUNT_OK","MODEL_READY","ENGINE_SMOKE_DONE"): print(line.strip())
@@ -199,6 +224,8 @@ jobs:
           PY
           # EXIT trap handles session release and verifies zero even on failure.
           if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
-          grep -qx ENGINE_SMOKE_DONE "$tmp/translation.log" || { echo "Engine smoke completion marker missing"; exit 1; }
-          grep -qx LOCAL_COMPARISON_DONE "$tmp/translation.log" || { echo "Local comparison completion marker missing"; exit 1; }
-          echo "engine-smoke: PASS"
+          grep -qx BENCHMARK_DONE "$tmp/translation.log" || { echo "Benchmark completion marker missing"; exit 1; }
+          python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
+      - name: Remove temporary benchmark source data
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ro-benchmark"

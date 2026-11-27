@@ -19,9 +19,9 @@ for entry in d["files"]:
     with tarfile.open(archive,"r:*") as tf: tf.extractall(root,filter="data")
 server=next(root.rglob("llama-server"))
 model_path=cache/MODEL
-print("CACHE_REUSED="+json.dumps({"mode":"hit","model_direct":True,"model_bytes":model_path.stat().st_size,"engine_unpack_seconds":round(time.monotonic()-load_start,1)}),flush=True)
-# Local-disk comparison is opt-in; keep the direct-mount default.
-if globals().get("MODEL_SOURCE_MODE","direct")=="local":
+print("CACHE_REUSED="+json.dumps({"mode":"hit","model_direct":globals().get("MODEL_SOURCE_MODE","local")=="direct","model_bytes":model_path.stat().st_size,"engine_unpack_seconds":round(time.monotonic()-load_start,1)}),flush=True)
+# Load via local SSD by default; preserve the direct mode for controlled comparisons.
+if globals().get("MODEL_SOURCE_MODE","local")=="local":
     entry=next(e for e in d["files"] if e["kind"]=="model")
     local_path=root/MODEL
     if shutil.disk_usage(root).free < entry["size"]+1024**3:
@@ -135,9 +135,9 @@ else:
     print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED",flush=True)
 print("MODEL_SERVER_SECONDS "+str(round(time.monotonic()-server_start,1)),flush=True)
 print("MODEL_LOAD_SECONDS "+str(round(time.monotonic()-load_start,1)),flush=True)
-if globals().get("MODEL_SOURCE_MODE","direct")=="local":
+if globals().get("MODEL_SOURCE_MODE","local")=="local":
     assert offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0,"LOCAL_FULL_GPU_OFFLOAD_UNCONFIRMED"
-    print("LOCAL_COMPARISON_DONE",flush=True)
+    print("LOCAL_MODEL_READY",flush=True)
 print("MODEL_READY",flush=True)
 # --load-mode none does not require persistent model file mappings, but keep mount until server exits.
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
