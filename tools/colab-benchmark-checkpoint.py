@@ -134,15 +134,11 @@ def main():
     if not re.fullmatch(r"[0-9a-f]{64}",key): raise RuntimeError("CHECKPOINT_KEY")
     saved=validate_rows(json.loads((tmp/"resume.json").read_text()),ids)
     store=Store(config,key,ids,tmp/"checkpoint-upload.json")
-    def on_snapshot(data):
-        nonlocal saved
-        saved=advance(store,saved,data)
-    spec=importlib.util.spec_from_file_location("transport",ROOT/"colab-benchmark-transport.py")
-    transport=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(transport)
-    return transport.collect(["colab","--auth=adc","--config",str(tmp/"sessions.json")],
-        session,(tmp/"benchmark.py").read_text(),tmp/"translation.log","/tmp/ro-worker-"+run_id+"-"+attempt,
-        on_snapshot=on_snapshot)
+    spec=importlib.util.spec_from_file_location("kernel",ROOT/"colab-benchmark-kernel.py")
+    kernel=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(kernel)
+    return kernel.collect(["colab","--auth=adc","--config",str(tmp/"sessions.json")],
+        session,(tmp/"benchmark.py").read_text(),tmp/"translation.log",inputs,saved,store,validate_rows)
 
 if __name__=="__main__":
     try:

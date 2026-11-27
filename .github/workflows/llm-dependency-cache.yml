@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark') && github.event.pull_request.user.login == 'si0dev'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark' || github.event.pull_request.head.ref == 'test/llm-kernel-transport') && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -45,6 +45,7 @@ jobs:
           python benchmark/tools/colab-benchmark-test.py -v
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
+          python benchmark/tools/colab-benchmark-kernel-test.py -v
       - name: Validate frozen sample and reject changed source/reference
         run: node benchmark/tools/colab-benchmark-fixture-check.mjs reference
       - name: Confirm dependency preparation

@@ -41,6 +41,7 @@ jobs:
           python benchmark/tools/colab-benchmark-test.py -v
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
+          python benchmark/tools/colab-benchmark-kernel-test.py -v
       - name: Prepare fixed approved reference pairs offline
         shell: bash
         run: node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
@@ -172,7 +173,7 @@ jobs:
           check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG"
           # Keep the refresh-capable Drive config only on the runner until cleanup.
           rm -f "$tmp/short.conf"
-          python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" "$tmp/resume.json" <<'PY'
+          python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
           import json,sys,os,pathlib
           inputs=json.load(open(sys.argv[1]))
           assert len(inputs)==200 and all("reference" not in row for row in inputs)
@@ -180,8 +181,7 @@ jobs:
           body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
           for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py","colab-benchmark-translate.py"):
               body+=(root/name).read_text()+"\n"
-          resume=json.load(open(sys.argv[3]))
-          body+="\ntranslate_samples(INPUTS,base,resume=json.loads("+repr(json.dumps(resume,ensure_ascii=False))+"))\n"
+          # The kernel transport calls translate_one on pending batches after initialization.
           compile(body,"benchmark.py","exec")
           pathlib.Path(sys.argv[2]).write_text(body)
           PY
