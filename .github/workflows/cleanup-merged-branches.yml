@@ -1,0 +1,72 @@
+name: Clean merged branches
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cleanup-merged-branches.yml'
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: read
+concurrency:
+  group: cleanup-merged-branches
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'pull_request_target' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Only the trusted main branch is checked out, never PR code.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Delete only unchanged heads of merged PRs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          default=$(gh api "repos/$GITHUB_REPOSITORY" --jq .default_branch)
+          gh api --paginate "repos/$GITHUB_REPOSITORY/branches?per_page=100" | jq -s 'add // []' > "$tmp/branches.json"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=all&per_page=100" | jq -s 'add // []' > "$tmp/pulls.json"
+          jq -r --arg repo "$GITHUB_REPOSITORY" --arg default "$default" --slurpfile prs "$tmp/pulls.json" '
+            .[] | select(.protected == false) | . as $b
+            | select(.name != $default and .name != "main" and .name != "translation-data" and .name != "test/colab-adc-smoke")
+            | select(any($prs[0][]; .merged_at != null and .base.ref == "main" and .base.repo.full_name == $repo and .head.repo.full_name == $repo and .head.ref == $b.name and .head.sha == $b.commit.sha))
+            | select(any($prs[0][]; .state == "open" and ((.head.repo.full_name == $repo and .head.ref == $b.name) or (.base.repo.full_name == $repo and .base.ref == $b.name))) | not)
+            | [.name,.commit.sha] | @tsv
+          ' "$tmp/branches.json" > "$tmp/candidates.tsv"
+          failures=0
+          while IFS=$'\t' read -r branch sha; do
+            [ -n "$branch" ] || continue
+            # Refresh protection and open PR information before deleting.
+            encoded=$(jq -rn --arg name "$branch" '$name|@uri')
+            if ! gh api "repos/$GITHUB_REPOSITORY/branches/$encoded" > "$tmp/current.json"; then
+              echo "Skipping unavailable branch: $branch"
+              continue
+            fi
+            if ! jq -e --arg sha "$sha" '.protected == false and .commit.sha == $sha' "$tmp/current.json" >/dev/null; then
+              echo "Skipping changed or protected branch: $branch"
+              continue
+            fi
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" | jq -s 'add // []' > "$tmp/open.json"
+            if jq -e --arg branch "$branch" --arg repo "$GITHUB_REPOSITORY" 'any(.[]; (.head.repo.full_name == $repo and .head.ref == $branch) or (.base.repo.full_name == $repo and .base.ref == $branch))' "$tmp/open.json" >/dev/null; then
+              echo "Skipping open PR branch: $branch"
+              continue
+            fi
+            ref="refs/heads/$branch"
+            # Compare-and-delete: a new commit after the API check must not be lost.
+            if git push --force-with-lease="$ref:$sha" origin ":$ref"; then
+              echo "Deleted merged branch: $branch"
+            else
+              echo "::warning::Branch deletion rejected: $branch"
+              failures=$((failures+1))
+            fi
+          done < "$tmp/candidates.tsv"
+          test "$failures" -eq 0
