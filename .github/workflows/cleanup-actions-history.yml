@@ -1,0 +1,134 @@
+name: Clean Actions run history
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview deletions without changing history
+        type: boolean
+        default: true
+  schedule:
+    - cron: '47 20 * * *'
+permissions:
+  actions: write
+concurrency:
+  group: cleanup-actions-history
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Clean completed runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp)
+          trap 'rm -f "$tmp"' EXIT
+          # Snapshot every page before deleting anything.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" > "$tmp"
+          python3 - "$tmp" <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          import time
+          from collections import defaultdict
+          from datetime import datetime, timedelta, timezone
+          from pathlib import Path
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          current_id = int(os.environ["GITHUB_RUN_ID"])
+          dry_run = os.environ["DRY_RUN"].lower() == "true"
+          cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+          def api(endpoint, method="GET"):
+              return subprocess.run(
+                  ["gh", "api", "--method", method, endpoint],
+                  text=True, capture_output=True, check=True,
+              ).stdout
+
+          def timestamp(value):
+              return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+          # gh --paginate emits consecutive JSON objects.
+          raw = Path(sys.argv[1]).read_text()
+          decoder = json.JSONDecoder()
+          runs = {}
+          while raw.strip():
+              page, end = decoder.raw_decode(raw.lstrip())
+              raw = raw.lstrip()[end:]
+              for run in page["workflow_runs"]:
+                  runs[run["id"]] = run
+
+          # The currently running cleanup identifies its own workflow even
+          # when that workflow is renamed.
+          own_workflow = json.loads(api(
+              f"repos/{repo}/actions/runs/{current_id}"
+          ))["workflow_id"]
+          groups = defaultdict(list)
+          for run in runs.values():
+              if run["id"] != current_id and run["status"] == "completed":
+                  groups[run["workflow_id"]].append(run)
+
+          candidates = []
+          for workflow_id, group in groups.items():
+              group.sort(key=lambda r: (r["created_at"], r["id"]), reverse=True)
+              successes = 0
+              for index, run in enumerate(group):
+                  conclusion = run["conclusion"]
+                  if workflow_id == own_workflow:
+                      remove = index >= 1
+                  elif conclusion == "success":
+                      successes += 1
+                      remove = successes > 5
+                  elif conclusion == "failure":
+                      remove = timestamp(run["updated_at"]) < cutoff
+                  elif conclusion == "cancelled":
+                      remove = True
+                  else:
+                      remove = False
+                  if remove:
+                      candidates.append(run)
+
+          print(f"Scanned {len(runs)} runs; {len(candidates)} candidates; dry_run={dry_run}", flush=True)
+          deleted = skipped = failures = 0
+          for run in candidates:
+              run_id = run["id"]
+              endpoint = f"repos/{repo}/actions/runs/{run_id}"
+              if dry_run:
+                  print(f"Would delete {run_id}: {run['name']} ({run['conclusion']})", flush=True)
+                  continue
+              try:
+                  # Re-check before mutation: a run may have been re-run.
+                  fresh = json.loads(api(endpoint))
+                  if (fresh["status"] != "completed"
+                          or fresh["id"] == current_id
+                          or fresh["run_attempt"] != run["run_attempt"]
+                          or fresh["updated_at"] != run["updated_at"]
+                          or fresh["conclusion"] != run["conclusion"]):
+                      skipped += 1
+                      print(f"Skipping changed run {run_id}", flush=True)
+                      continue
+                  api(endpoint, "DELETE")
+                  deleted += 1
+                  print(f"Deleted {run_id}: {run['name']} ({run['conclusion']})", flush=True)
+                  # Avoid bursts of mutating REST API requests.
+                  time.sleep(1)
+              except subprocess.CalledProcessError as error:
+                  failures += 1
+                  print(f"API error for {run_id}: {error.stderr.strip()}", flush=True)
+                  # Stop rather than repeatedly attempting failed mutations.
+                  break
+
+          summary = (f"Scanned: {len(runs)} | Candidates: {len(candidates)} | "
+                     f"Deleted: {deleted} | Skipped: {skipped} | Errors: {failures} | "
+                     f"Dry run: {dry_run}")
+          print(summary, flush=True)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write(summary + "\n")
+          sys.exit(1 if failures else 0)
+          PY
