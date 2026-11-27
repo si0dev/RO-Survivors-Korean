@@ -18,7 +18,7 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   if (window.__roKoLocal) return;
   const dictionary=new Map(Object.entries(entries));
   const newsDictionary=new Map(Object.entries(newsEntries));
-  const wikiTranslate=createWikiTranslator(wikiEntries);
+  const wikiTranslate=createWikiTranslator(wikiEntries,entries);
   const inWiki=el=>!!el?.closest('#wk-nav, #wk-detail, #wk-search, #wk-close');
   const lookup = s => dictionary.get(s);
   // Build reusable rules once rather than for each untranslated string.
