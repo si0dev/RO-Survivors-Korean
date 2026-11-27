@@ -59,6 +59,30 @@ jobs:
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
           console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
+          // Inspect only the actual affix helper and its static label data.
+          const mainFile=files.find(f=>/\/build\/main-/.test(new URL(f.url).pathname));
+          const code=mainFile.content;
+          for(const [,spec,url] of code.matchAll(/import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g)){
+            const binding=spec.split(',').map(x=>x.trim().split(/\s+as\s+/)).find(x=>(x[1]??x[0])==='mu');
+            if(!binding)continue;
+            const shared=files.find(f=>new URL(f.url).pathname===new URL(url,mainFile.url).pathname);
+            if(!shared)continue;
+            const exported=binding[0];
+            const aliases=[...shared.content.matchAll(/(?:^|[;}])export\s*\{([^}]+)\}/g)].flatMap(m=>m[1].split(',').map(x=>x.trim().split(/\s+as\s+/)));
+            const local=aliases.find(x=>(x[1]??x[0])===exported)?.[0];
+            console.log('AFFIX_BINDING '+JSON.stringify({binding,local,file:new URL(shared.url).pathname}));
+            if(!local)continue;
+            const esc=local.replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\$&');
+            const hits=[...shared.content.matchAll(new RegExp('(?:function\\s+'+esc+'\\s*\\(|(?<![\\w$])'+esc+'\\s*=)','g'))];
+            for(const m of hits.slice(0,3))console.log('AFFIX_HELPER '+shared.content.slice(Math.max(0,m.index-1000),m.index+1800));
+          }
+          for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname))){
+            for(const term of ['affixName','affixNames','affix.name','affixes.map','affixes.length','function a$(']){
+              const hits=[];let at=-1;
+              while((at=f.content.indexOf(term,at+1))>=0&&hits.length<8)hits.push(f.content.slice(Math.max(0,at-150),at+250));
+              if(hits.length)console.log('AFFIX_CONTEXT '+JSON.stringify({file:new URL(f.url).pathname,term,hits}));
+            }
+          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));
