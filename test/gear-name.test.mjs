@@ -10,9 +10,9 @@ test('inventory gear composition uses verified names and preserves refine and un
   const ko=['어드밴쳐러 슈츠','소드','소드 메이스','타이달 슈즈','힘의'];
   const entries=Object.fromEntries(rows.map((r,i)=>[r.id,{sourceHash:r.sourceHash,ko:ko[i],placeholders:[]}]));
   const scan=buildScanDictionary(rows,[],{entries});
-  const translate=createGearNameTranslator(scan.nameDictionary,s=>({'of Strength':'힘의'}[s]));
-  assert.equal(translate('Adventurer Suit of Power'),'힘의 어드밴쳐러 슈츠');
-  assert.equal(translate('+7 Sword Mace of Power'),'+7 힘의 소드 메이스');
+  const translate=createGearNameTranslator(scan.nameDictionary);
+  assert.equal(translate('Adventurer Suit of Strength'),'힘의 어드밴쳐러 슈츠');
+  assert.equal(translate('+7 Sword Mace of Strength'),'+7 힘의 소드 메이스');
   assert.equal(translate('  +9 Tidal Shoes Unknown affix  '),'  +9 타이달 슈즈 Unknown affix  ');
   assert.equal(translate('Sword'),'소드');
   assert.equal(translate('Swordfish Unknown affix'),'Swordfish Unknown affix');
@@ -43,7 +43,7 @@ test('all six actual stat affixes are extracted and present in approved records'
   const pack=await loadRecords();
   const scan=buildScanDictionary(rows,[],pack);
   assert.deepEqual({...scan.nameDictionary},expected);
-  const translate=createGearNameTranslator({...scan.nameDictionary,Sword:'소드'},()=>undefined);
+  const translate=createGearNameTranslator({...scan.nameDictionary,Sword:'소드'});
   for(const [en,ko] of Object.entries(expected)){
     assert.equal(translate('Sword '+en),ko+' 소드');
     assert.equal(translate('+10 Sword '+en),'+10 '+ko+' 소드');

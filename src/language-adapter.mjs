@@ -17,7 +17,7 @@ export function translateLootToast(value, parent, lookup, translate) {
 // Gear labels are rendered as [+refine] base-name [affix] by the game.
 // Only use verified name records and the exact current suffix translation.
 // Unknown suffixes and the original spacing/numbers remain unchanged.
-export function createGearNameTranslator(names,lookup){
+export function createGearNameTranslator(names){
   const byInitial=new Map();
   for(const [name,ko] of Object.entries(names??{})){
     if(!name||typeof ko!=='string'||!ko.trim())continue;
@@ -51,7 +51,7 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   const wikiTranslate=createWikiTranslator(wikiEntries,entries);
   const inWiki=el=>!!el?.closest('#wk-nav, #wk-detail, #wk-search, #wk-close');
   const lookup = s => dictionary.get(s);
-  const translateGearName=createGearNameTranslator(nameEntries,lookup);
+  const translateGearName=createGearNameTranslator(nameEntries);
   // Build reusable rules once rather than for each untranslated string.
   const rules = [
         [/^(Points remaining|Remaining points|Puntos restantes):?\s*(\d+)$/i, m => `남은 포인트: ${m[2]}`],
