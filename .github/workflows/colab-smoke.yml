@@ -118,10 +118,35 @@ jobs:
           check auth 90 "${cli[@]}" sessions
           check cache-session 120 "${cli[@]}" new -s "$cpu"
           check cache-mount 120 "${cli[@]}" drivemount -s "$cpu" /content/drive
-          cp benchmark/tools/colab-benchmark-cache.py "$tmp/cache.py"
-          printf '\npopulate()\nfrom google.colab import drive as colab_drive\ncolab_drive.flush_and_unmount()\nprint("CACHE_FLUSHED",flush=True)\n' >>"$tmp/cache.py"
-          check cache-prepare 2400 "${cli[@]}" exec -s "$cpu" -f "$tmp/cache.py"
-          grep -q CACHE_FLUSHED "$tmp/cache-prepare.log" || { echo "Cache flush not confirmed"; exit 1; }
+          python - "$tmp/cache.py" <<'PY'
+          import sys,pathlib
+          code=pathlib.Path("benchmark/tools/colab-benchmark-cache.py").read_text()
+          code+="\npopulate()\n"
+          # Execute as one compiled unit and emit a bounded diagnostic even if the remote kernel swallows exceptions.
+          wrapper="import traceback,json\ntry:\n    exec(compile("+repr(code)+", 'ro_cache.py', 'exec'), globals())\n    from google.colab import drive as colab_drive\n    colab_drive.flush_and_unmount()\n    print('CACHE_FLUSHED_OK_271',flush=True)\nexcept BaseException as exc:\n    frames=traceback.extract_tb(exc.__traceback__)\n    print('CACHE_ERROR='+json.dumps({'type':type(exc).__name__,'line':frames[-1].lineno if frames else None,'code':getattr(exc,'errno',None)}),flush=True)\n    raise\n"
+          compile(wrapper,"wrapper.py","exec")
+          pathlib.Path(sys.argv[1]).write_text(wrapper)
+          PY
+          rc=0
+          timeout 2400 "${cli[@]}" exec -s "$cpu" --timeout 1800 -f "$tmp/cache.py" >"$tmp/cache-prepare.log" 2>&1 </dev/null || rc=$?
+          python - "$tmp/cache-prepare.log" <<'PY'
+          import re,json,sys
+          s=open(sys.argv[1],errors="replace").read()
+          print("CACHE_LOG_BYTES "+str(len(s.encode())))
+          for line in s.splitlines():
+              for marker,keys in (("CACHE_ERROR=",("type","line","code")),("CACHE_PREPARED=",("mode","bytes","seconds"))):
+                  if marker not in line: continue
+                  try:
+                      d,_=json.JSONDecoder().raw_decode(line.split(marker,1)[1])
+                      print(marker+json.dumps({k:d[k] for k in keys}))
+                  except (ValueError,KeyError,TypeError): pass
+              if re.fullmatch(r"CACHE_FILE_SAVED (model|llama|cudart) \d+",line.strip()): print(line.strip())
+          for name in ("SyntaxError","AssertionError","OSError","HTTPError","KeyError","ImportError","RuntimeError","Traceback","CACHE_SIZE_MISMATCH","DOWNLOAD_HASH_MISMATCH","DOWNLOAD_SIZE_MISMATCH","ENGINE_ASSET_UNAVAILABLE","DRIVE_NOT_MOUNTED","MY_DRIVE_NOT_FOUND","No space left","Quota exceeded"):
+              if name in s: print("CACHE_DIAGNOSTIC "+name)
+          PY
+          if [ "$rc" != 0 ]; then echo "cache-prepare: FAIL (exit $rc)"; exit "$rc"; fi
+          grep -qx 'CACHE_FLUSHED_OK_271' "$tmp/cache-prepare.log" || { echo "Cache flush not confirmed"; exit 1; }
+          echo "cache-prepare: PASS"
           check cache-stop 90 "${cli[@]}" stop -s "$cpu"
           check gpu-session 180 "${cli[@]}" new -s "$gpu" --gpu T4
           check gpu-mount 120 "${cli[@]}" drivemount -s "$gpu" /content/drive
