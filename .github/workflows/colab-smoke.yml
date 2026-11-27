@@ -133,6 +133,7 @@ jobs:
           with (p/"drive.conf").open("w") as f: cfg.write(f)
           PY
           unset RCLONE_CONFIG_SECRET
+          python -m py_compile benchmark/tools/colab-cache-populate.py benchmark/tools/colab-cache-mount.py benchmark/tools/colab-benchmark-cache.py benchmark/tools/colab-benchmark-model.py
           python benchmark/tools/colab-cache-populate.py | tee "$tmp/cache-prepare.log"
           check auth 90 "${cli[@]}" sessions
           check gpu-session 180 "${cli[@]}" new -s "$gpu" --gpu T4

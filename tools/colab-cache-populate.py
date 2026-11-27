@@ -1,5 +1,5 @@
 """Populate a private Drive cache via rclone; refresh credentials only on Actions."""
-import configparser,datetime,hashlib,json,os,pathlib,subprocess,tempfile,time,requests
+import hashlib,json,os,pathlib,subprocess,time,requests,traceback,re
 TAG="b12343"
 REPO="IndexTeam/Index-Translate-9B-GGUF"
 MODEL="Index-Translate-9B.Q6_K.gguf"
@@ -27,29 +27,88 @@ def metadata():
         entries.append(({"kind":kind,"name":x["name"],"size":x["size"],"sha256":digest.removeprefix("sha256:") if digest.startswith("sha256:") else None},x["browser_download_url"]))
     return rev,entries
 def listing():
-    return {x["Name"]:x for x in json.loads(rc("lsjson",REMOTE,"--files-only","--hash"))}
+    rows=json.loads(rc("lsjson",REMOTE,"--files-only","--hash"))
+    files={}
+    for row in rows:
+        name=row["Name"]
+        if name in files: raise RuntimeError("CACHE_DUPLICATE_NAME")
+        files[name]=row
+    return files
+def hashes(row):
+    return {re.sub(r"[^a-z0-9]","",k.lower()):v.lower() for k,v in (row.get("Hashes") or {}).items() if isinstance(v,str) and v}
+def file_info(name):
+    for _ in range(6):
+        f=listing().get(name)
+        if f and (hashes(f).get("md5") or hashes(f).get("sha256")): return f
+        time.sleep(2)
+    return f
+def remote_digest(name):
+    # One-time recovery when the prior upload succeeded but its manifest was lost.
+    # Read the existing Drive file as a stream, never write a second local copy.
+    sha=hashlib.sha256();md5=hashlib.md5();size=0
+    with (tmp/"digest-error.log").open("wb") as err:
+        proc=subprocess.Popen(["rclone","--config",str(conf),"--contimeout","30s","--timeout","180s","cat",REMOTE+"/"+name],stdout=subprocess.PIPE,stderr=err)
+        try:
+            while b:=proc.stdout.read(4*1024*1024):
+                sha.update(b);md5.update(b);size+=len(b)
+            assert proc.wait(timeout=60)==0,"REMOTE_DIGEST_READ_FAILED"
+        finally:
+            if proc.poll() is None: proc.kill();proc.wait()
+            proc.stdout.close()
+    return {"size":size,"sha256":sha.hexdigest(),"md5":md5.hexdigest()}
+def verified_remote(e,f):
+    if not f or f.get("Size")!=e["size"]: return False
+    h=hashes(f)
+    # Prefer SHA256 when supported; otherwise compare the stored MD5.
+    if h.get("sha256") and e.get("sha256"): return h["sha256"]==e["sha256"]
+    if h.get("md5") and e.get("md5"): return h["md5"]==e["md5"]
+    return False
 def valid(d,files):
     if d.get("schema")!=2 or d.get("repo")!=REPO or d.get("engine")!=TAG: return False
     entries=d.get("files",[])
     if len(entries)!=3 or {x["kind"] for x in entries}!={"model","llama","cudart"}: return False
     for e in entries:
-        f=files.get(e["name"],{})
-        if pathlib.PurePath(e["name"]).name!=e["name"] or f.get("Size")!=e["size"] or f.get("Hashes",{}).get("MD5","").lower()!=e.get("md5") or len(e.get("sha256",""))!=64: return False
-        if e["kind"]=="model" and (e["name"]!=MODEL or e["size"]<7_000_000_000): return False
+        name=e["name"]
+        if pathlib.PurePath(name).name!=name or name in (".","..") or len(e.get("sha256",""))!=64 or len(e.get("md5",""))!=32: return False
+        if e["kind"]=="model" and (name!=MODEL or e["size"]<7_000_000_000): return False
+        f=files.get(name)
+        if not f or f.get("Size")!=e["size"]: return False
+        if not verified_remote(e,f):
+            h=hashes(f)
+            if h.get("sha256") or h.get("md5"): return False
+            actual=remote_digest(name)
+            if any(actual[k]!=e[k] for k in ("size","sha256","md5")): return False
     return True
 def main():
     t=time.monotonic()
+    print("CACHE_STAGE: listing",flush=True)
     rc("mkdir",REMOTE)
     files=listing()
     mode="created"
     if "manifest.json" in files:
+        print("CACHE_STAGE: verify_manifest",flush=True)
         d=json.loads(rc("cat",REMOTE+"/manifest.json"))
         if not valid(d,files): raise RuntimeError("CACHE_MANIFEST_MISMATCH")
         mode="hit"
     else:
+        print("CACHE_STAGE: source_metadata",flush=True)
         revision,entries=metadata()
         for e,url in entries:
-            # One local file at a time; never upload before checking its source digest.
+            print("CACHE_STAGE: "+e["kind"]+"_recover",flush=True)
+            f=files.get(e["name"])
+            if f and f.get("Size")==e["size"] and e.get("sha256"):
+                # Validate against the upstream SHA256, not merely the file name or size.
+                h=hashes(f)
+                if h.get("sha256")==e["sha256"] and re.fullmatch(r"[a-f0-9]{32}",h.get("md5","")):
+                    e["md5"]=h["md5"]
+                    print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)
+                    continue
+                actual=remote_digest(e["name"])
+                if actual["size"]==e["size"] and actual["sha256"]==e["sha256"]:
+                    e["md5"]=actual["md5"]
+                    print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)
+                    continue
+            print("CACHE_STAGE: "+e["kind"]+"_download",flush=True)
             p=tmp/e["name"]
             sha=hashlib.sha256();md5=hashlib.md5()
             try:
@@ -61,22 +120,32 @@ def main():
                 assert p.stat().st_size==e["size"],"DOWNLOAD_SIZE_MISMATCH"
                 assert not e["sha256"] or e["sha256"]==sha.hexdigest(),"DOWNLOAD_HASH_MISMATCH"
                 e["sha256"]=sha.hexdigest();e["md5"]=md5.hexdigest()
+                print("CACHE_STAGE: "+e["kind"]+"_upload",flush=True)
                 rc("copyto",str(p),REMOTE+"/"+e["name"],"--checksum","--drive-chunk-size","64M")
-                f=listing()[e["name"]]
-                assert f["Size"]==e["size"] and f["Hashes"]["MD5"].lower()==e["md5"],"UPLOAD_HASH_MISMATCH"
+                print("CACHE_STAGE: "+e["kind"]+"_verify",flush=True)
+                f=file_info(e["name"])
+                if not f or f.get("Size")!=e["size"]: raise RuntimeError("UPLOAD_SIZE_MISMATCH")
+                if not verified_remote(e,f):
+                    if hashes(f).get("md5") or hashes(f).get("sha256"): raise RuntimeError("UPLOAD_HASH_MISMATCH")
+                    actual=remote_digest(e["name"])
+                    assert all(actual[k]==e[k] for k in ("size","sha256","md5")),"UPLOAD_HASH_MISMATCH"
                 print("CACHE_FILE_SAVED",e["kind"],e["size"],flush=True)
             finally: p.unlink(missing_ok=True)
         d={"schema":2,"repo":REPO,"revision":revision,"engine":TAG,"files":[e for e,_ in entries]}
-        assert valid(d,listing())
+        print("CACHE_STAGE: publish_manifest",flush=True)
+        assert valid(d,listing()),"CACHE_MANIFEST_MISMATCH"
         p=tmp/"manifest.json";p.write_text(json.dumps(d))
         rc("copyto",str(p),REMOTE+"/manifest.json","--checksum")
-        assert valid(json.loads(rc("cat",REMOTE+"/manifest.json")),listing())
+        assert valid(json.loads(rc("cat",REMOTE+"/manifest.json")),listing()),"CACHE_MANIFEST_MISMATCH"
     print("CACHE_PREPARED="+json.dumps({"mode":mode,"bytes":sum(x["size"] for x in d["files"]),"seconds":round(time.monotonic()-t,1)}),flush=True)
 if __name__=="__main__":
     try: main()
     except Exception as e:
-        # Never dump request URLs, headers, paths or remote account information.
-        safe={"CACHE_MANIFEST_MISMATCH","ENGINE_ASSET_UNAVAILABLE","DOWNLOAD_SIZE_MISMATCH","DOWNLOAD_HASH_MISMATCH","UPLOAD_HASH_MISMATCH"}
+        # Do not expose arbitrary metadata, filenames, URLs or credentials.
+        safe={"CACHE_DUPLICATE_NAME","CACHE_MANIFEST_MISMATCH","ENGINE_ASSET_UNAVAILABLE","DOWNLOAD_SIZE_MISMATCH","DOWNLOAD_HASH_MISMATCH","UPLOAD_SIZE_MISMATCH","UPLOAD_HASH_MISMATCH","REMOTE_DIGEST_READ_FAILED"}
+        keys={"Name","Hashes","MD5","Size","sha","siblings","lfs","sha256","size","assets","name","browser_download_url"}
         msg=str(e)
-        print("CACHE_ERROR:"+type(e).__name__+":"+(msg if msg in safe or msg.startswith("RCLONE_FAILED:") else "other"),flush=True)
+        frame=traceback.extract_tb(e.__traceback__)[-1]
+        detail=msg if msg in safe or msg.startswith("RCLONE_FAILED:") else ("key="+str(e.args[0]) if isinstance(e,KeyError) and e.args and e.args[0] in keys else "other")
+        print("CACHE_ERROR:"+type(e).__name__+":"+detail+":line="+str(frame.lineno),flush=True)
         raise SystemExit(1)
