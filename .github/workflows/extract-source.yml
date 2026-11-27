@@ -140,6 +140,16 @@ jobs:
             const hits=[...code.matchAll(re)];
             console.log('CONTEXT_AUDIT '+JSON.stringify({name,count:hits.length,contexts:hits.slice(0,15).map(h=>code.slice(Math.max(0,h.index-170),h.index+h[0].length+170))}));
           }
+          for(const label of ['Prontera Librarian','(Rare/Epic)','(Epic/Legendary)','(Legendary)',': Soldier Skeleton, Sohee','Dragon Breath','Snake Ring']){
+            const hits=[...html.matchAll(new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g,'\\          const m=JSON.parse(await get(origin+'assets/manifest.json?v='+build));'),'g'))];
+            console.log('HTML_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,3).map(h=>html.slice(Math.max(0,h.index-100),h.index+h[0].length+100))}));
+          }
+          const index=code.indexOf('Lantern Festival gear: dropped by its monsters');
+          if(index>=0)console.log('FESTIVAL_RENDER '+JSON.stringify({before:code.slice(index-3500,index),after:code.slice(index,index+10000)}));
+          for(const label of ['2527','2986']){
+            const hits=[...code.matchAll(new RegExp('\\b'+label+'\\b','g'))];
+            console.log('ITEM_ID_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,10).map(h=>code.slice(Math.max(0,h.index-120),h.index+h[0].length+120))}));
+          }
           const m=JSON.parse(await get(origin+'assets/manifest.json?v='+build));
           for(const label of ['Dragon Breath','Snake Ring']){
             const found=Object.entries(m.items??{}).filter(([id,v])=>v.name===label);
