@@ -13,6 +13,7 @@ export function compareTranslationVersions(a,b){
   return x[3].localeCompare(y[3],undefined,{numeric:true});
 }
 export const UPDATE_INTERVAL_MS=60*60*1000;
+export const TRANSLATION_CHECK_INTERVAL_MS=60*1000;
 export function shouldScan({navigationType,build,translationVersion,previous}){
   return navigationType!=='reload'||!previous||previous.build!==build||previous.translationVersion!==translationVersion;
 }
@@ -21,8 +22,8 @@ export function stateLabel({hasMissing,scanFailed}){
   return scanFailed?'번역 상태 확인 불가':hasMissing?'일부 미번역':'';
 }
 // Dependency-injected storage/network/scan adapters.
-export function createSession({read,write,check,download,scan,notify,verify}){
-  let result=null, busy=false, started=false;
+export function createSession({read,write,check,download,scan,notify,verify,onUpdate=()=>{}}){
+  let result=null, busy=false, started=false, ready=false, activeHash=null, activeBuild=null;
   const emit=()=>notify({hasMissing:!!result?.hasMissing,scanFailed:!!result?.scanFailed});
   async function poll(){
     if(busy)return;
@@ -35,7 +36,16 @@ export function createSession({read,write,check,download,scan,notify,verify}){
         if(!await verify(pack,manifest))throw Error('Translation integrity check failed');
         await write('translation',{hash:manifest.translationHash,version:manifest.translationVersion,pack});
       }
-    } catch{/* offline: keep previous cache and notice */}
+      if(ready){
+        const candidate=await read('translation');
+        if(candidate&&candidate.hash!==activeHash){
+          const next={...await scan(candidate.pack),build:activeBuild,translationVersion:candidate.hash};
+          await onUpdate(candidate.pack,next);
+          result=next;activeHash=candidate.hash;
+          await write('scan',next);
+        }
+      }
+    } catch{/* retain the active dictionary on failure; retry next poll */}
     finally{busy=false;emit();}
   }
   async function start({navigationType,build}){
@@ -51,6 +61,8 @@ export function createSession({read,write,check,download,scan,notify,verify}){
         await write('scan',result);
       } catch {result={scanFailed:true};}
     } else result=previous;
+    activeHash=result?.scanFailed&&!result.dictionary?null:active.hash;
+    activeBuild=build;ready=true;
     emit();return active.pack;
   }
   return {start,poll,getScanResult:()=>result};
