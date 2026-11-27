@@ -106,6 +106,17 @@ jobs:
           python benchmark/tools/colab-drive-auth.py
           unset RCLONE_CONFIG_SECRET
           check auth 90 "${cli[@]}" sessions
+          # Read-only account-wide usage check; never log raw account information.
+          if timeout 90 "${cli[@]}" usage </dev/null >"$tmp/usage.log" 2>&1; then
+            python - "$tmp/usage.log" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],errors="replace").read()
+          m=re.search(r"Active assignments:\s*(\d+)",s,re.I)
+          print("COLAB_ACTIVE_ASSIGNMENTS="+(m.group(1) if m else "UNKNOWN"))
+          PY
+          else
+            echo "COLAB_USAGE_QUERY_UNAVAILABLE"
+          fi
           # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
           # The CLI handles its own bounded retries of transient server failures.
           export COLAB_CLI_ASSIGN_RETRIES=3
