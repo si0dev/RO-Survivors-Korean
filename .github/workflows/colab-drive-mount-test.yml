@@ -1,71 +1,173 @@
-name: Colab unattended Drive mount test (temporary)
+name: Colab rclone Drive verification (temporary)
 on:
   pull_request:
     branches: [main]
     paths: ['.github/workflows/colab-drive-mount-test.yml']
 permissions: {}
+concurrency:
+  group: ro-rclone-drive-probe
+  cancel-in-progress: false
 jobs:
   mount:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-drive-mount' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check google-colab-cli==0.8.0
-      - name: Test official Drive mount without interaction
+      - name: Install test tools
+        run: |
+          python -m pip install --disable-pip-version-check google-colab-cli==0.8.0
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone
+      - name: Verify limited Drive authorization and direct mount
         env:
+          RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG }}
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
         shell: bash
         run: |
           set -euo pipefail
           umask 077
           tmp=$(mktemp -d)
-          session="ro-drive-test-$GITHUB_RUN_ID"
+          export TMP_PROBE="$tmp"
           export GOOGLE_APPLICATION_CREDENTIALS="$tmp/adc.json"
           export XDG_CONFIG_HOME="$tmp/config"
-          python - <<'PY'
-          import os,json
-          d=json.loads(os.environ["COLAB_ADC_JSON"])
-          assert d["type"]=="authorized_user"
-          assert all(d.get(k) for k in ("client_id","client_secret","refresh_token"))
-          with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"],"w") as f: json.dump(d,f)
-          PY
-          unset COLAB_ADC_JSON
-          colab_cmd=(colab --auth=adc --config "$tmp/sessions.json")
+          cli=(colab --auth=adc --config "$tmp/sessions.json")
+          session="ro-rclone-$GITHUB_RUN_ID"
+          object="RO-Survivors-Korean-cache/probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.bin"
+          export PROBE_OBJECT="$object"
+          remote_config="/tmp/ro-probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.conf"
+          export REMOTE_CONFIG="$remote_config"
+          uploaded=0
+          session_started=0
           cleanup() {
-            if timeout 60 "${colab_cmd[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null; then
-              echo "SESSION_STOP: PASS"
-            else
-              echo "SESSION_STOP: NOT_CONFIRMED"
+            if [ "$session_started" = 1 ]; then
+              timeout 60 "${cli[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null || true
+            fi
+            if [ "$uploaded" = 1 ]; then
+              if rclone --config "$tmp/drive.conf" deletefile "rocache:$object" >"$tmp/delete.log" 2>&1; then echo "PROBE_CLEANUP: PASS"; else echo "PROBE_CLEANUP: NOT_CONFIRMED"; fi
             fi
             rm -rf "$tmp"
           }
           trap cleanup EXIT
-          timeout 90 "${colab_cmd[@]}" sessions >"$tmp/auth.log" 2>&1 </dev/null
-          echo "ADC_AUTH: PASS"
-          timeout 120 "${colab_cmd[@]}" new -s "$session" >"$tmp/new.log" 2>&1 </dev/null
-          echo "CPU_SESSION: PASS"
-          # Never print raw CLI output: it may contain authorization links or account details.
-          rc=0
-          timeout 90 "${colab_cmd[@]}" drivemount -s "$session" /content/drive >"$tmp/mount.log" 2>&1 </dev/null || rc=$?
-          python - "$tmp/mount.log" "$rc" <<'PY'
+          python - <<'PY'
+          import configparser,os,pathlib,json,sys
+          p=pathlib.Path(os.environ["TMP_PROBE"])
+          raw=os.environ.get("RCLONE_CONFIG_SECRET","")
+          if not raw: sys.exit("RCLONE_CONFIG: MISSING")
+          try:
+              cfg=configparser.ConfigParser(interpolation=None)
+              cfg.read_string(raw)
+              assert cfg.sections()==["rocache"]
+              assert cfg["rocache"]["type"]=="drive"
+              assert cfg["rocache"]["scope"]=="drive.file"
+              t=json.loads(cfg["rocache"]["token"])
+              assert t.get("refresh_token")
+              # Force a refresh to verify that the persistent credential works.
+              t["expiry"]="2000-01-01T00:00:00Z"
+              cfg["rocache"]["token"]=json.dumps(t)
+              with (p/"drive.conf").open("w") as f: cfg.write(f)
+              adc=json.loads(os.environ["COLAB_ADC_JSON"])
+              assert adc["type"]=="authorized_user"
+              (p/"adc.json").write_text(json.dumps(adc))
+          except Exception:
+              sys.exit("SECRET_FORMAT: INVALID")
+          (p/"probe.bin").write_bytes(os.urandom(4096))
+          print("SECRET_FORMAT: PASS")
+          PY
+          unset RCLONE_CONFIG_SECRET COLAB_ADC_JSON
+          check() {
+            local label="$1"; shift
+            if "$@" >"$tmp/$label.log" 2>&1 </dev/null; then
+              echo "$label: PASS"
+            else
+              echo "$label: FAIL"
+              python - "$tmp/$label.log" <<'PY'
           import re,sys
           s=open(sys.argv[1],errors="replace").read()
-          print("MOUNT_EXIT:",sys.argv[2])
-          checks={"consent_url":r"accounts\.google\.com|unauthorized_redirect_uri|consent URL|authorization URL","interactive_prompt":r"press.{0,20}enter|authorize|authentication required|/dev/tty|EOFError","propagation_error":r"error propagating|credential.{0,40}fail|propagation.{0,40}fail","http_401":r"\b401\b","http_403":r"\b403\b","http_400":r"\b400\b"}
-          for label,pattern in checks.items():
-              if re.search(pattern,s,re.I): print("MOUNT_DIAGNOSTIC:",label)
+          for p in ("invalid_grant","invalid_scope","insufficientPermissions","403","401","429","quota","not found","permission denied","timeout","fuse"):
+              if re.search(p,s,re.I): print("DIAGNOSTIC:",p)
           PY
-          if [ "$rc" != 0 ]; then exit "$rc"; fi
-          # No personal filenames, directory listing, or file content is collected.
-          cat >"$tmp/check.py" <<'PY'
-          import os
-          assert os.path.ismount("/content/drive"), "DRIVE_NOT_MOUNTED"
-          assert os.path.isdir("/content/drive/MyDrive") or os.path.isdir("/content/drive/My Drive"), "MY_DRIVE_NOT_FOUND"
-          print("DRIVE_MOUNT_READABLE_OK")
+              exit 1
+            fi
+          }
+          check DRIVE_WRITE timeout 90 rclone --config "$tmp/drive.conf" copyto "$tmp/probe.bin" "rocache:$object"
+          uploaded=1
+          check DRIVE_READ timeout 90 rclone --config "$tmp/drive.conf" copyto "rocache:$object" "$tmp/read.bin"
+          cmp "$tmp/probe.bin" "$tmp/read.bin"
+          echo "DRIVE_REFRESH_AND_ROUNDTRIP: PASS"
+          # Only a short-lived access token leaves the Actions runner.
+          python - <<'PY'
+          import configparser,json,os,pathlib,datetime,hashlib
+          p=pathlib.Path(os.environ["TMP_PROBE"])
+          c=configparser.ConfigParser(interpolation=None);c.read(p/"drive.conf")
+          t=json.loads(c["rocache"]["token"])
+          expiry=datetime.datetime.fromisoformat(t["expiry"].replace("Z","+00:00"))
+          assert (expiry-datetime.datetime.now(datetime.timezone.utc)).total_seconds()>600
+          short=configparser.ConfigParser(interpolation=None)
+          short["rocache"]={"type":"drive","scope":"drive.file","token":json.dumps({k:t[k] for k in ("access_token","token_type","expiry")})}
+          with (p/"short.conf").open("w") as f: short.write(f)
+          expected=hashlib.sha256((p/"probe.bin").read_bytes()).hexdigest()
+          prefix="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\nOBJECT="+repr(os.environ["PROBE_OBJECT"])+"\nEXPECTED="+repr(expected)+"\n"
+          code=r'''
+          import os,subprocess,time,hashlib,pathlib,tempfile,shutil
+          stage="init"
+          mount=pathlib.Path(tempfile.mkdtemp(prefix="ro-drive-mount-"))
+          proc=None
+          try:
+              os.chmod(CONFIG,0o600)
+              stage="install"
+              if not shutil.which("rclone") or not shutil.which("fusermount3"):
+                  subprocess.run(["apt-get","update","-qq"],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=120)
+                  subprocess.run(["apt-get","install","-y","-qq","rclone","fuse3"],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=120)
+              stage="fuse_device"
+              assert pathlib.Path("/dev/fuse").exists()
+              stage="mount"
+              proc=subprocess.Popen(["rclone","--config",CONFIG,"mount","rocache:RO-Survivors-Korean-cache",str(mount),"--read-only","--vfs-cache-mode","off"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+              for _ in range(60):
+                  if os.path.ismount(mount): break
+                  assert proc.poll() is None
+                  time.sleep(1)
+              assert os.path.ismount(mount)
+              stage="file_read"
+              with (mount/pathlib.Path(OBJECT).name).open("rb") as f:
+                  b=f.read()
+                  assert len(b)==4096 and hashlib.sha256(b).hexdigest()==EXPECTED
+                  f.seek(1024)
+                  assert f.read(32)==b[1024:1056]
+              print("RCLONE_MOUNT_HASH_AND_SEEK_OK",flush=True)
+          except Exception as e:
+              print("RCLONE_TEST_ERROR:"+stage+":"+type(e).__name__,flush=True)
+              raise
+          finally:
+              if os.path.ismount(mount):
+                  subprocess.run(["fusermount3","-u",str(mount)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+              if proc and proc.poll() is None:
+                  proc.terminate()
+                  try: proc.wait(timeout=10)
+                  except subprocess.TimeoutExpired: proc.kill()
+              pathlib.Path(CONFIG).unlink(missing_ok=True)
+              if not os.path.ismount(mount): mount.rmdir()
+          '''
+          (p/"mount.py").write_text(prefix+code)
+          compile(prefix+code,"mount.py","exec")
           PY
-          timeout 60 "${colab_cmd[@]}" exec -s "$session" -f "$tmp/check.py" >"$tmp/read.log" 2>&1 </dev/null
-          grep -q DRIVE_MOUNT_READABLE_OK "$tmp/read.log"
-          echo "DRIVE_MOUNT_READABLE: PASS"
+          check ADC_AUTH timeout 90 "${cli[@]}" sessions
+          check CPU_SESSION timeout 120 "${cli[@]}" new -s "$session"
+          session_started=1
+          # Upload via the official file-transfer command, never as notebook source.
+          check TOKEN_UPLOAD timeout 60 "${cli[@]}" upload -s "$session" "$tmp/short.conf" "$remote_config"
+          rm -f "$tmp/short.conf"
+          rc=0
+          timeout 420 "${cli[@]}" exec -s "$session" --timeout 360 -f "$tmp/mount.py" >"$tmp/mount.log" 2>&1 </dev/null || rc=$?
+          python - "$tmp/mount.log" <<'PY'
+          import sys,re
+          for line in open(sys.argv[1],errors="replace"):
+              if re.fullmatch(r"RCLONE_TEST_ERROR:[a-z_]+:[A-Za-z]+",line.strip()): print(line.strip())
+          PY
+          if [ "$rc" != 0 ] || ! grep -qx 'RCLONE_MOUNT_HASH_AND_SEEK_OK' "$tmp/mount.log"; then
+            echo "RCLONE_DIRECT_MOUNT: FAIL"
+            exit 1
+          fi
+          echo "RCLONE_DIRECT_MOUNT: PASS"
