@@ -192,7 +192,14 @@ jobs:
                   if re.fullmatch(r"RCLONE_TEST_ERROR:[a-z_]+:[A-Za-z]+",line.strip()): print(line.strip())
                   m=re.search(r"INDEX_FULL_GPU_OFFLOAD (\d+/\d+)",line)
                   if m: print("INDEX_FULL_GPU_OFFLOAD "+m.group(1))
-                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
+                  if "ENGINE_DIAGNOSTIC=" in line:
+                      try:
+                          d,_=json.JSONDecoder().raw_decode(line.split("ENGINE_DIAGNOSTIC=",1)[1])
+                          keys=("stage","returncode","categories","missing_libraries","glibc_versions","flags")
+                          print("ENGINE_DIAGNOSTIC="+json.dumps({k:d[k] for k in keys}))
+                      except (ValueError,KeyError,TypeError): pass
+                  if re.fullmatch(r"ENGINE_OPTION_UNAVAILABLE --[a-z-]+",line.strip()): print(line.strip())
+                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
                       if category in line: print("Diagnostic category: "+category)
           PY
           check gpu-stop 90 "${cli[@]}" stop -s "$gpu"

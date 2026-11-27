@@ -22,19 +22,70 @@ model_path=cache/MODEL
 print("CACHE_REUSED="+json.dumps({"mode":"hit","model_direct":True,"model_bytes":model_path.stat().st_size,"engine_unpack_seconds":round(time.monotonic()-load_start,1)}),flush=True)
 libs=sorted({str(p.parent) for p in root.rglob("*.so*")})
 env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
-# Two independent slots, each with 4096 tokens; no CPU model offload.
+# Validate the executable and retain only non-sensitive failure classifications.
+def engine_diagnostic(stage,output,rc):
+    patterns={
+        "missing_library":r"error while loading shared libraries|not found",
+        "glibc_mismatch":r"GLIBC(?:XX)?_[\d.]+.*not found",
+        "cuda_driver_mismatch":r"CUDA driver version is insufficient|driver/library version mismatch|unsupported.*driver",
+        "cuda_kernel_mismatch":r"no kernel image|invalid device function|unsupported gpu architecture",
+        "out_of_memory":r"out of memory|failed to allocate|allocation failed|cudaMalloc.*fail",
+        "invalid_argument":r"invalid argument|unknown argument|unrecognized option|invalid option|unknown option",
+        "model_read":r"failed to read|failed to open|Input/output error|GGUF.*(?:invalid|error)|failed to load model",
+        "permission":r"permission denied",
+        "illegal_instruction":r"illegal instruction",
+        "bind":r"failed to bind|address already in use",
+        "missing_symbol":r"undefined symbol|symbol lookup error",
+        "cuda_error":r"CUDA error|CUDA failure|ggml_cuda.*(?:error|failed)",
+        "context_error":r"failed to create context|context.*(?:too large|failed)",
+    }
+    missing=sorted(set(re.findall(r"\b(?:lib[A-Za-z0-9_+.-]+\.so(?:\.[0-9]+)*)\s*=>\s*not found",output)))
+    symbols=sorted(set(re.findall(r"\bGLIBC(?:XX)?_[0-9.]+",output)))[:12]
+    flags=sorted(set(re.findall(r"--(?:fit|no-mmap|log-verbosity|log-file|jinja|chat-template-kwargs|n-gpu-layers|ctx-size|parallel|host|port)\b",output))) if re.search(patterns["invalid_argument"],output,re.I) else []
+    categories=[k for k,v in patterns.items() if re.search(v,output,re.I)]
+    d={"stage":stage,"returncode":rc,"categories":categories,"missing_libraries":missing,"glibc_versions":symbols,"flags":flags}
+    print("ENGINE_DIAGNOSTIC="+json.dumps(d,separators=(",",":")),flush=True)
+    # Static allowlist of relevant terms, never full raw logs.
+    return categories
+
+def run_check(args,stage,timeout=30):
+    r=subprocess.run(args,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,errors="replace",timeout=timeout)
+    engine_diagnostic(stage,r.stdout,r.returncode)
+    return r
+
+ldd=run_check(["ldd",str(server)],"ldd")
+if ldd.returncode or re.search(r"=>\s*not found|version .* not found",ldd.stdout):
+    raise RuntimeError("ENGINE_DEPENDENCY_FAILED")
+help_result=run_check([str(server),"--help"],"help")
+if help_result.returncode:
+    raise RuntimeError("ENGINE_HELP_FAILED")
+# Only pass optional flags advertised by this exact cached binary.
+help_text=help_result.stdout
+cmd=[str(server),"-m",str(model_path),"-ngl","all","--no-mmap","-c","8192","-np","2","--host","127.0.0.1","--port","18080"]
+for flag,values in (("--fit",["off"]),("--log-verbosity",["4"]),("--log-file",[str(root/"llama.log")]),("--jinja",[]),("--chat-template-kwargs",['{"enable_thinking":false}'])):
+    if re.search(r"(?<![\w-])"+re.escape(flag)+r"(?![\w-])",help_text): cmd.extend([flag,*values])
+    else: print("ENGINE_OPTION_UNAVAILABLE "+flag,flush=True)
 server_log=open(root/"server.log","w+")
-proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","all","--fit","off","--no-mmap","--log-verbosity","4","--log-file",str(root/"llama.log"),"-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
+proc=subprocess.Popen(cmd,stdout=server_log,stderr=subprocess.STDOUT,env=env)
 atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
 base="http://127.0.0.1:18080"
+def read_engine_log():
+    server_log.flush()
+    log=(root/"server.log").read_text(errors="replace")
+    if (root/"llama.log").exists(): log+="\n"+(root/"llama.log").read_text(errors="replace")
+    return log
 deadline=time.monotonic()+900
 while time.monotonic()<deadline:
-    if proc.poll() is not None: raise RuntimeError("ENGINE_START_FAILED")
+    if proc.poll() is not None:
+        engine_diagnostic("server",read_engine_log(),proc.returncode)
+        raise RuntimeError("ENGINE_START_FAILED")
     try:
         if requests.get(base+"/health",timeout=3).status_code==200: break
     except requests.RequestException: pass
     time.sleep(2)
-else: raise RuntimeError("ENGINE_READY_TIMEOUT")
+else:
+    engine_diagnostic("ready_timeout",read_engine_log(),proc.poll())
+    raise RuntimeError("ENGINE_READY_TIMEOUT")
 # Read the final load, not the initial fit probe, and report only safe numeric diagnostics.
 offloads=[]
 for _ in range(10):
