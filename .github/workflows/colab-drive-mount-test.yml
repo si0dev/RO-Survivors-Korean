@@ -33,9 +33,9 @@ jobs:
           with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"],"w") as f: json.dump(d,f)
           PY
           unset COLAB_ADC_JSON
-          colab_cmd() { colab --auth=adc --config "$tmp/sessions.json" "$@"; }
+          colab_cmd=(colab --auth=adc --config "$tmp/sessions.json")
           cleanup() {
-            if timeout 60 colab_cmd stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null; then
+            if timeout 60 "${colab_cmd[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null; then
               echo "SESSION_STOP: PASS"
             else
               echo "SESSION_STOP: NOT_CONFIRMED"
@@ -43,13 +43,13 @@ jobs:
             rm -rf "$tmp"
           }
           trap cleanup EXIT
-          timeout 90 colab_cmd sessions >"$tmp/auth.log" 2>&1 </dev/null
+          timeout 90 "${colab_cmd[@]}" sessions >"$tmp/auth.log" 2>&1 </dev/null
           echo "ADC_AUTH: PASS"
-          timeout 120 colab_cmd new -s "$session" >"$tmp/new.log" 2>&1 </dev/null
+          timeout 120 "${colab_cmd[@]}" new -s "$session" >"$tmp/new.log" 2>&1 </dev/null
           echo "CPU_SESSION: PASS"
           # Never print raw CLI output: it may contain authorization links or account details.
           rc=0
-          timeout 90 colab_cmd drivemount -s "$session" /content/drive >"$tmp/mount.log" 2>&1 </dev/null || rc=$?
+          timeout 90 "${colab_cmd[@]}" drivemount -s "$session" /content/drive >"$tmp/mount.log" 2>&1 </dev/null || rc=$?
           python - "$tmp/mount.log" "$rc" <<'PY'
           import re,sys
           s=open(sys.argv[1],errors="replace").read()
@@ -66,6 +66,6 @@ jobs:
           assert os.path.isdir("/content/drive/MyDrive") or os.path.isdir("/content/drive/My Drive"), "MY_DRIVE_NOT_FOUND"
           print("DRIVE_MOUNT_READABLE_OK")
           PY
-          timeout 60 colab_cmd exec -s "$session" -f "$tmp/check.py" >"$tmp/read.log" 2>&1 </dev/null
+          timeout 60 "${colab_cmd[@]}" exec -s "$session" -f "$tmp/check.py" >"$tmp/read.log" 2>&1 </dev/null
           grep -q DRIVE_MOUNT_READABLE_OK "$tmp/read.log"
           echo "DRIVE_MOUNT_READABLE: PASS"
