@@ -106,6 +106,18 @@ jobs:
         with:
           path: ~/.cache/ro-llm/rclone
           key: ro-rclone-v1.70.3-linux-amd64-v1
+      - name: Test pinned rclone direct copy without GPU
+        run: python benchmark/tools/colab-benchmark-direct-cache-test.py
+      - name: Test cleanup failure cannot be ignored
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          mkdir -p "$tmp"
+          allocation_started=1
+          timeout() { if [ "$1" = 180 ]; then return 9; fi; return 0; }
+          if release_session; then exit 1; else rc=$?; fi
+          [ "$rc" = 9 ] && [ "$allocation_started" = 1 ]
+          echo "CLEANUP_FAILURE_TEST_PASS"
       - name: Confirm dependency preparation
         run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
   restore-test:
