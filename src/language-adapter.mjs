@@ -46,6 +46,23 @@ export function createGearNameTranslator(names){
 export function isGearNameElement(el){
   return !!el?.closest('#cp-inventory [data-uid], .eq-name, .tip-item > div > b');
 }
+// Only annotate a standalone GS label or a GS label with its numeric score.
+export function createGearScoreTooltip(){
+  const owned=new WeakSet();
+  const label='장비 점수';
+  return (el,enabled=true)=>{
+    if(!el||el.nodeType!==1)return;
+    const title=el.getAttribute('title');
+    if(owned.has(el)&&title!==label)owned.delete(el);
+    const matches=enabled&&/^GS(?:\s*:?\s*\d+(?:[,.]\d+)*)?$/.test(el.textContent.trim())
+      &&[...el.childNodes].some(n=>n.nodeType===3&&/^\s*GS(?:\s|:|\d|$)/.test(n.nodeValue));
+    if(!matches){
+      if(owned.has(el)){el.removeAttribute('title');owned.delete(el);}
+    }else if(title===null){
+      el.setAttribute('title',label);owned.add(el);
+    }
+  };
+}
 export function installLanguageAdapter(entries,engineVersion,newsEntries={},wikiEntries={},nameEntries={}) {
   if (window.__roKoLocal) return;
   const dictionary=new Map(Object.entries(entries));
@@ -154,9 +171,14 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
     if(inWiki(el)&&excluded.matches('select')&&[...excluded.options].every(o=>o.hasAttribute('value')))return false;
     return true;
   };
+  const syncGearScoreTooltip=createGearScoreTooltip();
+  const annotateGearScore=el=>{
+    if(el?.nodeType===1)syncGearScoreTooltip(el,active()&&!blocked(el)&&!inWiki(el)&&!el.closest('#news-body, #news-tabs'));
+  };
   const replaceWikiValue=(value,ko)=>ko===undefined?translate(value):value.replace(value.trim(),()=>ko);
   function translateText(node) {
     if (!active() || blocked(node.parentElement)) return;
+    annotateGearScore(node.parentElement);
     const v = node.nodeValue;
     if(originals.get(node)?.[1]===v)return;
     if(inWiki(node.parentElement)){
@@ -230,6 +252,7 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
         if (pair && n.nodeValue === pair[1]) n.nodeValue = pair[0];
         originals.delete(n);
       } else {
+        syncGearScoreTooltip(n,false);
         const attrs = savedAttrs.get(n);
         if (attrs) for (const [key,pair] of attrs) {
           if (n.getAttribute(key) === pair[1]) n.setAttribute(key,pair[0]);
@@ -293,7 +316,10 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       if (m.type === 'characterData') translateText(m.target);
       else if (m.type === 'attributes') {
         if (ATTRS.includes(m.attributeName)) translateAttr(m.target,m.attributeName);
-      } else for (const n of m.addedNodes) walk(n);
+      } else {
+        annotateGearScore(m.target);
+        for (const n of m.addedNodes) walk(n);
+      }
     }
   });
   observer.observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:[...ATTRS,'lang']});
