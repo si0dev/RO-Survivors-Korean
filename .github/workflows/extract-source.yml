@@ -81,6 +81,15 @@ jobs:
             });
             if(matches.length)console.log('GEAR_RENDER '+JSON.stringify({term,matches:matches.slice(0,3)}));
           }
+          // Inspect the actual name helper and its UI call sites.
+          for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname))){
+            const code=f.content;
+            for(const term of ['function ug(','function a$(','ug(','a$(','function s$(','s$(','Wq[t]','inv-grid','inv-tooltip','inventory-grid']){
+              const positions=[];let at=-1;
+              while((at=code.indexOf(term,at+1))>=0){positions.push(at);if(positions.length>=25)break;}
+              if(positions.length)console.log('GEAR_CALL '+JSON.stringify({file:new URL(f.url).pathname,term,count:positions.length,contexts:positions.map(at=>code.slice(Math.max(0,at-160),at+230))}));
+            }
+          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));
