@@ -513,18 +513,6 @@ const reviewed=[
   "영웅 등급의 모든 옵션과 스킬 피해량 +10~20%. 티어 2까지는 해당 장비를 사용할 수 있는 1차 직업 스킬, 티어 3부터는 해당 2차 직업 스킬에 적용됩니다. 4개 중 1개는 대신 티어당 기본 공격 피해량 +5%가 부여됩니다(티어 1: +5%, 티어 2: +10%...)."
  ],
  [
-  "f2b17b56ee7aaab42c696926fb1f037d6b7a31f2c2d8c77d684e9747d066aba7",
-  "200e17dac172dbffe8f11a35b66702cdb214137e8ee5f36eadef426542e513b4",
-  [],
-  "(희귀/영웅)"
- ],
- [
-  "0f276f117daaba375afe75a4aec7528799d3652b562294c8792b81b398a4df12",
-  "524395251c57dca7837506cfb7a24a67d48ca19fc7f4c435c68956a8633c334c",
-  [],
-  "(영웅/전설)"
- ],
- [
   "480aa2d900ee5c1d8aac4befc688d3b648b16b6662f6a19bddb2f76888cdab89",
   "246799a1a21206bfce6b1a2385e2c9ceb62f0fdbf5831a670cfd43cb172929c1",
   [],
@@ -628,5 +616,15 @@ test('reviewed Korean terminology is present without changing source identity or
   const matches=Object.values(pack.entries).filter(row=>row.sourceHash===hash);
   assert.ok(matches.length>0,key);
   for(const row of matches)assert.equal(row.ko,ko,key);
+ }
+});
+
+test('Retired wiki drop labels are absent and retain their approved source hashes',async()=>{
+ const pack=await loadRecords();
+ const {readFile}=await import('node:fs/promises');
+ const catalog=JSON.parse(await readFile(new URL('../translations/catalog.json',import.meta.url),'utf8'));
+ for(const [id,hash] of [["f2b17b56ee7aaab42c696926fb1f037d6b7a31f2c2d8c77d684e9747d066aba7","200e17dac172dbffe8f11a35b66702cdb214137e8ee5f36eadef426542e513b4"],["0f276f117daaba375afe75a4aec7528799d3652b562294c8792b81b398a4df12","524395251c57dca7837506cfb7a24a67d48ca19fc7f4c435c68956a8633c334c"],["8f76cc3cf355466a8a70ddd4a6e4e373ce948490f0df8d88ef4eb3f5690435ad","350fade14f5be32f0e442287f0cc11718931f795a5765ea3085269b61267a53b"],["f59118d9adf605e007bb2eaf934403e6c5f6a3d23edcdb6951e40d9bf26a8d86","7824126be81a9327ba0ed6ec8ab33055ee16e829abcb3ae0ad831799d8516976"]]){
+  assert.equal(Object.hasOwn(pack.entries,id),false,id);
+  assert.equal(catalog.retired[id],hash,id);
  }
 });
