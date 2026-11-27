@@ -323,5 +323,7 @@
   "d8586946a00a1f3a05c88fda69f1ebd2f72554f5e025b400f3f067f4f0473aea": {"sourceHash":"62a7d1a77575a8848d1ba13acfda148de78392bf948c32bf3dcdb7928b5e2806","ko":"베넘 나이프","placeholders":[],"reason":"same-named-source"},
   "ea6675012b48661d83feb760e6293b15aa9404933369793b09e9d6cf4a7ac337": {"sourceHash":"2a24a558691e65f2db9231582e602799125670e2d68ed7b92926b04c01a3e45c","ko":"웨폰 퍼펙션","placeholders":[],"reason":"same-named-source"},
   "d47adb5ea414982866d7e248c2c127ff4bd647c6b74b06a50e4fcb3e6c2ce54c": {"sourceHash":"0a8a36409cd2a5534b6f36f0b45759ff7e098ffb1392b581562d836639def63e","ko":"윌로우","placeholders":[],"reason":"same-named-source"},
-  "dab2ab2718cfc95217ac93d836046e761aaba1db8534930ad210a3df9056b8ff": {"sourceHash":"55627bd57f937760ad51d020d446fd9302a7fec5919c08b8335191c156286ccf","ko":"제니 레인","placeholders":[],"reason":"same-named-source"}
+  "dab2ab2718cfc95217ac93d836046e761aaba1db8534930ad210a3df9056b8ff": {"sourceHash":"55627bd57f937760ad51d020d446fd9302a7fec5919c08b8335191c156286ccf","ko":"제니 레인","placeholders":[],"reason":"same-named-source"},
+  "def9b4c57ffc594acf8759ad102ac7da24680e744a1c315283dfbe68a7db772c": {"sourceHash":"def9b4c57ffc594acf8759ad102ac7da24680e744a1c315283dfbe68a7db772c","ko":"독 피해량","placeholders":[],"reason":"verified-identical-source"},
+  "ed30e692a3df5cc8b1da525452eb0ee39ce4114b8aad19f883ae304e96f4b91e": {"sourceHash":"ed30e692a3df5cc8b1da525452eb0ee39ce4114b8aad19f883ae304e96f4b91e","ko":"크리티컬 피해량","placeholders":[],"reason":"verified-identical-source"}
 }

@@ -73,7 +73,7 @@ test('Caltrops skill is 칼트롭스 while physical traps and Demoralizing Shout
  assert.equal(pack.entries["53db6a64a24e6c17642843239c2751ff676668fd6a4546ee9542ae28280b9c57"].ko,"인듀어의 신: 보루가 폭발하면 사기 저하의 함성과 프로보크도 추가 소모 없이 발동합니다.");
  assert.equal(pack.entries["f3cc616e5dee3c5872e04d80f69cfe3df42a9099582781102a18a28ad51a760a"].ko,"사기 저하의 함성");
  assert.equal(pack.entries["bf381c11c174d8d8f14876e838073439523662f557cd38ba31fe6f841ebdd4c6"].ko,"사기 저하의 함성의 신");
- assert.equal(pack.entries["581b9a2ddecc8e8b470feac122cc6bec0f8b803911be7cc91eee89b075bb0ca8"].ko,"보루: 인듀어가 지속되는 동안 최대 HP의 20%에 해당하는 피해를 돔이 흡수합니다. 파괴되거나 종료되면 폭발해 흡수한 피해를 주변 적에게 돌려주고 사기 저하의 함성과 프로보크를 무료로 발동합니다.");
+ assert.equal(pack.entries["65723896ef03e0f64d0af3a8689adf8b452bf335b20e0af11c243b3bb5cf423d"].ko,"보루: 인듀어가 지속되는 동안 최대 HP의 20%에 해당하는 피해를 흡수하는 보호막이 생깁니다. 파괴되거나 종료되면 폭발하여 흡수한 피해의 두 배를 주변 적에게 돌려주고 사기 저하의 함성과 프로보크를 무료로 시전합니다.");
  assert.equal(pack.entries["5993bfa732a51ccbe85bc25a12915b188655e808f84141767303d5242d00e9f2"].ko,"자신과 적 사이에 마름쇠를 원형으로 뿌립니다. 밟은 적은 피해를 받고 둔화됩니다.");
  assert.equal(pack.entries["994c42f2b691e26ef98312501555605bd4a63417b075ff261d0067dda59df71b"].ko,"화이어 볼트, 콜드볼트, 라이트닝 볼트, 소울 스트라이크, 사이트, 매그넘 브레이크, 소드 댄스, 프로보크, 사기 저하의 함성, 썬더 스톰, 애로우 레인, 민첩성 감소, 팬 오브 나이프, 제니 레인, 회오리차기, 돌려차기, 홍염화(紅炎華), 뇌격, 스프레드 어택, 데스페라도, 그라운드 드리프트, 그랜드 크로스, 메테오 스톰, 화이어 필라, 프로스트 노바, 스톰 가스트, 로드 오브 버밀리온, 헤븐즈 드라이브, 불협화음, 베네딕티오, 마그누스 엑소르시스무스, 기습, 액스 토네이도, 러시 퀘이크, 탐욕, 광석발견, 만월각");
 });
@@ -108,7 +108,7 @@ test('Approved custom skill names stay consistent throughout the merged data',as
  assert.equal(pack.entries["cb1b63b0ce892df747ddc6cde0e41c2e3f4ede7be7e56e74145d5e514293abdd"].ko,"제니 레인: 피해량이 10%, 범위가 15% 증가합니다.");
  assert.equal(pack.entries["b6354a0a3575dcdc09dc943a9848f4ab406df9763652c5d95135ca5b430f502e"].ko,"파동 또는 연사 스킬(애로우 샤워, 애로우 레인, 제니 레인 등). 특성, 신 및 엔들리스 타워 강화는 별도 적용");
  assert.equal(pack.entries["d466ff5fcba14cc5ed7a12c9179863adfe540f796aabedfa2db8bbb1e1eab8a2"].ko,"소드 댄스");
- assert.equal(pack.entries["a1119b6bced476350c501df1ce1304bd515c4285d0eca19942f5ed461e20bd4c"].ko,"소드 댄스: 자신을 중심으로 점점 넓어지는 세 차례의 참격을 가합니다. 가까이 있는 적은 세 차례 모두 피해를 받습니다.");
+ assert.equal(pack.entries["e8ad89a63fcae6bed7d99cbcd739ecb2a11d5a1d03402aa6b9796c2871bba778"].ko,"소드 댄스: 자신을 중심으로 점점 넓어지는 세 차례의 참격을 가합니다. 가까이 있는 적은 세 차례 모두 적중하지만 첫 번째 참격만 전체 피해량을 가하고 나머지는 80%의 피해량을 가합니다.");
  assert.equal(pack.entries["ae4ba69c14b2b13e3095fc8998b6bcef1fd3c9c3f120ef297b502bbc247b99b0"].ko,"소드 댄스의 신");
  assert.equal(pack.entries["a8d3702c1928d7ccd31a77d1e5c8906b6f3a861eceb8ab923259dbe0d242814e"].ko,"소드 댄스가 끝나면 무기에 5초 동안 번개가 충전됩니다. 기본 공격이 60% 추가 번개 피해를 주고 최대 4명의 추가 적에게 전이되며 전이당 피해량이 20% 감소합니다.");
  assert.equal(pack.entries["e045effca65fe7fff8ef6ede1481d5470c8eb272b62a1ac4f6ba4187f8a073a6"].ko,"포이즌 밤");
