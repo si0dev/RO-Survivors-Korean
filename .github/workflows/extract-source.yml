@@ -59,6 +59,28 @@ jobs:
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
           console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
+          // Temporary diagnostic: item names must be present in the runtime dictionary.
+          const {buildScanDictionary}=await import('./src/browser.mjs');
+          const manifestFile=files.find(f=>/\/assets\/manifest\.json$/.test(new URL(f.url).pathname));
+          const manifest=JSON.parse(manifestFile.content);
+          console.log('GEAR_MANIFEST '+JSON.stringify(Object.fromEntries(Object.entries(manifest).map(([k,v])=>[k,{count:Object.keys(v??{}).length,sample:Object.values(v??{}).slice(0,1).map(x=>typeof x==='object'&&x!==null?Object.keys(x):typeof x)}]))));
+          const mainURL=findPageBundle(files.map(f=>f.url),origin+'/');
+          const mainFile=files.find(f=>f.url===mainURL);
+          const scoped=await sourceSnapshot({kind:'main',url:mainURL,build:snapshot.build,content:mainFile.content},async url=>files.find(f=>f.url===url)?.content??await get(url));
+          const scopedRows=await Promise.all(scoped.rows.map(identify));
+          const dictionary=buildScanDictionary(scopedRows,[],records).dictionary;
+          for(const [section,entries] of Object.entries({items:manifest.items,cards:manifest.cards})){
+            const names=Object.values(entries??{}).filter(x=>typeof x?.name==='string').map(x=>x.name);
+            console.log('GEAR_COVERAGE '+JSON.stringify({section,total:names.length,translated:names.filter(n=>dictionary[n]&&dictionary[n]!==n).length,examples:names.slice(0,12).map(n=>({name:n,ko:dictionary[n]??null})),missing:names.filter(n=>!dictionary[n]||dictionary[n]===n).slice(0,60)}));
+          }
+          // Locate the public bundle's name rendering paths without retaining its source.
+          for(const term of ['.itemName','.gearName','.nameId','item.name','gear.name','manifest.items','manifest.cards','itemName(','gearName(','#inv-','.inv-name','gear-tooltip','item-tooltip']){
+            const matches=files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname)).flatMap(f=>{
+              const at=f.content.indexOf(term);
+              return at<0?[]:[{file:new URL(f.url).pathname,context:f.content.slice(Math.max(0,at-150),at+180)}];
+            });
+            if(matches.length)console.log('GEAR_RENDER '+JSON.stringify({term,matches:matches.slice(0,3)}));
+          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));
