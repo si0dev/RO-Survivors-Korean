@@ -59,63 +59,6 @@ jobs:
           const records=await loadRecords();
           const rows=await worklist(snapshot,records.entries);
           console.log('SUMMARY '+JSON.stringify({build:snapshot.build,release:snapshot.newsRelease,errors,newsScanFailed:snapshot.newsScanFailed,total:rows.length,missing:rows.filter(r=>r.status==='missing').length,changed:rows.filter(r=>r.status==='changed').length}));
-          // Temporary diagnostic: item names must be present in the runtime dictionary.
-          const {buildScanDictionary}=await import('./src/browser.mjs');
-          const manifestFile=files.find(f=>/\/assets\/manifest\.json$/.test(new URL(f.url).pathname));
-          const manifest=JSON.parse(manifestFile.content);
-          console.log('GEAR_MANIFEST '+JSON.stringify(Object.fromEntries(Object.entries(manifest).map(([k,v])=>[k,{count:Object.keys(v??{}).length,sample:Object.values(v??{}).slice(0,1).map(x=>typeof x==='object'&&x!==null?Object.keys(x):typeof x)}]))));
-          const mainURL=findPageBundle(files.map(f=>f.url),origin+'/');
-          const mainFile=files.find(f=>f.url===mainURL);
-          const scoped=await sourceSnapshot({kind:'main',url:mainURL,build:snapshot.build,content:mainFile.content},async url=>files.find(f=>f.url===url)?.content??await get(url));
-          const scopedRows=await Promise.all(scoped.rows.map(identify));
-          const dictionary=buildScanDictionary(scopedRows,[],records).dictionary;
-          for(const [section,entries] of Object.entries({items:manifest.items,cards:manifest.cards})){
-            const names=Object.values(entries??{}).filter(x=>typeof x?.name==='string').map(x=>x.name);
-            console.log('GEAR_COVERAGE '+JSON.stringify({section,total:names.length,translated:names.filter(n=>dictionary[n]&&dictionary[n]!==n).length,examples:names.slice(0,12).map(n=>({name:n,ko:dictionary[n]??null})),missing:names.filter(n=>!dictionary[n]||dictionary[n]===n).slice(0,60)}));
-          }
-          // Locate the public bundle's name rendering paths without retaining its source.
-          for(const term of ['.itemName','.gearName','.nameId','item.name','gear.name','manifest.items','manifest.cards','itemName(','gearName(','#inv-','.inv-name','gear-tooltip','item-tooltip']){
-            const matches=files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname)).flatMap(f=>{
-              const at=f.content.indexOf(term);
-              return at<0?[]:[{file:new URL(f.url).pathname,context:f.content.slice(Math.max(0,at-150),at+180)}];
-            });
-            if(matches.length)console.log('GEAR_RENDER '+JSON.stringify({term,matches:matches.slice(0,3)}));
-          }
-          // Inspect the actual name helper and its UI call sites.
-          for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname))){
-            const code=f.content;
-            for(const term of ['function ug(','function a$(','ug(','a$(','function s$(','s$(','Wq[t]','inv-grid','inv-tooltip','inventory-grid']){
-              const positions=[];let at=-1;
-              while((at=code.indexOf(term,at+1))>=0){positions.push(at);if(positions.length>=25)break;}
-              if(positions.length)console.log('GEAR_CALL '+JSON.stringify({file:new URL(f.url).pathname,term,count:positions.length,contexts:positions.map(at=>code.slice(Math.max(0,at-160),at+230))}));
-            }
-          }
-          const shared=files.find(f=>f.content.includes('function ug(t)')&&f.content.includes('Ma.manifest.items'));
-          const main=files.find(f=>/\/build\/main-/.test(new URL(f.url).pathname));
-          if(shared&&main){
-            const ex=[...shared.content.matchAll(/(?:^|[;}])export\s*\{([^}]+)\}/g)].flatMap(m=>m[1].split(','));
-            const aliases=ex.filter(x=>/^\s*(?:ug|a\$|s\$|Sp)\s+as\s+/.test(x));
-            console.log('NAME_EXPORTS '+JSON.stringify(aliases));
-            for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname)&&f!==shared)){
-              const imports=[...f.content.matchAll(/import\s*\{([^}]+)\}\s*from\s*["']([^"']+)["']/g)].filter(m=>m[2].includes(new URL(shared.url).pathname.split('/').pop()));
-              for(const [,spec] of imports)for(const alias of aliases){
-                const exported=alias.trim().split(/\s+as\s+/)[1];
-                const binding=spec.split(',').map(x=>x.trim().split(/\s+as\s+/)).find(x=>x[0]===exported);
-                if(!binding)continue;
-                const local=binding[1]??binding[0],esc=local.replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\$&');
-                const hits=[...f.content.matchAll(new RegExp('(?<![\\w$])'+esc+'\\(','g'))];
-                console.log('NAME_USES '+JSON.stringify({file:new URL(f.url).pathname,alias,local,count:hits.length,contexts:hits.slice(0,35).map(m=>f.content.slice(Math.max(0,m.index-170),m.index+230))}));
-              }
-            }
-          }
-          if(main){
-            for(const term of ['function mu(','function ea(','function Lr(','Ke(ea(','ym(ea(','id="cp-inventory"','getElementById("cp-inventory")','he("cp-inventory")','ea(A)','ea(T)','ea(s)','ea(f)']){
-              const hits=[];let at=-1;while((at=main.content.indexOf(term,at+1))>=0&&hits.length<12)hits.push(main.content.slice(Math.max(0,at-100),at+450));
-              if(hits.length)console.log('INVENTORY_NAME '+JSON.stringify({term,hits}));
-            }
-            const pos=main.content.indexOf('function mu(');
-            if(pos>=0)console.log('AFFIX_SOURCE '+main.content.slice(pos-800,pos+1400));
-          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));

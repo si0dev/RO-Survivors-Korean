@@ -188,7 +188,7 @@ async function scanPack(main,pack){
   try{snapshot=await sourceSnapshot(main);}
   catch(error){
     if(main.kind==='talents'){
-      const fallback=matchingTalentFallback(main,await sha256(JSON.stringify(pack)),getSaved('scan-v5:main'));
+      const fallback=matchingTalentFallback(main,await sha256(JSON.stringify(pack)),getSaved('scan-v6:main'));
       if(fallback)return fallback;
     }
     throw error;
@@ -198,7 +198,7 @@ async function scanPack(main,pack){
   return {...buildScanDictionary(rows,historical,pack),scanFailed:main.kind!=='talents'&&snapshot.newsScanFailed};
 }
 export function buildScanDictionary(rows,historical,pack){
-  const byKey=Object.create(null),newsDictionary=Object.create(null),english=new Map(),conflicts=new Set();
+  const byKey=Object.create(null),newsDictionary=Object.create(null),nameDictionary=Object.create(null),english=new Map(),conflicts=new Set();
   for(const row of [...rows,...historical]){
     const record=pack.entries[row.id];
     const ko=record?.sourceHash===row.sourceHash?record.ko:null;
@@ -208,13 +208,14 @@ export function buildScanDictionary(rows,historical,pack){
     }
     if(!ko)continue;
     byKey[row.key]=ko;
+    if(row.kind==='name')nameDictionary[row.key]=ko;
     if(row.en!==null){
       if(english.has(row.en)&&english.get(row.en)!==ko)conflicts.add(row.en);
       else english.set(row.en,ko);
     }
   }
   for(const [key,ko] of english)if(!conflicts.has(key)&&!Object.hasOwn(byKey,key))byKey[key]=ko;
-  return {...compare(rows,pack.entries),dictionary:byKey,newsDictionary};
+  return {...compare(rows,pack.entries),dictionary:byKey,newsDictionary,nameDictionary};
 }
 export async function startBrowser(embedded,engineVersion){
   if(document.readyState==='loading')await new Promise(resolve=>document.addEventListener('DOMContentLoaded',resolve,{once:true}));
@@ -239,7 +240,7 @@ export async function startBrowser(embedded,engineVersion){
       setSaved('translation',{version:embedded.version,hash:await sha256(JSON.stringify(embedded)),pack:embedded});
     }
     const main=await gameMain();
-    const scanKey=main.kind==='talents'?'scan-v5:talents':'scan-v5:main';
+    const scanKey=main.kind==='talents'?'scan-v6:talents':'scan-v6:main';
     const session=createSession({
       read:async key=>getSaved(key==='scan'?scanKey:key),
       write:async (key,value)=>setSaved(key==='scan'?scanKey:key,value),
@@ -261,7 +262,7 @@ export async function startBrowser(embedded,engineVersion){
     });
     const activePack=await session.start({navigationType:performance.getEntriesByType('navigation')[0]?.type??'navigate',build:main.build});
     const result=session.getScanResult();
-    if(result?.dictionary)installLanguageAdapter(result.dictionary,engineVersion,result.newsDictionary,wikiTranslationLookup(activePack));
+    if(result?.dictionary)installLanguageAdapter(result.dictionary,engineVersion,result.newsDictionary,wikiTranslationLookup(activePack),result.nameDictionary);
     setInterval(()=>{void session.poll();},UPDATE_INTERVAL_MS);
   }catch(error){
     translationState={scanFailed:true};renderStatus();

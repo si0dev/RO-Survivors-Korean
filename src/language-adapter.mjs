@@ -14,13 +14,44 @@ export function translateLootToast(value, parent, lookup, translate) {
   }
   return value;
 }
-export function installLanguageAdapter(entries,engineVersion,newsEntries={},wikiEntries={}) {
+// Gear labels are rendered as [+refine] base-name [affix] by the game.
+// Only use verified name records and the exact current suffix translation.
+// Unknown suffixes and the original spacing/numbers remain unchanged.
+export function createGearNameTranslator(names,lookup){
+  const byInitial=new Map();
+  for(const [name,ko] of Object.entries(names??{})){
+    if(!name||typeof ko!=='string'||!ko.trim())continue;
+    const list=byInitial.get(name[0])??[];
+    list.push([name,ko]);byInitial.set(name[0],list);
+  }
+  for(const list of byInitial.values())list.sort((a,b)=>b[0].length-a[0].length);
+  return value=>{
+    if(typeof value!=='string'||!value.trim())return value;
+    const source=value.trim();
+    const refine=source.match(/^\+\d+\s+/)?.[0]??'';
+    const body=source.slice(refine.length);
+    for(const [name,ko] of byInitial.get(body[0])??[]){
+      if(body!==name&&!body.startsWith(name+' '))continue;
+      const rest=body.slice(name.length);
+      const suffix=rest.trim();
+      const translated=suffix?lookup(suffix):undefined;
+      const next=refine+ko+(translated===undefined?rest:rest.replace(suffix,()=>translated));
+      return value.replace(source,()=>next);
+    }
+    return value;
+  };
+}
+export function isGearNameElement(el){
+  return !!el?.closest('#cp-inventory [data-uid], .eq-name, .tip-item > div > b');
+}
+export function installLanguageAdapter(entries,engineVersion,newsEntries={},wikiEntries={},nameEntries={}) {
   if (window.__roKoLocal) return;
   const dictionary=new Map(Object.entries(entries));
   const newsDictionary=new Map(Object.entries(newsEntries));
   const wikiTranslate=createWikiTranslator(wikiEntries,entries);
   const inWiki=el=>!!el?.closest('#wk-nav, #wk-detail, #wk-search, #wk-close');
   const lookup = s => dictionary.get(s);
+  const translateGearName=createGearNameTranslator(nameEntries,lookup);
   // Build reusable rules once rather than for each untranslated string.
   const rules = [
         [/^(Points remaining|Remaining points|Puntos restantes):?\s*(\d+)$/i, m => `남은 포인트: ${m[2]}`],
@@ -132,7 +163,8 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       return;
     }
     const loot = translateLootToast(v,node.parentElement,lookup,translate);
-    const next = loot === v ? translate(v,!!node.parentElement?.closest('#news-body, #news-tabs')) : loot;
+    const gear=isGearNameElement(node.parentElement)?translateGearName(v):v;
+    const next = loot !== v ? loot : gear !== v ? gear : translate(v,!!node.parentElement?.closest('#news-body, #news-tabs'));
     if (v !== next) { originals.set(node, [v,next]); node.nodeValue = next; }
   }
   function translateAttr(el, key) {
@@ -157,7 +189,8 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       }).catch(()=>{});
       return;
     }
-    apply(translate(value));
+    const gear=isGearNameElement(el)?translateGearName(value):value;
+    apply(gear!==value?gear:translate(value));
   }
   function walk(root) {
     if (root.nodeType === 3) return translateText(root);
