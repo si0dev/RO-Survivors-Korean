@@ -57,7 +57,7 @@ def invoke(args,limit):
     except subprocess.TimeoutExpired:
         return 124,"TimeoutError"
 
-def collect(cli,session,worker,log,work,*,run=invoke,now=time.monotonic,pause=time.sleep,emit=print,limit=5400):
+def collect(cli,session,worker,log,work,*,run=invoke,now=time.monotonic,pause=time.sleep,emit=print,limit=5400,on_snapshot=None):
     log=pathlib.Path(log)
     log.write_text("",encoding="utf-8")
     launch=log.with_name("launch-worker.py")
@@ -90,6 +90,7 @@ def collect(cli,session,worker,log,work,*,run=invoke,now=time.monotonic,pause=ti
                 emit("COLAB_TRANSPORT_LOG_REGRESSION",flush=True)
                 return 1
             log.write_bytes(data)
+            if on_snapshot is not None: on_snapshot(data)
             text=data.decode("utf-8",errors="replace")
             count=len(re.findall(r"(?m)^BENCHMARK_RESULT=",text))
             if count!=last_progress:

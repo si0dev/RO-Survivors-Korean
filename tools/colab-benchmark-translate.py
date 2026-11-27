@@ -108,16 +108,23 @@ def translate_one(row,base,emit=print,pause=time.sleep):
         return {"id":row["id"],"ko":ko,"checks":checks,"attempts":attempt}
     raise AssertionError("Unreachable translation loop")
 
-def translate_samples(samples,base,emit=print):
+def translate_samples(samples,base,emit=print,resume=None):
     ids=[row["id"] for row in samples]
     if len(ids)!=200 or len(set(ids))!=200 or any("reference" in row for row in samples):
         raise RuntimeError("INVALID_BENCHMARK_INPUT")
-    completed=0
+    restored=resume or []
+    restored_ids={r["id"] for r in restored}
+    if len(restored_ids)!=len(restored) or not restored_ids<=set(ids):
+        raise RuntimeError("INVALID_RESUME_IDS")
+    completed=len(restored)
     started=time.monotonic()
     emit("TRANSLATION_START 200",flush=True)
+    for row in restored:
+        emit("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")),flush=True)
+    pending=[r for r in samples if r["id"] not in restored_ids]
     with ThreadPoolExecutor(max_workers=2) as pool:
-        for i in range(0,len(samples),2):
-            for row in pool.map(lambda row:translate_one(row,base,emit),samples[i:i+2]):
+        for i in range(0,len(pending),2):
+            for row in pool.map(lambda row:translate_one(row,base,emit),pending[i:i+2]):
                 emit("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")),flush=True)
                 completed+=1
             emit("TRANSLATION_PROGRESS "+str(completed)+"/200 "+str(round(time.monotonic()-started,1)),flush=True)
