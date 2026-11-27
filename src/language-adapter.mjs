@@ -25,17 +25,19 @@ export function createGearNameTranslator(names){
     list.push([name,ko]);byInitial.set(name[0],list);
   }
   for(const list of byInitial.values())list.sort((a,b)=>b[0].length-a[0].length);
-  return value=>{
+  return (value,knownAffixOnly=false)=>{
     if(typeof value!=='string'||!value.trim())return value;
     const source=value.trim();
     const refine=source.match(/^\+\d+\s+/)?.[0]??'';
-    const body=source.slice(refine.length);
+    const slot=source.match(/\s+\[\d+\]$/)?.[0]??'';
+    const body=source.slice(refine.length,slot? -slot.length:undefined);
     for(const [name,ko] of byInitial.get(body[0])??[]){
       if(body!==name&&!body.startsWith(name+' '))continue;
       const rest=body.slice(name.length);
       const suffix=rest.trim();
       const translated=suffix&&Object.hasOwn(names,suffix)?names[suffix]:undefined;
-      const next=refine+(translated&&suffix.startsWith('of ')?translated+' '+ko:ko+rest);
+      if(knownAffixOnly&&!(translated&&suffix.startsWith('of ')))continue;
+      const next=refine+(translated&&suffix.startsWith('of ')?translated+' '+ko:ko+rest)+slot;
       return value.replace(source,()=>next);
     }
     return value;
@@ -48,10 +50,10 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   if (window.__roKoLocal) return;
   const dictionary=new Map(Object.entries(entries));
   const newsDictionary=new Map(Object.entries(newsEntries));
-  const wikiTranslate=createWikiTranslator(wikiEntries,entries);
+  let wikiTranslate=createWikiTranslator(wikiEntries,entries),generation=0;
   const inWiki=el=>!!el?.closest('#wk-nav, #wk-detail, #wk-search, #wk-close');
   const lookup = s => dictionary.get(s);
-  const translateGearName=createGearNameTranslator(nameEntries);
+  let translateGearName=createGearNameTranslator(nameEntries);
   // Build reusable rules once rather than for each untranslated string.
   const rules = [
         [/^(Points remaining|Remaining points|Puntos restantes):?\s*(\d+)$/i, m => `남은 포인트: ${m[2]}`],
@@ -69,6 +71,10 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
     if (typeof value !== 'string' || !value.trim()) return value;
     const s = value.trim();
     let result = news ? newsDictionary.get(s.replace(/\s+/g,' ')) ?? lookup(s) : lookup(s);
+    if (result === undefined && !news) {
+      const gear=translateGearName(value,true);
+      if(gear!==value)return gear;
+    }
     if (result === undefined) {
       for (const [re, fn] of rules) {
         const m = re.exec(s);
@@ -155,8 +161,9 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
     if(originals.get(node)?.[1]===v)return;
     if(inWiki(node.parentElement)){
       if(!v?.trim())return;
+      const current=generation;
       void wikiTranslate(v).then(ko=>{
-        if(!active()||!node.isConnected||node.nodeValue!==v||!inWiki(node.parentElement))return;
+        if(current!==generation||!active()||!node.isConnected||node.nodeValue!==v||!inWiki(node.parentElement))return;
         const next=replaceWikiValue(v,ko);
         if(v!==next){originals.set(node,[v,next]);node.nodeValue=next;}
       }).catch(()=>{});
@@ -184,8 +191,9 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       }
     };
     if(inWiki(el)&&value?.trim()){
+      const current=generation;
       void wikiTranslate(value).then(ko=>{
-        if(active()&&el.isConnected&&el.getAttribute(key)===value&&inWiki(el))apply(replaceWikiValue(value,ko));
+        if(current===generation&&active()&&el.isConnected&&el.getAttribute(key)===value&&inWiki(el))apply(replaceWikiValue(value,ko));
       }).catch(()=>{});
       return;
     }
@@ -316,5 +324,15 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       catch { /* locked prototype: DOM translation remains active */ }
     }
   }
-  Object.defineProperty(window,'__roKoLocal',{value:Object.freeze({version:engineVersion,entries:dictionary.size,translate,active}),configurable:true});
+  Object.defineProperty(window,'__roKoLocal',{value:Object.freeze({version:engineVersion,get entries(){return dictionary.size;},translate,active}),configurable:true});
+  return (nextEntries,nextNews={},nextWiki={},nextNames={})=>{
+    const nextWikiTranslate=createWikiTranslator(nextWiki,nextEntries);
+    const nextGearTranslate=createGearNameTranslator(nextNames);
+    generation++;
+    if(active())restoreDOM();
+    dictionary.clear();for(const [key,value] of Object.entries(nextEntries))dictionary.set(key,value);
+    newsDictionary.clear();for(const [key,value] of Object.entries(nextNews))newsDictionary.set(key,value);
+    wikiTranslate=nextWikiTranslate;translateGearName=nextGearTranslate;
+    if(active())walk(document);
+  };
 }

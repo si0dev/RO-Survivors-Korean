@@ -1,5 +1,5 @@
 import {extractSnapshot,identify,compare,sha256,validateRecords,wikiTranslationLookup} from './core.mjs';
-import {createSession,UPDATE_INTERVAL_MS,compareTranslationVersions,ENGINE_UPDATE_LABEL,createEngineUpdate,stateLabel} from './session.mjs';
+import {createSession,UPDATE_INTERVAL_MS,TRANSLATION_CHECK_INTERVAL_MS,compareTranslationVersions,ENGINE_UPDATE_LABEL,createEngineUpdate,stateLabel} from './session.mjs';
 import {installLanguageAdapter} from './language-adapter.mjs';
 
 const STORAGE='ro-ko:v3:';
@@ -241,11 +241,20 @@ export async function startBrowser(embedded,engineVersion){
     }
     const main=await gameMain();
     const scanKey=main.kind==='talents'?'scan-v6:talents':'scan-v6:main';
+    let refreshAdapter;
+    const applyPack=(pack,result)=>{
+      if(!result?.dictionary)throw Error('Translation scan failed');
+      const wiki=wikiTranslationLookup(pack);
+      if(refreshAdapter)refreshAdapter(result.dictionary,result.newsDictionary,wiki,result.nameDictionary);
+      else refreshAdapter=installLanguageAdapter(result.dictionary,engineVersion,result.newsDictionary,wiki,result.nameDictionary);
+    };
     const session=createSession({
       read:async key=>getSaved(key==='scan'?scanKey:key),
       write:async (key,value)=>setSaved(key==='scan'?scanKey:key,value),
       check:async()=>{
-        const m=JSON.parse(await fetchText(DATA_URL+'manifest.json','no-store'));
+        const url=new URL('manifest.json',DATA_URL);
+        url.searchParams.set('t',String(Math.floor(Date.now()/TRANSLATION_CHECK_INTERVAL_MS)));
+        const m=JSON.parse(await fetchText(url.href,'no-store'));
         if(m.schema!==1||typeof m.translationVersion!=='string'||! /^[a-f0-9]{64}$/.test(m.translationHash)||m.file!=='ko.json')throw Error('Invalid manifest');
         return m;
       },
@@ -258,12 +267,20 @@ export async function startBrowser(embedded,engineVersion){
       },
       verify:async (pack,m)=>await sha256(JSON.stringify(pack))===m.translationHash,
       scan:pack=>scanPack(main,pack),
+      onUpdate:applyPack,
       notify:state=>{translationState=state;renderStatus();}
     });
     const activePack=await session.start({navigationType:performance.getEntriesByType('navigation')[0]?.type??'navigate',build:main.build});
     const result=session.getScanResult();
-    if(result?.dictionary)installLanguageAdapter(result.dictionary,engineVersion,result.newsDictionary,wikiTranslationLookup(activePack),result.nameDictionary);
-    setInterval(()=>{void session.poll();},UPDATE_INTERVAL_MS);
+    if(result?.dictionary)applyPack(activePack,result);
+    let lastCheck=Date.now();
+    const checkTranslation=()=>{
+      if(Date.now()-lastCheck<5000)return;
+      lastCheck=Date.now();void session.poll();
+    };
+    setInterval(checkTranslation,TRANSLATION_CHECK_INTERVAL_MS);
+    window.addEventListener('focus',checkTranslation);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkTranslation();});
   }catch(error){
     translationState={scanFailed:true};renderStatus();
     console.warn('[RO Korean] Initialization failed',error);

@@ -27,19 +27,28 @@ test('only same-version reload skips scan',()=>{
  assert.equal(shouldScan({...base,navigationType:'reload',previous:null}),true);
  assert.equal(UPDATE_INTERVAL_MS,3600000);
 });
-test('download pending update silently without changing active translation or repeating scan',async()=>{
- const cache=new Map();let scans=0,latest='0.3.1',fail=false,notice;
- const session=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>{if(fail)throw Error('offline');return {translationHash:latest,translationVersion:latest}},download:async m=>m.translationHash,verify:async()=>true,scan:async()=>{scans++;return {hasMissing:true}},notify:v=>notice=v});
- assert.equal(await session.start({navigationType:'navigate',build:'build'}), '0.3.1');
+test('verified changes apply live once without rescanning unchanged data',async()=>{
+ const cache=new Map();let scans=0,latest='0.3.1',fail=false,notice,applied=[],downloads=0;
+ const session=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>{if(fail)throw Error('offline');return {translationHash:latest,translationVersion:latest}},download:async m=>{downloads++;return m.translationHash;},verify:async()=>true,scan:async pack=>{scans++;return {hasMissing:pack==='0.3.1'}},notify:v=>notice=v,onUpdate:async(pack,result)=>applied.push([pack,result.translationVersion])});
+ assert.equal(await session.start({navigationType:'navigate',build:'build'}),'0.3.1');
  assert.equal(scans,1);assert.equal(notice.hasMissing,true);
- latest='0.3.2';await session.poll();assert.equal(stateLabel(notice),'일부 미번역');assert.equal(Object.hasOwn(notice,'updateReady'),false);
- assert.equal(cache.get('translation').version,'0.3.2');
- fail=true;await session.poll();assert.equal(cache.get('translation').version,'0.3.2');assert.equal(stateLabel(notice),'일부 미번역');
- assert.equal(scans,1);
+ latest='0.3.2';await session.poll();
+ assert.deepEqual(applied,[['0.3.2','0.3.2']]);
+ assert.equal(stateLabel(notice),'');assert.equal(cache.get('translation').version,'0.3.2');
+ await session.poll();fail=true;await session.poll();
+ assert.equal(scans,2);assert.equal(downloads,2);assert.equal(applied.length,1);
  const reloaded=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>{throw Error('offline')},download:async()=>null,verify:async()=>true,scan:async()=>{scans++;return {hasMissing:false}},notify:v=>notice=v});
  assert.equal(await reloaded.start({navigationType:'reload',build:'build'}),'0.3.2');
- assert.equal(stateLabel(notice),'');
  assert.equal(scans,2);
+});
+
+test('failed live application retries verified cached data without downloading twice',async()=>{
+ const cache=new Map();let latest='0.3.1',downloads=0,attempts=0;
+ const session=createSession({read:async k=>cache.get(k),write:async(k,v)=>cache.set(k,v),check:async()=>({translationHash:latest,translationVersion:latest}),download:async m=>{downloads++;return m.translationHash},verify:async()=>true,scan:async()=>({dictionary:{}}),notify:()=>{},onUpdate:()=>{if(++attempts===1)throw Error('refresh failed')}});
+ await session.start({navigationType:'navigate',build:'build'});
+ latest='0.3.2';await session.poll();assert.equal(cache.get('scan').translationVersion,'0.3.1');
+ await session.poll();assert.equal(cache.get('scan').translationVersion,'0.3.2');
+ assert.equal(attempts,2);assert.equal(downloads,2);
 });
 
 test('Unicode and single-quoted source strings are parsed',()=>{

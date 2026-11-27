@@ -15,6 +15,9 @@ test('inventory gear composition uses verified names and preserves refine and un
   assert.equal(translate('+7 Sword Mace of Strength'),'+7 힘의 소드 메이스');
   assert.equal(translate('  +9 Tidal Shoes Unknown affix  '),'  +9 타이달 슈즈 Unknown affix  ');
   assert.equal(translate('Sword'),'소드');
+  assert.equal(translate('+7 Sword of Strength [2]',true),'+7 힘의 소드 [2]');
+  assert.equal(translate('Sword Unknown affix',true),'Sword Unknown affix');
+  assert.equal(translate('Sword of Strength',true),'힘의 소드');
   assert.equal(translate('Swordfish Unknown affix'),'Swordfish Unknown affix');
   assert.equal(translate('+7 힘의 소드 메이스'),'+7 힘의 소드 메이스');
   assert.equal(translate('Unknown item of Power'),'Unknown item of Power');
