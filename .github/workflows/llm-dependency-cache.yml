@@ -31,6 +31,8 @@ jobs:
         uses: ./benchmark/.github/actions/llm-dependencies
         with:
           reference-dir: reference
+      - name: Independent translation and evaluation Mock tests
+        run: python benchmark/tools/colab-benchmark-test.py -v
       - name: Confirm dependency preparation
         run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
   restore-test:

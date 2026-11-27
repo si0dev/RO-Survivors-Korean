@@ -34,6 +34,8 @@ jobs:
         uses: ./benchmark/.github/actions/llm-dependencies
         with:
           reference-dir: reference
+      - name: Independent translation contract and evaluation tests
+        run: python benchmark/tools/colab-benchmark-test.py -v
       - name: Extract and select approved reference pairs
         shell: bash
         run: |
@@ -178,8 +180,9 @@ jobs:
           assert len(inputs)==200 and all("reference" not in row for row in inputs)
           root=pathlib.Path("benchmark/tools")
           body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
-          for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"):
+          for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py","colab-benchmark-translate.py"):
               body+=(root/name).read_text()+"\n"
+          body+="\ntranslate_samples(INPUTS,base)\n"
           compile(body,"benchmark.py","exec")
           pathlib.Path(sys.argv[2]).write_text(body)
           PY
@@ -195,6 +198,13 @@ jobs:
                           d,_=json.JSONDecoder().raw_decode(line.split(marker,1)[1])
                           print(marker+json.dumps({k:d[k] for k in keys}))
                       except (ValueError,KeyError,TypeError): pass
+                  if "TRANSLATION_ERROR=" in line:
+                      try:
+                          d,_=json.JSONDecoder().raw_decode(line.split("TRANSLATION_ERROR=",1)[1])
+                          if re.fullmatch(r"\d{3}",d["id"]) and d["kind"] in ("HTTP_TIMEOUT","HTTP_CONNECTION","HTTP_TRANSPORT","HTTP_STATUS","RESPONSE_SCHEMA"):
+                              print("TRANSLATION_ERROR="+json.dumps({k:d[k] for k in ("id","attempt","kind","status","retryable")}))
+                      except (ValueError,KeyError,TypeError): pass
+                  if re.fullmatch(r"TRANSLATION_START 200|TRANSLATION_PROGRESS \d+/200 \d+(?:\.\d+)?|BENCHMARK_DONE",line.strip()): print(line.strip())
                   if "LOCAL_MODEL_COPY=" in line:
                       try:
                           d,_=json.JSONDecoder().raw_decode(line.split("LOCAL_MODEL_COPY=",1)[1])
@@ -220,7 +230,17 @@ jobs:
                       if category in line: print("Diagnostic category: "+category)
           PY
           # EXIT trap handles session release and verifies zero even on failure.
-          if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
+          if [ "$rc" != 0 ]; then
+            python - "$tmp/translation.log" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],errors="replace").read()
+          print("TRANSLATION_RESULTS_RECEIVED="+str(len(re.findall(r"BENCHMARK_RESULT=",s))))
+          for category in ("TranslationFailure","ReadTimeout","ConnectionError","HTTPError","TimeoutError","RuntimeError","KeyError","TypeError","ValueError","WebSocketTimeoutException","WebSocketConnectionClosedException"):
+              if re.search(r"\b"+category+r"\b",s): print("TRANSLATION_EXCEPTION="+category)
+          PY
+            echo "translation: FAIL (exit $rc)"
+            exit "$rc"
+          fi
           grep -qx BENCHMARK_DONE "$tmp/translation.log" || { echo "Benchmark completion marker missing"; exit 1; }
           python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
       - name: Remove temporary benchmark source data
