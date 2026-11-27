@@ -78,6 +78,10 @@ jobs:
             const scoped=await sourceSnapshot({kind:'main',url:mainFile.url,build:snapshot.build,content:code},async url=>files.find(f=>f.url===url)?.content??await get(url));
             const {buildScanDictionary}=await import('./src/browser.mjs');
             const dictionary=buildScanDictionary(await Promise.all(scoped.rows.map(identify)),[],records).dictionary;
+            const definitions=[...shared.content.matchAll(/(?:const\s+|let\s+|var\s+|[,;])Au=\{/g)];
+            for(const m of definitions)console.log('AFFIX_DEFINITIONS '+shared.content.slice(m.index,m.index+4200));
+            const suffixes=[...shared.content.matchAll(/\bsuffix\s*:\s*["']([^"']+)["']/g)].map(m=>m[1]);
+            console.log('AFFIX_COVERAGE '+JSON.stringify([...new Set(suffixes)].map(s=>({source:s,ko:dictionary[s]??null}))));
             console.log('AFFIX_TRANSLATIONS '+JSON.stringify(Object.entries(dictionary).filter(([key])=>/^(of |de |del )/i.test(key))));
 
           }
