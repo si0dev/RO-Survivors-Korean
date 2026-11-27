@@ -21,7 +21,7 @@ try:
     stage="fuse_device"
     assert pathlib.Path("/dev/fuse").exists()
     stage="mount"
-    mount_proc=subprocess.Popen(["rclone","--config",CONFIG,"mount","rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1",str(MOUNT),"--read-only","--vfs-cache-mode","off"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    mount_proc=subprocess.Popen(["rclone","--config",CONFIG,"mount","rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1",str(MOUNT),"--read-only","--vfs-cache-mode","off"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     for _ in range(60):
         if os.path.ismount(MOUNT): break
         assert mount_proc.poll() is None

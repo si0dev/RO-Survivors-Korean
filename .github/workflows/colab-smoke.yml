@@ -60,7 +60,7 @@ jobs:
         shell: bash
         env:
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
-          RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG }}
+          RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG_V2 }}
         run: |
           set -euo pipefail
           umask 077
@@ -126,6 +126,7 @@ jobs:
           cfg=configparser.ConfigParser(interpolation=None)
           cfg.read_string(os.environ["RCLONE_CONFIG_SECRET"])
           assert cfg.sections()==["rocache"] and cfg["rocache"]["type"]=="drive" and cfg["rocache"]["scope"]=="drive.file"
+          assert all(cfg["rocache"].get(k) for k in ("client_id","client_secret")), "Personal OAuth client credentials missing"
           t=json.loads(cfg["rocache"]["token"])
           assert t.get("refresh_token")
           t["expiry"]="2000-01-01T00:00:00Z"
@@ -133,6 +134,7 @@ jobs:
           with (p/"drive.conf").open("w") as f: cfg.write(f)
           PY
           unset RCLONE_CONFIG_SECRET
+          check drive-personal-auth 120 rclone --config "$tmp/drive.conf" lsjson rocache: --dirs-only --max-depth 1
           python -m py_compile benchmark/tools/colab-cache-populate.py benchmark/tools/colab-cache-mount.py benchmark/tools/colab-benchmark-cache.py benchmark/tools/colab-benchmark-model.py
           python benchmark/tools/colab-cache-populate.py | tee "$tmp/cache-prepare.log"
           check auth 90 "${cli[@]}" sessions
@@ -146,7 +148,7 @@ jobs:
           c["rocache"]["token"]=json.dumps(t)
           with (p/"drive.conf").open("w") as f: c.write(f)
           PY
-          check drive-refresh 120 rclone --config "$tmp/drive.conf" lsjson rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1 --files-only
+          check drive-refresh 120 rclone --config "$tmp/drive.conf" lsjson rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1 --files-only
           python - <<'PY'
           import configparser,json,os,pathlib,datetime
           p=pathlib.Path(os.environ["RO_CACHE_TMP"])
@@ -155,7 +157,7 @@ jobs:
           expiry=datetime.datetime.fromisoformat(t["expiry"].replace("Z","+00:00"))
           assert (expiry-datetime.datetime.now(datetime.timezone.utc)).total_seconds()>1800
           short=configparser.ConfigParser(interpolation=None)
-          short["rocache"]={"type":"drive","scope":"drive.file","token":json.dumps({k:t[k] for k in ("access_token","token_type","expiry")})}
+          short["rocache"]={"type":"drive","scope":"drive.file","client_id":c["rocache"]["client_id"],"token":json.dumps({k:t[k] for k in ("access_token","token_type","expiry")})}
           with (p/"short.conf").open("w") as f: short.write(f)
           PY
           check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG"

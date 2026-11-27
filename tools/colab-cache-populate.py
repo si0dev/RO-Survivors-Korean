@@ -3,7 +3,7 @@ import hashlib,json,os,pathlib,subprocess,time,requests,traceback,re
 TAG="b12343"
 REPO="IndexTeam/Index-Translate-9B-GGUF"
 MODEL="Index-Translate-9B.Q6_K.gguf"
-REMOTE="rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1"
+REMOTE="rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1"
 tmp=pathlib.Path(os.environ["RO_CACHE_TMP"])
 conf=tmp/"drive.conf"
 def rc(*args,limit=120):
