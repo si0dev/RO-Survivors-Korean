@@ -70,36 +70,7 @@ jobs:
             curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/SHA256SUMS -o SHA256SUMS
             curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/rclone-v1.70.3-linux-amd64.zip -o rclone-v1.70.3-linux-amd64.zip
           fi
-          grep -E '[[:space:]]\*?rclone-v1\.70\.3-linux-amd64\.zip
-        run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
-  restore-test:
-    needs: prepare
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          path: benchmark
-      - uses: actions/checkout@v4
-        with:
-          ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
-          persist-credentials: false
-          path: reference
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Restore and install LLM CI dependencies
-        uses: ./benchmark/.github/actions/llm-dependencies
-        with:
-          reference-dir: reference
-          browser: 'false'
-      - name: Confirm dependency restore
-        run: echo "LLM_DEPENDENCY_RESTORE_TEST_DONE"
- SHA256SUMS | sha256sum -c -
+          grep -E '[[:space:]]\*?rclone-v1\.70\.3-linux-amd64\.zip$' SHA256SUMS | sha256sum -c -
       - name: Save pinned rclone archive
         if: steps.rclone.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
