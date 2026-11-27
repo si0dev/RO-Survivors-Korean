@@ -42,6 +42,7 @@ jobs:
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
           python benchmark/tools/colab-benchmark-kernel-test.py -v
+          bash benchmark/tools/colab-benchmark-recover-test.sh
       - name: Prepare fixed approved reference pairs offline
         shell: bash
         run: node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
@@ -138,13 +139,23 @@ jobs:
           timeout 180 python benchmark/tools/colab-session-cleanup.py PRE
           # Verify and repair the cache on the runner before reserving GPU time.
           check cache-preflight 2400 python benchmark/tools/colab-cache-populate.py
-          python benchmark/tools/colab-benchmark-checkpoint.py prepare "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp"
-          if [ -f "$tmp/checkpoint-complete" ]; then
-            echo "CHECKPOINT_COMPLETE_NO_GPU"
-            python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
-            exit 0
-          fi
+          restore_checkpoint() {
+            rm -f "$tmp/checkpoint-complete"
+            python benchmark/tools/colab-benchmark-checkpoint.py prepare "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp"
+          }
+          checkpoint_count() {
+            python -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$tmp/resume.json"
+          }
+          release_session() {
+            timeout 60 "${cli[@]}" stop -s "$gpu" >"$tmp/stop.log" 2>&1 </dev/null || true
+            timeout 180 python benchmark/tools/colab-session-cleanup.py POST
+            allocation_started=0
+            rm -f "$tmp/sessions.json"
+          }
+          run_session() {
           allocation_started=1
+          gpu="ro-translate-$GITHUB_RUN_ID-$1"
+          export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$1.conf"
           # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
           # The CLI handles its own bounded retries of transient server failures.
           export COLAB_CLI_ASSIGN_RETRIES=3
@@ -185,9 +196,17 @@ jobs:
           compile(body,"benchmark.py","exec")
           pathlib.Path(sys.argv[2]).write_text(body)
           PY
-          rc=0
+          session_rc=0
           touch "$tmp/translation.log"
-          timeout 5700 python benchmark/tools/colab-benchmark-checkpoint.py collect "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp" "$gpu" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" </dev/null || rc=$?
+          local remaining=$(($2-SECONDS))
+          if [ "$remaining" -le 0 ]; then session_rc=124; return 0; fi
+          if [ "$remaining" -gt 5700 ]; then remaining=5700; fi
+          timeout "$remaining" python benchmark/tools/colab-benchmark-checkpoint.py collect "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp" "$gpu" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" </dev/null || session_rc=$?
+          }
+          source benchmark/tools/colab-benchmark-recover.sh
+          # Invoke normally so shell errexit remains active within each callback.
+          recover_benchmark
+          rc=0
           python - "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:

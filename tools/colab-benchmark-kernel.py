@@ -9,6 +9,7 @@ import importlib.util
 import json
 import pathlib
 import re
+import subprocess
 import time
 import uuid
 ROOT=pathlib.Path(__file__).resolve().parent
@@ -23,14 +24,33 @@ def assignment_count():
     from colab_cli.common import state
     state.auth_provider=AuthProvider.ADC
     return len(state.client.list_assignments())
+def invoke(args,limit):
+    # Preserve complete result records even when the command times out.
+    try:
+        p=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,text=True,errors="replace",timeout=limit)
+        return p.returncode,p.stdout+"\n"+p.stderr
+    except subprocess.TimeoutExpired as exc:
+        def decode(value):
+            return value.decode("utf-8",errors="replace") if isinstance(value,bytes) else value or ""
+        return 124,decode(exc.stdout)+"\n"+decode(exc.stderr)+"\nTimeoutError\n"
 def report_failure(phase,raw,probe,emit):
-    emit("COLAB_KERNEL_FAILURE="+phase+":"+transport.classify(raw),flush=True)
+    category=transport.classify(raw)
+    emit("COLAB_KERNEL_FAILURE="+phase+":"+category,flush=True)
+    count=None
     try:
         count=probe()
         emit("COLAB_FAILURE_ACTIVE_ASSIGNMENTS="+str(count),flush=True)
     except Exception as exc:
         emit("COLAB_FAILURE_ASSIGNMENT_QUERY_FAILED="+type(exc).__name__,flush=True)
-def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=transport.invoke,probe=assignment_count,emit=print,batch_size=4):
+    # Respect quota, access restrictions and deterministic local failures.
+    if re.search(r"invalid_grant|invalid_scope|quota exceeded|usage limit|compute units|resource exhausted|rate limit|\b429\b|permission denied|access denied|CACHE_(?:NOT_READY|SIZE_MISMATCH)|HASH_MISMATCH|ENGINE_(?:ASSET_UNAVAILABLE|ARGUMENTS_FAILED|DEPENDENCY_FAILED|OPTION_UNAVAILABLE)|FULL_GPU_OFFLOAD_UNCONFIRMED|GPU_MODEL_MEMORY_NOT_VERIFIED",raw,re.I):
+        return 1
+    if category=="AUTH":
+        return 1
+    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT"):
+        return 75
+    return 1
+def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,probe=assignment_count,emit=print,batch_size=4):
     log=pathlib.Path(log)
     log.write_text("",encoding="utf-8")
     nonce=uuid.uuid4().hex
@@ -65,8 +85,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=transport.i
     rc,raw=execute(init,1800)
     append(raw)
     if rc or ready not in raw.splitlines():
-        report_failure("INIT",raw,probe,emit)
-        return 1
+        return report_failure("INIT",raw,probe,emit)
     emit("COLAB_KERNEL_MODEL_READY",flush=True)
     start=time.monotonic()
     for i in range(0,len(pending),batch_size):
@@ -102,8 +121,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=transport.i
         # Don't re-submit a potentially still-running batch. Stop and preserve
         # all acknowledged results if the backend or transport failed.
         if rc or done not in raw.splitlines() or set(new)!={r["id"] for r in batch}:
-            report_failure("BATCH",raw,probe,emit)
-            return 1
+            return report_failure("BATCH",raw,probe,emit)
     if set(saved)!=ids:
         raise RuntimeError("CHECKPOINT_INCOMPLETE")
     append("BENCHMARK_DONE")

@@ -42,12 +42,18 @@ class KernelTests(unittest.TestCase):
         self.assertFalse(probes)
     def test_lost_batch_ack_saves_received_rows_and_reports_backend_count(self):
         rc,log,store,kernel,out,probes=self.execute({},2)
-        self.assertEqual(rc,1)
+        self.assertEqual(rc,75)
         self.assertEqual(len(store.snapshots[-1]),4)
         self.assertEqual(len(kernel.calls),2)
         self.assertEqual(probes,[0])
         self.assertIn("COLAB_FAILURE_ACTIVE_ASSIGNMENTS=0",out)
         self.assertNotIn("BENCHMARK_DONE",log)
+    def test_quota_and_permanent_errors_do_not_reallocate(self):
+        emit=lambda *a,**kw:None
+        for raw in ("quota exceeded","invalid_grant","permission denied","LOCAL_MODEL_HASH_MISMATCH"):
+            self.assertEqual(k.report_failure("INIT",raw,lambda:0,emit),1)
+        self.assertEqual(k.report_failure("BATCH","File or directory not found",lambda:1,emit),75)
+        self.assertEqual(k.report_failure("INIT","unknown error",lambda:1,emit),1)
     def test_completed_benchmark_does_not_contact_kernel(self):
         saved={row(i)["id"]:row(i) for i in range(1,201)}
         rc,log,store,kernel,out,probes=self.execute(saved)
