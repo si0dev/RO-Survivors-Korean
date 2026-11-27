@@ -34,8 +34,8 @@ export function createGearNameTranslator(names,lookup){
       if(body!==name&&!body.startsWith(name+' '))continue;
       const rest=body.slice(name.length);
       const suffix=rest.trim();
-      const translated=suffix?lookup(suffix):undefined;
-      const next=refine+ko+(translated===undefined?rest:rest.replace(suffix,()=>translated));
+      const translated=suffix&&Object.hasOwn(names,suffix)?names[suffix]:undefined;
+      const next=refine+(translated&&suffix.startsWith('of ')?translated+' '+ko:ko+rest);
       return value.replace(source,()=>next);
     }
     return value;
