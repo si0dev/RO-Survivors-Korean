@@ -1,4 +1,4 @@
-name: Colab Index-Translate Q6_K benchmark (temporary)
+name: Colab cached Index-Translate Q6_K benchmark (temporary)
 on:
   pull_request:
     branches: [main]
@@ -6,11 +6,14 @@ on:
       - '.github/workflows/colab-smoke.yml'
 permissions:
   contents: read
+concurrency:
+  group: ro-colab-drive-cache-benchmark
+  cancel-in-progress: false
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 100
+    timeout-minutes: 140
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -58,7 +61,17 @@ jobs:
           set -euo pipefail
           umask 077
           tmp=$(mktemp -d)
-          trap 'rm -rf "$tmp"' EXIT
+          export XDG_CONFIG_HOME="$tmp/config"
+          cli=(colab --auth=adc --config "$tmp/sessions.json")
+          cpu="ro-cache-$GITHUB_RUN_ID"
+          gpu="ro-translate-$GITHUB_RUN_ID"
+          cleanup() {
+            for session in "$cpu" "$gpu"; do
+              timeout 60 "${cli[@]}" stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null || true
+            done
+            rm -rf "$tmp"
+          }
+          trap cleanup EXIT
           export GOOGLE_APPLICATION_CREDENTIALS="$tmp/adc.json"
           python - <<'PY'
           import os,json
@@ -102,27 +115,48 @@ jobs:
               exit "$rc"
             fi
           }
-          check auth 90 colab --auth=adc sessions
+          check auth 90 "${cli[@]}" sessions
+          check cache-session 120 "${cli[@]}" new -s "$cpu"
+          check cache-mount 120 "${cli[@]}" drivemount -s "$cpu" /content/drive
+          cp benchmark/tools/colab-benchmark-cache.py "$tmp/cache.py"
+          printf '\npopulate()\nfrom google.colab import drive as colab_drive\ncolab_drive.flush_and_unmount()\nprint("CACHE_FLUSHED",flush=True)\n' >>"$tmp/cache.py"
+          check cache-prepare 2400 "${cli[@]}" exec -s "$cpu" -f "$tmp/cache.py"
+          grep -q CACHE_FLUSHED "$tmp/cache-prepare.log" || { echo "Cache flush not confirmed"; exit 1; }
+          check cache-stop 90 "${cli[@]}" stop -s "$cpu"
+          check gpu-session 180 "${cli[@]}" new -s "$gpu" --gpu T4
+          check gpu-mount 120 "${cli[@]}" drivemount -s "$gpu" /content/drive
           python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
           import json,sys
           inputs=json.load(open(sys.argv[1]))
           assert len(inputs)==200 and all("reference" not in row for row in inputs)
+          cache=open("benchmark/tools/colab-benchmark-cache.py").read()
           code=open("benchmark/tools/colab-benchmark-model.py").read()
-          # JSON is embedded as a Python string literal, never executed as source.
-          open(sys.argv[2],"w").write("import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\n"+code)
+          open(sys.argv[2],"w").write("import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\n"+cache+"\n"+code)
           PY
-          check translation 5100 colab --auth=adc run --gpu T4 --timeout 4800 "$tmp/benchmark.py"
-          python - "$tmp/translation.log" <<'PY'
-          import json,sys
-          for line in open(sys.argv[1],errors="replace"):
-              if "INDEX_GPU_DIAGNOSTIC=" not in line: continue
-              try:
-                  d,_=json.JSONDecoder().raw_decode(line.split("INDEX_GPU_DIAGNOSTIC=",1)[1])
-                  keys=("offloads","server_gpu_mib","gpu_free_mib","gpu_total_mib","cuda_model_buffers_mib","cuda_log_seen")
-                  print("GPU_DIAGNOSTIC "+json.dumps({k:d[k] for k in keys}))
-              except (ValueError,KeyError,TypeError): pass
+          rc=0
+          timeout 5100 "${cli[@]}" exec -s "$gpu" -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
+          python - "$tmp/cache-prepare.log" "$tmp/translation.log" <<'PY'
+          import json,sys,re
+          for path in sys.argv[1:]:
+              for line in open(path,errors="replace"):
+                  for marker,keys in (("CACHE_PREPARED=",("mode","bytes","seconds")),("CACHE_REUSED=",("mode","model_direct","model_bytes","engine_unpack_seconds")),("INDEX_GPU_DIAGNOSTIC=",("offloads","server_gpu_mib","gpu_free_mib","gpu_total_mib","cuda_model_buffers_mib","cuda_log_seen"))):
+                      if marker not in line: continue
+                      try:
+                          d,_=json.JSONDecoder().raw_decode(line.split(marker,1)[1])
+                          print(marker+json.dumps({k:d[k] for k in keys}))
+                      except (ValueError,KeyError,TypeError): pass
+                  m=re.search(r"MODEL_LOAD_SECONDS (\d+(?:\.\d+)?)",line)
+                  if m: print("MODEL_LOAD_SECONDS "+m.group(1))
+                  if "INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED" in line: print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED")
+                  m=re.search(r"INDEX_FULL_GPU_OFFLOAD (\d+/\d+)",line)
+                  if m: print("INDEX_FULL_GPU_OFFLOAD "+m.group(1))
+                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
+                      if category in line: print("Diagnostic category: "+category)
           PY
-          check postrun-auth 90 colab --auth=adc sessions
+          check gpu-stop 90 "${cli[@]}" stop -s "$gpu"
+          if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
+          grep -q BENCHMARK_DONE "$tmp/translation.log" || { echo "Benchmark completion marker missing"; exit 1; }
+          echo "translation: PASS"
           python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
       - name: Remove temporary benchmark source data
         if: always()

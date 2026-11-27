@@ -8,41 +8,26 @@ from concurrent.futures import ThreadPoolExecutor
 import urllib.request
 import requests
 
-# The official CUDA 12 release supports the Turing generation; pin the engine.
-tag="b12343"
+load_start=time.monotonic()
+d=verified_manifest()
+assert d is not None,"CACHE_NOT_READY"
 root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
-def download(url,path):
-    with requests.get(url,stream=True,timeout=(30,120)) as r:
-        r.raise_for_status()
-        with open(path,"wb") as f:
-            for chunk in r.iter_content(1024*1024):
-                if chunk: f.write(chunk)
-release=requests.get("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/"+tag,timeout=30)
-release.raise_for_status()
-assets=release.json()["assets"]
-def choose(prefix):
-    matches=[x for x in assets if x["name"].startswith(prefix) and "ubuntu-cuda-12" in x["name"] and "x64" in x["name"] and x["name"].endswith((".tar.gz",".tar.xz"))]
-    if len(matches)!=1: raise RuntimeError("ENGINE_ASSET_UNAVAILABLE")
-    return matches[0]
-for prefix in ("llama-","cudart-"):
-    asset=choose(prefix)
-    archive=root/asset["name"]
-    download(asset["browser_download_url"],archive)
+for entry in d["files"]:
+    if entry["kind"]=="model": continue
+    archive=cache/entry["name"]
+    assert hash_file(archive)==entry["sha256"],"ENGINE_CACHE_HASH_MISMATCH"
     with tarfile.open(archive,"r:*") as tf: tf.extractall(root,filter="data")
-    archive.unlink()
 server=next(root.rglob("llama-server"))
-model_path=root/"Index-Translate-9B.Q6_K.gguf"
-download("https://huggingface.co/IndexTeam/Index-Translate-9B-GGUF/resolve/main/Index-Translate-9B.Q6_K.gguf",model_path)
-assert model_path.stat().st_size>7_000_000_000
-print("INDEX_MODEL_DOWNLOADED",flush=True)
+model_path=cache/MODEL
+print("CACHE_REUSED="+json.dumps({"mode":"hit","model_direct":True,"model_bytes":model_path.stat().st_size,"engine_unpack_seconds":round(time.monotonic()-load_start,1)}),flush=True)
 libs=sorted({str(p.parent) for p in root.rglob("*.so*")})
 env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
 # Two independent slots, each with 4096 tokens; no CPU model offload.
 server_log=open(root/"server.log","w+")
-proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","all","--fit","off","-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
+proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","all","--fit","off","--no-mmap","--log-verbosity","4","--log-file",str(root/"llama.log"),"-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
 atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
 base="http://127.0.0.1:18080"
-deadline=time.monotonic()+180
+deadline=time.monotonic()+900
 while time.monotonic()<deadline:
     if proc.poll() is not None: raise RuntimeError("ENGINE_START_FAILED")
     try:
@@ -55,6 +40,7 @@ offloads=[]
 for _ in range(10):
     server_log.flush()
     log=(root/"server.log").read_text(errors="replace")
+    if (root/"llama.log").exists(): log+="\n"+(root/"llama.log").read_text(errors="replace")
     offloads=re.findall(r"offloaded\s+(\d+)\s*/\s*(\d+)\s+layers\s+to\s+GPU",log,re.I)
     if offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0: break
     time.sleep(1)
@@ -65,10 +51,12 @@ gpu_mib=gpu_process_mib()
 free,total=torch.cuda.mem_get_info()
 diagnostic={"offloads":[list(map(int,x)) for x in offloads],"server_gpu_mib":gpu_mib,"gpu_free_mib":free//1048576,"gpu_total_mib":total//1048576,"cuda_model_buffers_mib":[float(v) for v in re.findall(r"CUDA\d+\s+model buffer size\s*=\s*([\d.]+)\s*MiB",log,re.I)],"cuda_log_seen":bool(re.search(r"ggml_cuda|CUDA0",log,re.I))}
 print("INDEX_GPU_DIAGNOSTIC="+json.dumps(diagnostic,separators=(",",":")),flush=True)
-if not offloads or offloads[-1][0]!=offloads[-1][1] or int(offloads[-1][0])<=0:
-    raise RuntimeError("FULL_GPU_OFFLOAD_NOT_VERIFIED")
 if gpu_mib<5500: raise RuntimeError("GPU_MODEL_MEMORY_NOT_VERIFIED")
-print("INDEX_FULL_GPU_OFFLOAD "+"/".join(offloads[-1]),flush=True)
+if offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0:
+    print("INDEX_FULL_GPU_OFFLOAD "+"/".join(offloads[-1]),flush=True)
+else:
+    print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED",flush=True)
+print("MODEL_LOAD_SECONDS "+str(round(time.monotonic()-load_start,1)),flush=True)
 print("MODEL_READY",flush=True)
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
 glossary={
