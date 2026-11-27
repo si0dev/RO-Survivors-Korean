@@ -10,6 +10,9 @@ import json
 import pathlib
 import re
 import subprocess
+import queue
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 import uuid
 ROOT=pathlib.Path(__file__).resolve().parent
@@ -24,15 +27,36 @@ def assignment_count():
     from colab_cli.common import state
     state.auth_provider=AuthProvider.ADC
     return len(state.client.list_assignments())
-def invoke(args,limit):
-    # Preserve complete result records even when the command times out.
-    try:
-        p=subprocess.run(args,stdin=subprocess.DEVNULL,capture_output=True,text=True,errors="replace",timeout=limit)
-        return p.returncode,p.stdout+"\n"+p.stderr
-    except subprocess.TimeoutExpired as exc:
-        def decode(value):
-            return value.decode("utf-8",errors="replace") if isinstance(value,bytes) else value or ""
-        return 124,decode(exc.stdout)+"\n"+decode(exc.stderr)+"\nTimeoutError\n"
+def invoke(args,limit,on_line=None):
+    lines=[]
+    q=queue.Queue()
+    with subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT,text=True,errors="replace",bufsize=1) as p:
+        def reader():
+            try:
+                for line in p.stdout: q.put(line)
+            finally: q.put(None)
+        t=threading.Thread(target=reader,daemon=True);t.start()
+        deadline=time.monotonic()+limit
+        try:
+            while True:
+                remaining=deadline-time.monotonic()
+                if remaining<=0: raise subprocess.TimeoutExpired(args,limit)
+                try: line=q.get(timeout=min(remaining,10))
+                except queue.Empty: continue
+                if line is None: break
+                lines.append(line)
+                if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
+            return p.wait(timeout=max(0.1,deadline-time.monotonic())),"".join(lines)
+        except subprocess.TimeoutExpired:
+            p.kill();p.wait()
+            return 124,"".join(lines)+"\nTimeoutError\n"
+        finally:
+            if p.poll() is None: p.kill();p.wait()
+            t.join(timeout=5)
+def safe_progress(line,emit):
+    if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart))",line):
+        emit(line,flush=True)
 def report_failure(phase,raw,probe,emit):
     category=transport.classify(raw)
     emit("COLAB_KERNEL_FAILURE="+phase+":"+category,flush=True)
@@ -43,11 +67,11 @@ def report_failure(phase,raw,probe,emit):
     except Exception as exc:
         emit("COLAB_FAILURE_ASSIGNMENT_QUERY_FAILED="+type(exc).__name__,flush=True)
     # Respect quota, access restrictions and deterministic local failures.
-    if re.search(r"invalid_grant|invalid_scope|quota exceeded|usage limit|compute units|resource exhausted|rate limit|\b429\b|permission denied|access denied|CACHE_(?:NOT_READY|SIZE_MISMATCH)|HASH_MISMATCH|ENGINE_(?:ASSET_UNAVAILABLE|ARGUMENTS_FAILED|DEPENDENCY_FAILED|OPTION_UNAVAILABLE)|FULL_GPU_OFFLOAD_UNCONFIRMED|GPU_MODEL_MEMORY_NOT_VERIFIED",raw,re.I):
+    if re.search(r"invalid_grant|invalid_scope|quota exceeded|usage limit|compute units|resource exhausted|rate limit|\b429\b|permission denied|access denied|CACHE_(?:NOT_READY|SIZE_MISMATCH)|HASH_MISMATCH|ENGINE_(?:ASSET_UNAVAILABLE|ARGUMENTS_FAILED|DEPENDENCY_FAILED|OPTION_UNAVAILABLE)|FULL_GPU_OFFLOAD_UNCONFIRMED|GPU_MODEL_MEMORY_NOT_VERIFIED|RCLONE_BOOTSTRAP_AUTH|LOCAL_MODEL_COPY_(?:AUTH_FAILED|ACCESS_DENIED|QUOTA)|RCLONE_VERSION_MISMATCH",raw,re.I):
         return 1
     if category=="AUTH":
         return 1
-    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT"):
+    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT") or re.search(r"RCLONE_BOOTSTRAP_CONNECTION|LOCAL_MODEL_COPY_TIMEOUT",raw):
         return 75
     return 1
 def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,probe=assignment_count,emit=print,batch_size=4):
@@ -68,10 +92,14 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
             if not s.endswith("\n"): f.write("\n")
     def record(row):
         append("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")))
-    def execute(source,limit):
+    def execute(source,limit,on_line):
         script=log.with_name("kernel-call.py")
         script.write_text(source,encoding="utf-8")
-        return run([*cli,"exec","-s",session,"--timeout",str(limit),"-f",str(script)],limit+30)
+        args=[*cli,"exec","-s",session,"--timeout",str(limit),"-f",str(script)]
+        if run is invoke: return run(args,limit+30,on_line=on_line)
+        rc,raw=run(args,limit+30)
+        for line in raw.splitlines(): on_line(line)
+        return rc,raw
     for row in saved.values(): record(row)
     pending=[r for r in inputs if r["id"] not in saved]
     if not pending:
@@ -82,46 +110,61 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
     init=("ro_bench_ns={'__name__':'__main__'}\n"
         "exec(compile("+repr(worker)+",'benchmark-model.py','exec'),ro_bench_ns)\n"
         "print("+repr(ready)+",flush=True)\n")
-    rc,raw=execute(init,1800)
+    rc,raw=execute(init,1800,lambda line:safe_progress(line,emit))
     append(raw)
     if rc or ready not in raw.splitlines():
         return report_failure("INIT",raw,probe,emit)
     emit("COLAB_KERNEL_MODEL_READY",flush=True)
     start=time.monotonic()
-    for i in range(0,len(pending),batch_size):
-        batch=pending[i:i+batch_size]
-        # Same two-way concurrency and translation contract as the original
-        # worker. Print each completed row, including quality failures.
-        code=("import base64 as ro_b64,json as ro_json\n"
-            "from concurrent.futures import ThreadPoolExecutor as ro_pool\n"
-            "ro_batch=ro_json.loads("+repr(json.dumps(batch,ensure_ascii=False))+")\n"
-            "with ro_pool(max_workers=2) as ro_executor:\n"
-            "    for ro_row in ro_executor.map(lambda r:ro_bench_ns['translate_one'](r,ro_bench_ns['base']),ro_batch):\n"
-            "        print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
-            "print("+repr(done)+",flush=True)\n")
-        rc,raw=execute(code,1500)
-        # Do not print raw outputs or credentials. Decode only nonce-tagged
-        # complete rows. A failed call may still have delivered some results.
-        rows=[]
-        for line in raw.splitlines():
-            m=re.fullmatch(re.escape(prefix)+r"([A-Za-z0-9+/=]+)",line)
-            if m:
-                rows.append(json.loads(base64.b64decode(m[1],validate=True)))
-        new=validate(rows,{r["id"] for r in batch})
-        if set(new)&set(saved):
-            raise RuntimeError("CHECKPOINT_RESULT_CONFLICT")
-        if new:
-            combined={**saved,**new}
-            store.save(combined)
-            saved=combined
-            for row in new.values(): record(row)
-            elapsed=round(time.monotonic()-start,1)
-            append(f"TRANSLATION_PROGRESS {len(saved)}/200 {elapsed}")
+    # At most one outstanding verified snapshot, overlapping the next batch.
+    with ThreadPoolExecutor(max_workers=1) as writer:
+        commit=None
+        for i in range(0,len(pending),batch_size):
+            batch=pending[i:i+batch_size]
+            batch_ids={r["id"] for r in batch}
+            received={}
+            def on_line(line):
+                match=re.fullmatch(re.escape(prefix)+r"([A-Za-z0-9+/=]+)",line)
+                if not match:
+                    safe_progress(line,emit)
+                    return
+                row=json.loads(base64.b64decode(match[1],validate=True))
+                verified=validate([row],batch_ids)
+                if set(verified)&(set(saved)|set(received)):
+                    raise RuntimeError("CHECKPOINT_RESULT_CONFLICT")
+                received.update(verified)
+                emit(f"COLAB_TRANSLATED={len(saved)+len(received)}/200",flush=True)
+            code=("import base64 as ro_b64,json as ro_json\n"
+                "from concurrent.futures import ThreadPoolExecutor as ro_pool,as_completed as ro_completed\n"
+                "ro_batch=ro_json.loads("+repr(json.dumps(batch,ensure_ascii=False))+")\n"
+                "ro_errors=[]\n"
+                "with ro_pool(max_workers=4) as ro_executor:\n"
+                "    ro_futures=[ro_executor.submit(ro_bench_ns['translate_one'],r,ro_bench_ns['base']) for r in ro_batch]\n"
+                "    for ro_future in ro_completed(ro_futures):\n"
+                "        try: ro_row=ro_future.result()\n"
+                "        except Exception as ro_exc: ro_errors.append(ro_exc);continue\n"
+                "        print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
+                "if ro_errors: raise ro_errors[0]\n"
+                "print("+repr(done)+",flush=True)\n")
+            rc,raw=execute(code,1500,on_line)
+            if commit is not None:
+                commit.result()
+                emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)
+                commit=None
+            if received:
+                saved={**saved,**received}
+                for row in received.values(): record(row)
+                elapsed=round(time.monotonic()-start,1)
+                append(f"TRANSLATION_PROGRESS {len(saved)}/200 {elapsed}")
+                commit=writer.submit(store.save,dict(saved))
+            if rc or done not in raw.splitlines() or set(received)!=batch_ids:
+                if commit is not None:
+                    commit.result()
+                    emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)
+                return report_failure("BATCH",raw,probe,emit)
+        if commit is not None:
+            commit.result()
             emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)
-        # Don't re-submit a potentially still-running batch. Stop and preserve
-        # all acknowledged results if the backend or transport failed.
-        if rc or done not in raw.splitlines() or set(new)!={r["id"] for r in batch}:
-            return report_failure("BATCH",raw,probe,emit)
     if set(saved)!=ids:
         raise RuntimeError("CHECKPOINT_INCOMPLETE")
     append("BENCHMARK_DONE")

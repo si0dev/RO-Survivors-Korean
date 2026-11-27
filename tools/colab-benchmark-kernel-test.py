@@ -1,4 +1,4 @@
-import importlib.util,json,pathlib,tempfile,unittest,io,contextlib
+import importlib.util,json,pathlib,tempfile,unittest,io,contextlib,sys,threading
 ROOT=pathlib.Path(__file__).resolve().parent
 def load(name):
     spec=importlib.util.spec_from_file_location(name,ROOT/(name+".py"))
@@ -54,6 +54,33 @@ class KernelTests(unittest.TestCase):
             self.assertEqual(k.report_failure("INIT",raw,lambda:0,emit),1)
         self.assertEqual(k.report_failure("BATCH","File or directory not found",lambda:1,emit),75)
         self.assertEqual(k.report_failure("INIT","unknown error",lambda:1,emit),1)
+    def test_streaming_safe_output_and_timeout(self):
+        seen=[]
+        rc,raw=k.invoke([sys.executable,"-u","-c","import time;print('GPU_READY',flush=True);print('private',flush=True);time.sleep(5)"],1,on_line=lambda line:k.safe_progress(line,lambda s,**kw:seen.append(s)))
+        self.assertEqual(rc,124)
+        self.assertIn("GPU_READY",raw)
+        self.assertEqual(seen,["GPU_READY"])
+    def test_four_way_concurrency_and_asynchronous_checkpoint(self):
+        started=threading.Event()
+        release=threading.Event()
+        class SlowStore(Store):
+            def save(self,rows):
+                if len(rows)==4:
+                    started.set()
+                    if not release.wait(5): raise AssertionError("next batch did not overlap save")
+                super().save(rows)
+        class OverlapKernel(FakeKernel):
+            def run(self,args,limit):
+                if len(self.calls)==2:
+                    if not started.wait(5): raise AssertionError("save did not start")
+                    release.set()
+                return super().run(args,limit)
+        store=SlowStore();kernel=OverlapKernel()
+        with tempfile.TemporaryDirectory() as t:
+            rc=k.collect(["colab"],"test",MODEL,pathlib.Path(t)/"log",INPUTS,{},store,ck.validate_rows,run=kernel.run,probe=lambda:0,emit=lambda *a,**kw:None)
+        self.assertEqual(rc,0)
+        self.assertIn("max_workers=4",kernel.calls[1])
+        self.assertEqual(len(store.snapshots[-1]),200)
     def test_completed_benchmark_does_not_contact_kernel(self):
         saved={row(i)["id"]:row(i) for i in range(1,201)}
         rc,log,store,kernel,out,probes=self.execute(saved)

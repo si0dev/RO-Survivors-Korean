@@ -6,6 +6,9 @@ on:
       - '.github/workflows/llm-dependency-cache.yml'
       - '.github/actions/llm-dependencies/**'
       - 'tools/colab-benchmark-*.py'
+      - 'tools/colab-benchmark-*.sh'
+      - 'tools/colab-cache-mount.py'
+      - '.github/workflows/colab-smoke.yml'
       - 'tools/colab-benchmark-*.mjs'
       - 'tools/colab-benchmark-fixture.json'
       - 'tools/colab-requirements.txt'
@@ -16,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark' || github.event.pull_request.head.ref == 'test/llm-kernel-transport') && github.event.pull_request.user.login == 'si0dev'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark' || github.event.pull_request.head.ref == 'test/llm-kernel-transport' || github.event.pull_request.head.ref == 'test/llm-streaming-optimization') && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -47,8 +50,62 @@ jobs:
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
           python benchmark/tools/colab-benchmark-kernel-test.py -v
           bash benchmark/tools/colab-benchmark-recover-test.sh
+          bash -n benchmark/tools/colab-benchmark-workflow.sh
+          python -m py_compile benchmark/tools/colab-cache-mount.py benchmark/tools/colab-benchmark-cache.py benchmark/tools/colab-benchmark-model.py benchmark/tools/colab-benchmark-bootstrap.py
       - name: Validate frozen sample and reject changed source/reference
         run: node benchmark/tools/colab-benchmark-fixture-check.mjs reference
+      - name: Restore pinned rclone archive
+        id: rclone
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ro-llm/rclone
+          key: ro-rclone-v1.70.3-linux-amd64-v1
+      - name: Verify pinned rclone archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cache/ro-llm/rclone"
+          cd "$HOME/.cache/ro-llm/rclone"
+          if [ ! -s SHA256SUMS ] || [ ! -s rclone-v1.70.3-linux-amd64.zip ]; then
+            curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/SHA256SUMS -o SHA256SUMS
+            curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/rclone-v1.70.3-linux-amd64.zip -o rclone-v1.70.3-linux-amd64.zip
+          fi
+          grep -E '[[:space:]]\*?rclone-v1\.70\.3-linux-amd64\.zip
+        run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
+  restore-test:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: benchmark
+      - uses: actions/checkout@v4
+        with:
+          ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
+          persist-credentials: false
+          path: reference
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore and install LLM CI dependencies
+        uses: ./benchmark/.github/actions/llm-dependencies
+        with:
+          reference-dir: reference
+          browser: 'false'
+      - name: Confirm dependency restore
+        run: echo "LLM_DEPENDENCY_RESTORE_TEST_DONE"
+ SHA256SUMS | sha256sum -c -
+      - name: Save pinned rclone archive
+        if: steps.rclone.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/ro-llm/rclone
+          key: ro-rclone-v1.70.3-linux-amd64-v1
       - name: Confirm dependency preparation
         run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
   restore-test:
