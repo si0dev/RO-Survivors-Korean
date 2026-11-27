@@ -6,11 +6,14 @@ MODEL="Index-Translate-9B.Q6_K.gguf"
 REMOTE="rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1"
 tmp=pathlib.Path(os.environ["RO_CACHE_TMP"])
 conf=tmp/"drive.conf"
-def rc(*args):
-    p=subprocess.run(["rclone","--config",str(conf),"--contimeout","30s","--timeout","180s",*args],capture_output=True,timeout=2400)
+def rc(*args,limit=120):
+    try:
+        p=subprocess.run(["rclone","--config",str(conf),"--contimeout","30s","--timeout","60s","--retries","1","--low-level-retries","3",*args],capture_output=True,timeout=limit)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("RCLONE_FAILED:timeout") from None
     if p.returncode:
         msg=p.stderr.decode(errors="replace").lower()
-        category=next((x for x in ("invalid_grant","invalid_scope","quota","403","401","429","timeout","no space") if x in msg),"other")
+        category=next((x for x in ("invalid_grant","invalid_scope","storagequotaexceeded","userratelimitexceeded","ratelimitexceeded","quota","403","401","429","503","timeout","no space") if x in msg),"other")
         raise RuntimeError("RCLONE_FAILED:"+category)
     return p.stdout
 def metadata():
@@ -36,10 +39,10 @@ def listing():
     return files
 def hashes(row):
     return {re.sub(r"[^a-z0-9]","",k.lower()):v.lower() for k,v in (row.get("Hashes") or {}).items() if isinstance(v,str) and v}
-def file_info(name):
+def file_info(name,size):
     for _ in range(6):
         f=listing().get(name)
-        if f and (hashes(f).get("md5") or hashes(f).get("sha256")): return f
+        if f and f.get("Size")==size: return f
         time.sleep(2)
     return f
 def remote_digest(name):
@@ -63,6 +66,48 @@ def verified_remote(e,f):
     if h.get("sha256") and e.get("sha256"): return h["sha256"]==e["sha256"]
     if h.get("md5") and e.get("md5"): return h["md5"]==e["md5"]
     return False
+# Reuse a successful verification within this process only, and only for the
+# same remote file identity, size and modification time.
+verified_this_run={}
+def identity(f):
+    if not f or not f.get("ID") or not f.get("ModTime"): return None
+    return (f["ID"],f["Size"],f["ModTime"])
+def remember(e,f):
+    key=identity(f)
+    if key is not None: verified_this_run[e["name"]]=(key,e["sha256"],e["md5"])
+def check_existing(e,f):
+    if not f or f.get("Size")!=e["size"]: return False
+    if identity(f) is not None and verified_this_run.get(e["name"])==(identity(f),e["sha256"],e["md5"]): return True
+    if not verified_remote(e,f):
+        h=hashes(f)
+        if h.get("md5") or h.get("sha256"): return False
+        actual=remote_digest(e["name"])
+        if any(actual[k]!=e[k] for k in ("size","sha256","md5")): return False
+    remember(e,f)
+    return True
+def upload_verified(p,e):
+    name=e["name"]
+    limit=900 if e["kind"]=="model" else 300
+    for attempt in range(1,4):
+        print("CACHE_UPLOAD_ATTEMPT",e["kind"],attempt,flush=True)
+        try:
+            rc("copyto",str(p),REMOTE+"/"+name,"--checksum","--drive-chunk-size","8M",limit=limit)
+        except RuntimeError as exc:
+            code=str(exc)
+            print("CACHE_UPLOAD_RETRY",e["kind"],attempt,code,flush=True)
+            # Authentication failures and confirmed quota exhaustion are not transient.
+            if code in ("RCLONE_FAILED:invalid_grant","RCLONE_FAILED:invalid_scope","RCLONE_FAILED:storagequotaexceeded","RCLONE_FAILED:no space","RCLONE_FAILED:401"): raise
+            # A timed-out upload can have committed successfully on the server.
+            f=file_info(name,e["size"])
+            if check_existing(e,f): return
+            if attempt==3: raise
+            time.sleep(15*attempt)
+            continue
+        f=file_info(name,e["size"])
+        if check_existing(e,f): return
+        if attempt==3: raise RuntimeError("UPLOAD_HASH_MISMATCH")
+        print("CACHE_UPLOAD_RETRY",e["kind"],attempt,"verification",flush=True)
+        time.sleep(15*attempt)
 def valid(d,files):
     if d.get("schema")!=2 or d.get("repo")!=REPO or d.get("engine")!=TAG: return False
     entries=d.get("files",[])
@@ -71,13 +116,7 @@ def valid(d,files):
         name=e["name"]
         if pathlib.PurePath(name).name!=name or name in (".","..") or len(e.get("sha256",""))!=64 or len(e.get("md5",""))!=32: return False
         if e["kind"]=="model" and (name!=MODEL or e["size"]<7_000_000_000): return False
-        f=files.get(name)
-        if not f or f.get("Size")!=e["size"]: return False
-        if not verified_remote(e,f):
-            h=hashes(f)
-            if h.get("sha256") or h.get("md5"): return False
-            actual=remote_digest(name)
-            if any(actual[k]!=e[k] for k in ("size","sha256","md5")): return False
+        if not check_existing(e,files.get(name)): return False
     return True
 def main():
     t=time.monotonic()
@@ -101,11 +140,13 @@ def main():
                 h=hashes(f)
                 if h.get("sha256")==e["sha256"] and re.fullmatch(r"[a-f0-9]{32}",h.get("md5","")):
                     e["md5"]=h["md5"]
+                    remember(e,f)
                     print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)
                     continue
                 actual=remote_digest(e["name"])
                 if actual["size"]==e["size"] and actual["sha256"]==e["sha256"]:
                     e["md5"]=actual["md5"]
+                    remember(e,f)
                     print("CACHE_FILE_REUSED",e["kind"],e["size"],flush=True)
                     continue
             print("CACHE_STAGE: "+e["kind"]+"_download",flush=True)
@@ -121,14 +162,7 @@ def main():
                 assert not e["sha256"] or e["sha256"]==sha.hexdigest(),"DOWNLOAD_HASH_MISMATCH"
                 e["sha256"]=sha.hexdigest();e["md5"]=md5.hexdigest()
                 print("CACHE_STAGE: "+e["kind"]+"_upload",flush=True)
-                rc("copyto",str(p),REMOTE+"/"+e["name"],"--checksum","--drive-chunk-size","64M")
-                print("CACHE_STAGE: "+e["kind"]+"_verify",flush=True)
-                f=file_info(e["name"])
-                if not f or f.get("Size")!=e["size"]: raise RuntimeError("UPLOAD_SIZE_MISMATCH")
-                if not verified_remote(e,f):
-                    if hashes(f).get("md5") or hashes(f).get("sha256"): raise RuntimeError("UPLOAD_HASH_MISMATCH")
-                    actual=remote_digest(e["name"])
-                    assert all(actual[k]==e[k] for k in ("size","sha256","md5")),"UPLOAD_HASH_MISMATCH"
+                upload_verified(p,e)
                 print("CACHE_FILE_SAVED",e["kind"],e["size"],flush=True)
             finally: p.unlink(missing_ok=True)
         d={"schema":2,"repo":REPO,"revision":revision,"engine":TAG,"files":[e for e,_ in entries]}
