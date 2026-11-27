@@ -13,9 +13,9 @@ try {
  await page.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:60000});
  const button=page.locator('#wiki-btn');
  const dialog=page.locator('#npc-dialog');
- const wiki=page.locator('#wiki');
- const nav=wiki.locator('#wk-nav'), detail=wiki.locator('#wk-detail');
- const wikiVisible=async()=>await wiki.isVisible()&&await nav.isVisible()&&await detail.isVisible();
+ const wikiPanel=page.locator('#wiki');
+ const nav=wikiPanel.locator('#wk-nav'), detail=wikiPanel.locator('#wk-detail');
+ const wikiVisible=async()=>await wikiPanel.isVisible()&&await nav.isVisible()&&await detail.isVisible();
  async function dismissNotice(){
   if(!await dialog.isVisible())return false;
   const title=(await page.locator('#npc-name').textContent()??'').trim();
@@ -43,7 +43,7 @@ try {
    await button.waitFor({state:'visible',timeout:20000});
    try {
     await button.click({timeout:15000,noWaitAfter:true});
-    await Promise.all([wiki.waitFor({state:'visible',timeout:20000}),nav.waitFor({state:'visible',timeout:20000}),detail.waitFor({state:'visible',timeout:20000})]);
+    await Promise.all([wikiPanel.waitFor({state:'visible',timeout:20000}),nav.waitFor({state:'visible',timeout:20000}),detail.waitFor({state:'visible',timeout:20000})]);
     break;
    } catch(error){
     if(await wikiVisible())break;
@@ -61,7 +61,7 @@ try {
   }).catch(e=>({error:e.message}))));
   throw error;
  }
- await wiki.waitFor({state:'visible',timeout:20000});
+ await wikiPanel.waitFor({state:'visible',timeout:20000});
  await nav.waitFor({state:'visible',timeout:20000});
  await detail.waitFor({state:'visible',timeout:20000});
  const names=await nav.evaluate(el=>[...el.querySelectorAll('button[data-sec]')].map(x=>({id:x.dataset.sec,label:x.querySelector('b')?.textContent.trim()}))); 
