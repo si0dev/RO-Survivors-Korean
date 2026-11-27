@@ -49,3 +49,24 @@ test('ambiguous complete native translations do not overwrite wiki text',async()
   const translate=createWikiTranslator({[a]:'방어력',[b]:'갑옷'},{Armor:'갑옷','Body armor':'갑옷'});
   assert.equal(await translate('갑옷'),undefined);
 });
+
+test('numeric native templates restore original placeholder order and preserve values',async()=>{
+  const source='Taunts nearby enemies. +20% damage taken for 5s.';
+  const stat='★ HP/s +0.5 · +3 INT';
+  const entries={[await sha256(source)]:'도발', [await sha256(stat)]:'회복 및 지능'};
+  const translate=createWikiTranslator(entries,{
+    'Taunts nearby enemies. +{0}% damage taken for {1}s.':'주변 적을 도발합니다. {1}초 동안 받는 피해량 +{0}%.',
+    'HP/s +{0}':'초당 HP +{0}',
+    '+{0} INT':'지능 +{0}'
+  });
+  assert.equal(await translate('주변 적을 도발합니다. 5초 동안 받는 피해량 +20%.'),'도발');
+  assert.equal(await translate('★ 초당 HP +0.5 · 지능 +3'),'회복 및 지능');
+  assert.equal(await translate('★ 초당 HP +0.6 · 지능 +3'),undefined);
+  assert.equal(await translate('주변 적을 도발합니다. 6초 동안 받는 피해량 +20%.'),undefined);
+});
+test('repeated numeric placeholders and conflicting template candidates are rejected',async()=>{
+  const a=await sha256('A 2 2'),b=await sha256('B 2 2');
+  const translate=createWikiTranslator({[a]:'A',[b]:'B'},{'A {0} {0}':'수치 {0} 및 {0}','B {0} {0}':'수치 {0} 및 {0}'});
+  assert.equal(await translate('수치 2 및 2'),undefined);
+  assert.equal(await translate('수치 2 및 3'),undefined);
+});

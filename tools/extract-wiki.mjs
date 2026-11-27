@@ -192,7 +192,7 @@ try{
     if(actual[position]===norm(expected))continue;
     failed++;
     if(actual[position]===undefined)structure++;
-    console.log('WIKI_APPLY_FAILURE '+JSON.stringify({view,position,sourceHash:hash,expected,actual:actual[position]??null}));
+    console.log('WIKI_APPLY_FAILURE '+JSON.stringify({view,position,sourceHash:hash,en,expected,actual:actual[position]??null,...(actual[position]===undefined?{nearby:Object.entries(actual).filter(([p])=>p.startsWith(position.split('/').slice(0,-2).join('/')+'/')).slice(0,12)}:{})}));
    }
   }
   for(const view of korean.views.keys())if(!views.has(view)){structure++;console.log('WIKI_STRUCTURE '+JSON.stringify({view,reason:'extra view'}));}

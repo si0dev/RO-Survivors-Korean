@@ -171,7 +171,7 @@ export function wikiTranslationLookup(pack){
   return result;
 }
 export function createWikiTranslator(entries,labels={}){
-  const cache=new Map(),reverse=new Map(),byInitial=new Map();
+  const cache=new Map(),reverse=new Map(),byInitial=new Map(),templates=[];
   const norm=s=>s.trim().replace(/\s+/g,' ');
   // The native Korean language table may translate whole strings or individual
   // labels before the wiki renders. Recover only candidates backed by an
@@ -180,6 +180,124 @@ export function createWikiTranslator(entries,labels={}){
     if(typeof ko!=='string'||!/[가-힣]/.test(ko)||!/[A-Za-z]/.test(source)||/[가-힣]/.test(source))continue;
     const key=norm(ko),original=norm(source);
     if(!key||!original)continue;
+    // Native formatters substitute numeric placeholders before writing the DOM.
+    // Match the Korean template and restore the original placeholder ordering.
+    if(/\{\w+\}/.test(key)||/\{\w+\}/.test(original)){
+      if(!samePlaceholders(key,original))continue;
+      const parts=key.split(/(\{\w+\})/g),names=[];
+      const pattern=parts.map((part,i)=>{
+        if(i%2===0)return escapeRegExp(part);
+        names.push(part);
+        return '([+-]?\\d+(?:[.,]\\d+)?)';
+      }).join('');
+      if(names.length&&names.length<=12&&parts.some((p,i)=>i%2===0&&/[가-힣]/.test(p))){
+        templates.push({pattern:new RegExp('^'+pattern+'
+    if(!reverse.has(key)){
+      reverse.set(key,new Set());
+      const bucket=byInitial.get(key[0])??[];
+      bucket.push(key);byInitial.set(key[0],bucket);
+    }
+    reverse.get(key).add(original);
+  }
+  for(const bucket of byInitial.values())bucket.sort((a,b)=>b.length-a.length);
+  const LIMIT=256;
+  function templateCandidates(value){
+    const out=new Set();
+    if(!/\d/.test(value)||!/[가-힣]/.test(value))return out;
+    for(const {pattern,names,original} of templates){
+      const match=pattern.exec(value);
+      if(!match)continue;
+      const values=new Map();
+      let valid=true;
+      for(let i=0;i<names.length;i++){
+        const name=names[i],v=match[i+1];
+        if(values.has(name)&&values.get(name)!==v){valid=false;break;}
+        values.set(name,v);
+      }
+      if(!valid)continue;
+      const restored=original.replace(/\{\w+\}/g,name=>values.get(name)??name);
+      out.add(restored);
+      if(out.size>LIMIT)return null;
+    }
+    return out;
+  }
+  function numericCandidates(value){
+    // Equipment and pet tooltips join independent effects with a middle dot.
+    // Preserve separators, stars and numeric values; require the final hash.
+    const parts=value.split(' · ');
+    let combinations=[''];
+    for(let i=0;i<parts.length;i++){
+      const part=parts[i],prefix=part.startsWith('★ ')?'★ ':'',body=part.slice(prefix.length);
+      const restored=templateCandidates(body);
+      if(restored===null)return null;
+      const options=new Set([body,...(reverse.get(body)??[]),...restored]);
+      if(combinations.length*options.size>LIMIT)return null;
+      combinations=combinations.flatMap(start=>[...options].map(option=>start+(i?' · ':'')+prefix+option));
+    }
+    const whole=templateCandidates(value);
+    if(whole===null)return null;
+    const result=new Set([...whole,...combinations]);
+    // Some native descriptions omit the final period in wiki rendering.
+    for(const candidate of [...result]){
+      if(candidate===value)continue;
+      result.add(candidate.endsWith('.')?candidate.slice(0,-1):candidate+'.');
+      if(result.size>LIMIT)return null;
+    }
+    return result;
+  }
+  async function approved(candidates,normalized){
+    const results=new Set();
+    for(const candidate of new Set(candidates)){
+      if(candidate===normalized)continue;
+      const hash=await sha256(candidate);
+      if(Object.hasOwn(entries,hash))results.add(entries[hash]);
+      if(results.size>1)return {ambiguous:true};
+    }
+    return {value:results.size===1?[...results][0]:undefined};
+  }
+  async function resolve(normalized){
+    const direct=await sha256(normalized);
+    if(Object.hasOwn(entries,direct))return entries[direct];
+    if(!/[가-힣]/.test(normalized))return undefined;
+    // Whole-string translations are more specific than fragment recovery.
+    const exact=reverse.get(normalized);
+    if(exact){
+      if(exact.size>256)return undefined;
+      const result=await approved(exact,normalized);
+      if(result.ambiguous||result.value!==undefined)return result.value;
+    }
+    const numeric=numericCandidates(normalized);
+    if(numeric===null)return undefined;
+    const restored=await approved(numeric,normalized);
+    if(restored.ambiguous||restored.value!==undefined)return restored.value;
+    // Match the longest known native label at each position, including
+    // unquoted names, stat labels and partially translated descriptions.
+    let candidates=[''],offset=0,matches=0;
+    for(let i=0;i<normalized.length;){
+      const key=byInitial.get(normalized[i])?.find(k=>normalized.startsWith(k,i));
+      if(!key){i++;continue;}
+      const options=[key,...reverse.get(key)];
+      if(++matches>8||candidates.length*options.length>256)return undefined;
+      candidates=candidates.flatMap(prefix=>options.map(option=>prefix+normalized.slice(offset,i)+option));
+      i+=key.length;offset=i;
+    }
+    if(!matches)return undefined;
+    return (await approved(candidates.map(prefix=>prefix+normalized.slice(offset)),normalized)).value;
+  }
+  return async value=>{
+    if(typeof value!=='string'||!value.trim())return undefined;
+    const normalized=norm(value);
+    if(!cache.has(normalized)){
+      if(cache.size>=4096)cache.clear();
+      cache.set(normalized,resolve(normalized));
+    }
+    return cache.get(normalized);
+  };
+}
+),names,original});
+      }
+      continue;
+    }
     if(!reverse.has(key)){
       reverse.set(key,new Set());
       const bucket=byInitial.get(key[0])??[];
