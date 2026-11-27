@@ -104,3 +104,34 @@ jobs:
           for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
           for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
           NODE
+
+  wiki-nine-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit nine exact source labels in live bundle
+        run: |
+          node --input-type=module <<'NODE'
+          import {findPageBundle} from './src/browser.mjs';
+          const origin='https://ro-survivors.com/';
+          const get=async u=>{const r=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('HTTP '+r.status);return r.text()};
+          const html=await get(origin);
+          const url=findPageBundle([...html.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/gi)].map(x=>x[1]),origin);
+          const code=await get(url);
+          const build=code.match(/RO Survivors[^*\n]*?Build\s+([0-9a-f]{7,64})\b/i)?.[1];
+          console.log('LIVE_BUILD '+build);
+          for(const label of ['Prontera Librarian','(Rare/Epic)','(Epic/Legendary)','(Legendary)',': Soldier Skeleton, Sohee','Dragon Breath','Snake Ring','Search','Búsqueda']){
+            let pos=-1, hits=[];
+            while((pos=code.indexOf(label,pos+1))>=0){hits.push(code.slice(Math.max(0,pos-130),pos+label.length+130));}
+            console.log('LABEL_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,12)}));
+          }
+          const m=JSON.parse(await get(origin+'assets/manifest.json?v='+build));
+          for(const label of ['Dragon Breath','Snake Ring']){
+            const found=Object.entries(m.items??{}).filter(([id,v])=>v.name===label);
+            console.log('ITEM_AUDIT '+JSON.stringify({label,found:found.map(([id,v])=>({id,name:v.name,keys:Object.keys(v)}))}));
+          }
+          NODE
