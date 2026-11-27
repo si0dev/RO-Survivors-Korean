@@ -1,0 +1,20 @@
+name: Colab cache and authentication (offline mock)
+on:
+  push:
+    branches:
+      - test/colab-cache-auth-mock
+permissions:
+  contents: read
+jobs:
+  mock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline cache and authentication regression tests
+        run: python -m unittest discover -s test -p 'test_colab_cache_auth.py' -v
