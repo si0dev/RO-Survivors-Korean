@@ -46,20 +46,24 @@ export function createGearNameTranslator(names){
 export function isGearNameElement(el){
   return !!el?.closest('#cp-inventory [data-uid], .eq-name, .tip-item > div > b');
 }
-// Only annotate a standalone GS label or a GS label with its numeric score.
+// The game's GS badge uses the .gs class, independent of its text or children.
 export function createGearScoreTooltip(){
-  const owned=new WeakSet();
+  const owned=new WeakMap();
   const label='장비 점수';
   return (el,enabled=true)=>{
     if(!el||el.nodeType!==1)return;
     const title=el.getAttribute('title');
     if(owned.has(el)&&title!==label)owned.delete(el);
-    const matches=enabled&&/^GS(?:\s*:?\s*\d+(?:[,.]\d+)*)?$/.test(el.textContent.trim())
-      &&[...el.childNodes].some(n=>n.nodeType===3&&/^\s*GS(?:\s|:|\d|$)/.test(n.nodeValue));
-    if(!matches){
-      if(owned.has(el)){el.removeAttribute('title');owned.delete(el);}
-    }else if(title===null){
-      el.setAttribute('title',label);owned.add(el);
+    if(enabled&&el.matches('.gs')){
+      if(title!==label){
+        owned.set(el,title);
+        el.setAttribute('title',label);
+      }
+    }else if(owned.has(el)){
+      const previous=owned.get(el);
+      owned.delete(el);
+      if(previous===null)el.removeAttribute('title');
+      else el.setAttribute('title',previous);
     }
   };
 }
@@ -178,7 +182,6 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   const replaceWikiValue=(value,ko)=>ko===undefined?translate(value):value.replace(value.trim(),()=>ko);
   function translateText(node) {
     if (!active() || blocked(node.parentElement)) return;
-    annotateGearScore(node.parentElement);
     const v = node.nodeValue;
     if(originals.get(node)?.[1]===v)return;
     if(inWiki(node.parentElement)){
@@ -229,7 +232,10 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
       if (root.matches('input,textarea')) translateAttr(root,'placeholder');
       return;
     }
-    if (root.nodeType === 1) for (const attr of ATTRS) translateAttr(root,attr);
+    if (root.nodeType === 1) {
+      for (const attr of ATTRS) translateAttr(root,attr);
+      annotateGearScore(root);
+    }
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
         if (n.nodeType === 1 && blocked(n)) {
@@ -241,7 +247,10 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
     });
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
       if (n.nodeType === 3) translateText(n);
-      else for (const attr of ATTRS) translateAttr(n,attr);
+      else {
+        for (const attr of ATTRS) translateAttr(n,attr);
+        annotateGearScore(n);
+      }
     }
   }
   function restoreDOM() {
@@ -310,19 +319,17 @@ export function installLanguageAdapter(entries,engineVersion,newsEntries={},wiki
   }, true);
   window.addEventListener('ro-lang', () => queueMicrotask(syncLanguage));
   const observer = new MutationObserver(records => {
-    syncLanguage();
+    if(records.some(m=>m.type!=='attributes'||m.attributeName!=='class'))syncLanguage();
     if (!active()) return;
     for (const m of records) {
       if (m.type === 'characterData') translateText(m.target);
       else if (m.type === 'attributes') {
         if (ATTRS.includes(m.attributeName)) translateAttr(m.target,m.attributeName);
-      } else {
-        annotateGearScore(m.target);
-        for (const n of m.addedNodes) walk(n);
-      }
+        if(m.attributeName==='class'||m.attributeName==='title')annotateGearScore(m.target);
+      } else for (const n of m.addedNodes) walk(n);
     }
   });
-  observer.observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:[...ATTRS,'lang']});
+  observer.observe(document,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:[...ATTRS,'lang','class']});
   addLanguageOptions();
   if (active()) walk(document);
   // Restore an explicitly chosen Korean language after reload, once the game's
