@@ -108,6 +108,14 @@ jobs:
               }
             }
           }
+          if(main){
+            for(const term of ['function mu(','function ea(','function Lr(','Ke(ea(','ym(ea(','id="cp-inventory"','getElementById("cp-inventory")','he("cp-inventory")','ea(A)','ea(T)','ea(s)','ea(f)']){
+              const hits=[];let at=-1;while((at=main.content.indexOf(term,at+1))>=0&&hits.length<12)hits.push(main.content.slice(Math.max(0,at-100),at+450));
+              if(hits.length)console.log('INVENTORY_NAME '+JSON.stringify({term,hits}));
+            }
+            const pos=main.content.indexOf('function mu(');
+            if(pos>=0)console.log('AFFIX_SOURCE '+main.content.slice(pos-800,pos+1400));
+          }
           // Audit both runtime entry points, not only the first shared map in the combined extraction.
           const seen=new Set(rows.map(r=>r.id));
           const cached=new Map(files.map(f=>[f.url,f.content]));
