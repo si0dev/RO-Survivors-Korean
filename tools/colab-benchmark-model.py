@@ -39,7 +39,7 @@ libs=sorted({str(p.parent) for p in root.rglob("*.so*")})
 env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
 # Two independent slots, each with 4096 tokens; no CPU model offload.
 server_log=open(root/"server.log","w+")
-proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","99","-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
+proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","all","--fit","off","-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
 atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
 base="http://127.0.0.1:18080"
 deadline=time.monotonic()+180
@@ -50,11 +50,25 @@ while time.monotonic()<deadline:
     except requests.RequestException: pass
     time.sleep(2)
 else: raise RuntimeError("ENGINE_READY_TIMEOUT")
-server_log.flush()
-log=(root/"server.log").read_text(errors="replace")
-offload=re.search(r"offloaded\s+(\d+)/(\d+)\s+layers to GPU",log,re.I)
-if not offload or offload.group(1)!=offload.group(2): raise RuntimeError("FULL_GPU_OFFLOAD_NOT_VERIFIED")
-print("INDEX_FULL_GPU_OFFLOAD "+offload.group(1)+"/"+offload.group(2),flush=True)
+# Read the final load, not the initial fit probe, and report only safe numeric diagnostics.
+offloads=[]
+for _ in range(10):
+    server_log.flush()
+    log=(root/"server.log").read_text(errors="replace")
+    offloads=re.findall(r"offloaded\s+(\d+)\s*/\s*(\d+)\s+layers\s+to\s+GPU",log,re.I)
+    if offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0: break
+    time.sleep(1)
+def gpu_process_mib():
+    output=subprocess.check_output(["nvidia-smi","--query-compute-apps=pid,used_gpu_memory","--format=csv,noheader,nounits"],text=True)
+    return sum(int(m.group(2)) for line in output.splitlines() if (m:=re.fullmatch(r"\s*(\d+)\s*,\s*(\d+)\s*",line)) and int(m.group(1))==proc.pid)
+gpu_mib=gpu_process_mib()
+free,total=torch.cuda.mem_get_info()
+diagnostic={"offloads":[list(map(int,x)) for x in offloads],"server_gpu_mib":gpu_mib,"gpu_free_mib":free//1048576,"gpu_total_mib":total//1048576,"cuda_model_buffers_mib":[float(v) for v in re.findall(r"CUDA\d+\s+model buffer size\s*=\s*([\d.]+)\s*MiB",log,re.I)],"cuda_log_seen":bool(re.search(r"ggml_cuda|CUDA0",log,re.I))}
+print("INDEX_GPU_DIAGNOSTIC="+json.dumps(diagnostic,separators=(",",":")),flush=True)
+if not offloads or offloads[-1][0]!=offloads[-1][1] or int(offloads[-1][0])<=0:
+    raise RuntimeError("FULL_GPU_OFFLOAD_NOT_VERIFIED")
+if gpu_mib<5500: raise RuntimeError("GPU_MODEL_MEMORY_NOT_VERIFIED")
+print("INDEX_FULL_GPU_OFFLOAD "+"/".join(offloads[-1]),flush=True)
 print("MODEL_READY",flush=True)
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
 glossary={
