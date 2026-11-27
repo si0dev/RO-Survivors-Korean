@@ -13,7 +13,7 @@ jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -27,7 +27,7 @@ jobs:
         with:
           persist-credentials: false
           path: benchmark
-      - name: Verify cached GPU engine after session cleanup
+      - name: Compare cached model via temporary Colab local disk
         shell: bash
         env:
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
@@ -150,6 +150,7 @@ jobs:
           import sys,os,pathlib
           root=pathlib.Path("benchmark/tools")
           body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
+          body+="MODEL_SOURCE_MODE=\"local\"\n"
           for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
               body+=(root/name).read_text()+"\n"
           model=(root/"colab-benchmark-model.py").read_text()
@@ -161,7 +162,7 @@ jobs:
           pathlib.Path(sys.argv[1]).write_text(body)
           PY
           rc=0
-          timeout 1500 "${cli[@]}" exec -s "$gpu" --timeout 1380 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
+          timeout 2100 "${cli[@]}" exec -s "$gpu" --timeout 1980 -f "$tmp/benchmark.py" >"$tmp/translation.log" 2>&1 </dev/null || rc=$?
           python - "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:
@@ -172,6 +173,14 @@ jobs:
                           d,_=json.JSONDecoder().raw_decode(line.split(marker,1)[1])
                           print(marker+json.dumps({k:d[k] for k in keys}))
                       except (ValueError,KeyError,TypeError): pass
+                  if "LOCAL_MODEL_COPY=" in line:
+                      try:
+                          d,_=json.JSONDecoder().raw_decode(line.split("LOCAL_MODEL_COPY=",1)[1])
+                          print("LOCAL_MODEL_COPY="+json.dumps({k:d[k] for k in ("bytes","copy_seconds","verify_seconds")}))
+                      except (ValueError,KeyError,TypeError): pass
+                  m=re.search(r"MODEL_SERVER_SECONDS (\d+(?:\.\d+)?)",line)
+                  if m: print("MODEL_SERVER_SECONDS "+m.group(1))
+                  if line.strip() in ("LOCAL_MODEL_COPY_START","LOCAL_COMPARISON_DONE"): print(line.strip())
                   m=re.search(r"MODEL_LOAD_SECONDS (\d+(?:\.\d+)?)",line)
                   if m: print("MODEL_LOAD_SECONDS "+m.group(1))
                   if line.strip() in ("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED","RCLONE_MODEL_MOUNT_OK","MODEL_READY","ENGINE_SMOKE_DONE"): print(line.strip())
@@ -185,10 +194,11 @@ jobs:
                           print("ENGINE_DIAGNOSTIC="+json.dumps({k:d[k] for k in keys}))
                       except (ValueError,KeyError,TypeError): pass
                   if re.fullmatch(r"ENGINE_OPTION_UNAVAILABLE --[a-z-]+",line.strip()): print(line.strip())
-                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","ENGINE_ARGUMENTS_FAILED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
+                  for category in ("CACHE_NOT_READY","CACHE_SIZE_MISMATCH","ENGINE_CACHE_HASH_MISMATCH","ENGINE_START_FAILED","ENGINE_READY_TIMEOUT","ENGINE_DEPENDENCY_FAILED","ENGINE_HELP_FAILED","ENGINE_ARGUMENTS_FAILED","LOCAL_DISK_SPACE_INSUFFICIENT","LOCAL_MODEL_COPY_FAILED","LOCAL_MODEL_HASH_MISMATCH","LOCAL_FULL_GPU_OFFLOAD_UNCONFIRMED","GPU_MODEL_MEMORY_NOT_VERIFIED","TRANSLATION_TRUNCATED"):
                       if category in line: print("Diagnostic category: "+category)
           PY
           # EXIT trap handles session release and verifies zero even on failure.
           if [ "$rc" != 0 ]; then echo "translation: FAIL (exit $rc)"; exit "$rc"; fi
           grep -qx ENGINE_SMOKE_DONE "$tmp/translation.log" || { echo "Engine smoke completion marker missing"; exit 1; }
+          grep -qx LOCAL_COMPARISON_DONE "$tmp/translation.log" || { echo "Local comparison completion marker missing"; exit 1; }
           echo "engine-smoke: PASS"

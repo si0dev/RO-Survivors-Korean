@@ -20,6 +20,27 @@ for entry in d["files"]:
 server=next(root.rglob("llama-server"))
 model_path=cache/MODEL
 print("CACHE_REUSED="+json.dumps({"mode":"hit","model_direct":True,"model_bytes":model_path.stat().st_size,"engine_unpack_seconds":round(time.monotonic()-load_start,1)}),flush=True)
+# Local-disk comparison is opt-in; keep the direct-mount default.
+if globals().get("MODEL_SOURCE_MODE","direct")=="local":
+    entry=next(e for e in d["files"] if e["kind"]=="model")
+    local_path=root/MODEL
+    if shutil.disk_usage(root).free < entry["size"]+1024**3:
+        raise RuntimeError("LOCAL_DISK_SPACE_INSUFFICIENT")
+    copy_start=time.monotonic()
+    print("LOCAL_MODEL_COPY_START",flush=True)
+    result=subprocess.run(["rclone","--config",CONFIG,"copyto",
+        "rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1/"+MODEL,
+        str(local_path),"--contimeout","30s","--timeout","120s",
+        "--retries","1","--low-level-retries","3"],capture_output=True,timeout=900)
+    if result.returncode:
+        raise RuntimeError("LOCAL_MODEL_COPY_FAILED")
+    copy_seconds=time.monotonic()-copy_start
+    verify_start=time.monotonic()
+    if local_path.stat().st_size!=entry["size"] or hash_file(local_path)!=entry["sha256"]:
+        raise RuntimeError("LOCAL_MODEL_HASH_MISMATCH")
+    verify_seconds=time.monotonic()-verify_start
+    print("LOCAL_MODEL_COPY="+json.dumps({"bytes":entry["size"],"copy_seconds":round(copy_seconds,1),"verify_seconds":round(verify_seconds,1)}),flush=True)
+    model_path=local_path
 libs=sorted({str(p.parent) for p in root.rglob("*.so*")})
 env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
 # Validate the executable and retain only non-sensitive failure classifications.
@@ -69,6 +90,7 @@ for flag,values in (("--fit",["off"]),("--log-verbosity",["4"]),("--log-file",[s
 option_check=run_check(cmd+["--help"],"arguments")
 if option_check.returncode:
     raise RuntimeError("ENGINE_ARGUMENTS_FAILED")
+server_start=time.monotonic()
 server_log=open(root/"server.log","w+")
 proc=subprocess.Popen(cmd,stdout=server_log,stderr=subprocess.STDOUT,env=env)
 atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
@@ -111,7 +133,11 @@ if offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0:
     print("INDEX_FULL_GPU_OFFLOAD "+"/".join(offloads[-1]),flush=True)
 else:
     print("INDEX_FULL_GPU_OFFLOAD_UNCONFIRMED",flush=True)
+print("MODEL_SERVER_SECONDS "+str(round(time.monotonic()-server_start,1)),flush=True)
 print("MODEL_LOAD_SECONDS "+str(round(time.monotonic()-load_start,1)),flush=True)
+if globals().get("MODEL_SOURCE_MODE","direct")=="local":
+    assert offloads and offloads[-1][0]==offloads[-1][1] and int(offloads[-1][0])>0,"LOCAL_FULL_GPU_OFFLOAD_UNCONFIRMED"
+    print("LOCAL_COMPARISON_DONE",flush=True)
 print("MODEL_READY",flush=True)
 # --load-mode none does not require persistent model file mappings, but keep mount until server exits.
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
