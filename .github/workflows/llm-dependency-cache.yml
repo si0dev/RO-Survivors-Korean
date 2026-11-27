@@ -1,7 +1,12 @@
 name: LLM dependency cache preparation (CPU only)
 on:
-  push:
-    branches: [test/llm-dependency-cache]
+  pull_request:
+    branches: [test/colab-adc-smoke]
+    paths:
+      - '.github/workflows/llm-dependency-cache.yml'
+      - '.github/actions/llm-dependencies/**'
+      - 'tools/colab-benchmark-*.py'
+      - 'tools/colab-requirements.txt'
 permissions:
   contents: read
 concurrency:
@@ -9,6 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/llm-dependency-cache' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
