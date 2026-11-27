@@ -21,12 +21,12 @@ try:
     stage="fuse_device"
     assert pathlib.Path("/dev/fuse").exists()
     stage="mount"
-    mount_proc=subprocess.Popen(["rclone","--config",CONFIG,"mount","rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1",str(MOUNT),"--read-only","--vfs-cache-mode","off"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+    mount_proc=subprocess.Popen(["rclone","--config",CONFIG,"mount","rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1",str(MOUNT),"--read-only","--vfs-cache-mode","off"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     for _ in range(60):
         if os.path.ismount(MOUNT): break
         assert mount_proc.poll() is None
         time.sleep(1)
-    assert os.path.ismount(MOUNT) and (MOUNT/"manifest.json").is_file()
+    assert os.path.ismount(MOUNT) and (MOUNT/"Index-Translate-9B.Q6_K.gguf").is_file()
     print("RCLONE_MODEL_MOUNT_OK",flush=True)
 except Exception as e:
     print("RCLONE_TEST_ERROR:"+stage+":"+type(e).__name__,flush=True)

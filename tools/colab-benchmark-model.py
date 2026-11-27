@@ -15,6 +15,14 @@ root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
 for entry in d["files"]:
     if entry["kind"]=="model": continue
     archive=cache/entry["name"]
+    if entry["kind"]=="cudart":
+        archive=root/entry["name"]
+        with requests.get(entry["url"],stream=True,timeout=(30,120)) as response:
+            response.raise_for_status()
+            with archive.open("wb") as out:
+                for chunk in response.iter_content(4*1024*1024):
+                    if chunk: out.write(chunk)
+        assert archive.stat().st_size==entry["size"],"CACHE_SIZE_MISMATCH"
     assert hash_file(archive)==entry["sha256"],"ENGINE_CACHE_HASH_MISMATCH"
     with tarfile.open(archive,"r:*") as tf: tf.extractall(root,filter="data")
 server=next(root.rglob("llama-server"))
