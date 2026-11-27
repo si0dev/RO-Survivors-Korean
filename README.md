@@ -62,7 +62,7 @@
 - [번역 데이터 manifest](https://raw.githubusercontent.com/si0dev/RO-Survivors-Korean/translation-data/manifest.json)
 - [번역 데이터 JSON](https://raw.githubusercontent.com/si0dev/RO-Survivors-Korean/translation-data/ko.json)
 
-게임 접속 및 플레이 중 1시간마다 엔진과 번역 갱신을 확인합니다. 번역 데이터는 SHA-256 무결성을 확인한 뒤 캐시에 저장하며, 연결 또는 검증 실패 시 기존 번역을 유지합니다. 신규 원문은 [Extract game translation changes](https://github.com/si0dev/RO-Survivors-Korean/actions/workflows/extract-source.yml) 워크플로우를 수동 실행하여 자동 수집·대조합니다. 원본 게임 파일은 저장하거나 배포하지 않으며, 실행 로그에는 신규·변경 번역 작업 대상과 검사 결과만 기록됩니다. 위키는 [Extract wiki translation changes](https://github.com/si0dev/RO-Survivors-Korean/actions/workflows/extract-wiki.yml)에서 공개 위키 화면의 분류 및 하위 탭을 자동 순회하여 원문 해시를 대조합니다. 추출 데이터는 실행 중 메모리에서만 처리하고 미번역 항목과 검사 결과만 로그에 기록합니다. 승인 번역 반영은 별도로 진행합니다. 상태 표시는 메인 화면의 `#sp-version` 요소 뒤에 삽입합니다.
+게임 접속 및 플레이 중 1시간마다 엔진과 번역 갱신을 확인합니다. 번역 데이터는 SHA-256 무결성을 확인한 뒤 캐시에 저장하며, 연결 또는 검증 실패 시 기존 번역을 유지합니다. 신규 원문은 [Extract game translation changes](https://github.com/si0dev/RO-Survivors-Korean/actions/workflows/extract-source.yml) 워크플로우를 수동 실행하여 자동 수집·대조합니다. 원본 게임 파일은 저장하거나 배포하지 않으며, 실행 로그에는 신규·변경 번역 작업 대상과 검사 결과만 기록됩니다. 위키는 [Extract and verify wiki translation](https://github.com/si0dev/RO-Survivors-Korean/actions/workflows/extract-wiki.yml)에서 공개 위키 화면의 분류 및 하위 탭을 자동 순회하여 원문 해시를 대조합니다. 영어 추출과 별도로 현재 빌드한 한국어 패치를 적용해 같은 분류·하위 탭의 승인 번역 적용 여부를 확인합니다. 신규 원문과 등록된 번역의 적용 실패를 구분합니다. 매일 오전 11시(KST) 게임 빌드를 확인하며 이전 성공 검증의 빌드와 관련 파일이 같으면 전체 순회를 생략합니다. 관련 코드·데이터 변경 또는 수동 실행 시에는 다시 검사합니다. 추출 데이터는 실행 중 메모리에서만 처리하고 미번역·적용 실패 항목과 검사 결과만 로그에 기록합니다. 승인 번역 반영은 별도로 진행합니다. 상태 표시는 메인 화면의 `#sp-version` 요소 뒤에 삽입합니다.
 
 | 경로 | 역할 |
 | --- | --- |

@@ -170,14 +170,43 @@ export function wikiTranslationLookup(pack){
   }
   return result;
 }
-export function createWikiTranslator(entries){
-  const cache=new Map();
+export function createWikiTranslator(entries,labels={}){
+  const cache=new Map(),reverse=new Map();
+  // The game interpolates translated UI labels into English wiki prose.
+  // Restrict recovery to quoted labels and require an approved full hash.
+  for(const [source,ko] of Object.entries(labels)){
+    if(typeof ko!=='string'||!/[가-힣]/.test(ko)||!/[A-Za-z]/.test(source)||/[가-힣]/.test(source))continue;
+    const values=reverse.get(ko)??new Set();
+    values.add(source);reverse.set(ko,values);
+  }
+  async function resolve(normalized){
+    const direct=await sha256(normalized);
+    if(Object.hasOwn(entries,direct))return entries[direct];
+    const matches=[...normalized.matchAll(/«([^«»]+)»/g)].filter(m=>reverse.has(m[1]));
+    if(!matches.length||matches.length>4)return undefined;
+    let candidates=[''],offset=0;
+    for(const match of matches){
+      const options=[match[0],...[...reverse.get(match[1])].map(s=>'«'+s+'»')];
+      if(candidates.length*options.length>32)return undefined;
+      candidates=candidates.flatMap(prefix=>options.map(option=>prefix+normalized.slice(offset,match.index)+option));
+      offset=match.index+match[0].length;
+    }
+    const results=new Set();
+    for(const prefix of candidates){
+      const candidate=prefix+normalized.slice(offset);
+      if(candidate===normalized)continue;
+      const hash=await sha256(candidate);
+      if(Object.hasOwn(entries,hash))results.add(entries[hash]);
+      if(results.size>1)return undefined;
+    }
+    return results.size===1?[...results][0]:undefined;
+  }
   return async value=>{
     if(typeof value!=='string'||!value.trim())return undefined;
     const normalized=value.trim().replace(/\s+/g,' ');
     if(!cache.has(normalized)){
       if(cache.size>=4096)cache.clear();
-      cache.set(normalized,sha256(normalized).then(hash=>Object.hasOwn(entries,hash)?entries[hash]:undefined));
+      cache.set(normalized,resolve(normalized));
     }
     return cache.get(normalized);
   };
