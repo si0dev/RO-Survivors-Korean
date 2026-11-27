@@ -13,7 +13,9 @@ try {
  await page.goto(origin+'/',{waitUntil:'domcontentloaded',timeout:60000});
  const button=page.locator('#wiki-btn');
  const dialog=page.locator('#npc-dialog');
- const nav=page.locator('#wk-nav'), detail=page.locator('#wk-detail');
+ const wiki=page.locator('#wiki');
+ const nav=wiki.locator('#wk-nav'), detail=wiki.locator('#wk-detail');
+ const wikiVisible=async()=>await wiki.isVisible()&&await nav.isVisible()&&await detail.isVisible();
  async function dismissNotice(){
   if(!await dialog.isVisible())return false;
   const title=(await page.locator('#npc-name').textContent()??'').trim();
@@ -36,15 +38,15 @@ try {
  try {
   // Wiki is an in-page panel: wait for its actual UI, not unrelated navigation.
   for(let attempt=1;attempt<=3;attempt++){
-   if(await nav.isVisible()&&await detail.isVisible())break;
+   if(await wikiVisible())break;
    await dismissNotice();
    await button.waitFor({state:'visible',timeout:20000});
    try {
     await button.click({timeout:15000,noWaitAfter:true});
-    await Promise.all([nav.waitFor({state:'visible',timeout:20000}),detail.waitFor({state:'visible',timeout:20000})]);
+    await Promise.all([wiki.waitFor({state:'visible',timeout:20000}),nav.waitFor({state:'visible',timeout:20000}),detail.waitFor({state:'visible',timeout:20000})]);
     break;
    } catch(error){
-    if(await nav.isVisible()&&await detail.isVisible())break;
+    if(await wikiVisible())break;
     console.log('WIKI OPEN RETRY '+JSON.stringify({attempt,url:page.url(),noticeVisible:await dialog.isVisible(),error:error.message.slice(0,300)}));
     if(attempt===3)throw error;
    }
@@ -55,10 +57,11 @@ try {
    if(!el)return {url:location.href,title:document.title,ready:document.readyState,button:false};
    const r=el.getBoundingClientRect();
    const top=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
-   return {url:location.href,title:document.title,ready:document.readyState,button:true,rect:{x:r.x,y:r.y,width:r.width,height:r.height},disabled:el.disabled,hit:top?.tagName,hitId:top?.id,hitClass:String(top?.className??''),htmlLang:document.documentElement.lang,dialogVisible:!!document.querySelector('#npc-dialog')?.getClientRects().length,dialogTitle:document.querySelector('#npc-name')?.textContent,dialogText:document.querySelector('#npc-text')?.textContent?.slice(0,500),dialogButtons:[...document.querySelectorAll('#npc-options button')].map(b=>b.textContent)};
+   return {url:location.href,title:document.title,ready:document.readyState,button:true,rect:{x:r.x,y:r.y,width:r.width,height:r.height},disabled:el.disabled,hit:top?.tagName,hitId:top?.id,hitClass:String(top?.className??''),htmlLang:document.documentElement.lang,wikiPresent:!!document.querySelector('#wiki'),wikiVisible:!!document.querySelector('#wiki')?.getClientRects().length,dialogVisible:!!document.querySelector('#npc-dialog')?.getClientRects().length,dialogTitle:document.querySelector('#npc-name')?.textContent,dialogText:document.querySelector('#npc-text')?.textContent?.slice(0,500),dialogButtons:[...document.querySelectorAll('#npc-options button')].map(b=>b.textContent)};
   }).catch(e=>({error:e.message}))));
   throw error;
  }
+ await wiki.waitFor({state:'visible',timeout:20000});
  await nav.waitFor({state:'visible',timeout:20000});
  await detail.waitFor({state:'visible',timeout:20000});
  const names=await nav.evaluate(el=>[...el.querySelectorAll('button[data-sec]')].map(x=>({id:x.dataset.sec,label:x.querySelector('b')?.textContent.trim()}))); 
