@@ -1,0 +1,71 @@
+name: Colab unattended Drive mount test (temporary)
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.github/workflows/colab-drive-mount-test.yml']
+permissions: {}
+jobs:
+  mount:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-drive-mount' && github.event.pull_request.user.login == 'si0dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check google-colab-cli==0.8.0
+      - name: Test official Drive mount without interaction
+        env:
+          COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          tmp=$(mktemp -d)
+          session="ro-drive-test-$GITHUB_RUN_ID"
+          export GOOGLE_APPLICATION_CREDENTIALS="$tmp/adc.json"
+          export XDG_CONFIG_HOME="$tmp/config"
+          python - <<'PY'
+          import os,json
+          d=json.loads(os.environ["COLAB_ADC_JSON"])
+          assert d["type"]=="authorized_user"
+          assert all(d.get(k) for k in ("client_id","client_secret","refresh_token"))
+          with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"],"w") as f: json.dump(d,f)
+          PY
+          unset COLAB_ADC_JSON
+          colab_cmd() { colab --auth=adc --config "$tmp/sessions.json" "$@"; }
+          cleanup() {
+            if timeout 60 colab_cmd stop -s "$session" >"$tmp/stop.log" 2>&1 </dev/null; then
+              echo "SESSION_STOP: PASS"
+            else
+              echo "SESSION_STOP: NOT_CONFIRMED"
+            fi
+            rm -rf "$tmp"
+          }
+          trap cleanup EXIT
+          timeout 90 colab_cmd sessions >"$tmp/auth.log" 2>&1 </dev/null
+          echo "ADC_AUTH: PASS"
+          timeout 120 colab_cmd new -s "$session" >"$tmp/new.log" 2>&1 </dev/null
+          echo "CPU_SESSION: PASS"
+          # Never print raw CLI output: it may contain authorization links or account details.
+          rc=0
+          timeout 90 colab_cmd drivemount -s "$session" /content/drive >"$tmp/mount.log" 2>&1 </dev/null || rc=$?
+          python - "$tmp/mount.log" "$rc" <<'PY'
+          import re,sys
+          s=open(sys.argv[1],errors="replace").read()
+          print("MOUNT_EXIT:",sys.argv[2])
+          checks={"consent_url":r"accounts\.google\.com|unauthorized_redirect_uri|consent URL|authorization URL","interactive_prompt":r"press.{0,20}enter|authorize|authentication required|/dev/tty|EOFError","propagation_error":r"error propagating|credential.{0,40}fail|propagation.{0,40}fail","http_401":r"\b401\b","http_403":r"\b403\b","http_400":r"\b400\b"}
+          for label,pattern in checks.items():
+              if re.search(pattern,s,re.I): print("MOUNT_DIAGNOSTIC:",label)
+          PY
+          if [ "$rc" != 0 ]; then exit "$rc"; fi
+          # No personal filenames, directory listing, or file content is collected.
+          cat >"$tmp/check.py" <<'PY'
+          import os
+          assert os.path.ismount("/content/drive"), "DRIVE_NOT_MOUNTED"
+          assert os.path.isdir("/content/drive/MyDrive") or os.path.isdir("/content/drive/My Drive"), "MY_DRIVE_NOT_FOUND"
+          print("DRIVE_MOUNT_READABLE_OK")
+          PY
+          timeout 60 colab_cmd exec -s "$session" -f "$tmp/check.py" >"$tmp/read.log" 2>&1 </dev/null
+          grep -q DRIVE_MOUNT_READABLE_OK "$tmp/read.log"
+          echo "DRIVE_MOUNT_READABLE: PASS"
