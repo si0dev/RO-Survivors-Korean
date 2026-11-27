@@ -73,8 +73,13 @@ jobs:
             console.log('AFFIX_BINDING '+JSON.stringify({binding,local,file:new URL(shared.url).pathname}));
             if(!local)continue;
             const esc=local.replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\$&');
-            const hits=[...shared.content.matchAll(new RegExp('(?:function\\s+'+esc+'\\s*\\(|(?<![\\w$])'+esc+'\\s*=)','g'))];
-            for(const m of hits.slice(0,3))console.log('AFFIX_HELPER '+shared.content.slice(Math.max(0,m.index-1000),m.index+1800));
+            const hits=[...shared.content.matchAll(new RegExp('(?:function\\s+'+esc+'\\s*\\(|(?:const|let|var)\\s+'+esc+'\\s*=|(?<=[,;])'+esc+'\\s*=)','g'))];
+            for(const m of hits)console.log('AFFIX_DECL '+shared.content.slice(Math.max(0,m.index-1400),m.index+1800));
+            const scoped=await sourceSnapshot({kind:'main',url:mainFile.url,build:snapshot.build,content:code},async url=>files.find(f=>f.url===url)?.content??await get(url));
+            const {buildScanDictionary}=await import('./src/browser.mjs');
+            const dictionary=buildScanDictionary(await Promise.all(scoped.rows.map(identify)),[],records).dictionary;
+            console.log('AFFIX_TRANSLATIONS '+JSON.stringify(Object.entries(dictionary).filter(([key])=>/^(of |de |del )/i.test(key))));
+
           }
           for(const f of files.filter(f=>/\/build\/.*\.js$/.test(new URL(f.url).pathname))){
             for(const term of ['affixName','affixNames','affix.name','affixes.map','affixes.length','function a$(']){
