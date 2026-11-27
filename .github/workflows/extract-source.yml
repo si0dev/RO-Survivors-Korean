@@ -105,54 +105,14 @@ jobs:
           for(const row of rows.filter(r=>r.status!=='translated')) console.log('WORKROW '+JSON.stringify(row));
           NODE
 
-  wiki-nine-static:
-    runs-on: ubuntu-latest
-    timeout-minutes: 4
+  wiki-nine-dom:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Audit nine exact source labels in live bundle
-        run: |
-          node --input-type=module <<'NODE'
-          import {findPageBundle} from './src/browser.mjs';
-          const origin='https://ro-survivors.com/';
-          const get=async u=>{const r=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('HTTP '+r.status);return r.text()};
-          const html=await get(origin);
-          const url=findPageBundle([...html.matchAll(/(?:src|href)\s*=\s*["']([^"']+)["']/gi)].map(x=>x[1]),origin);
-          const code=await get(url);
-          const build=code.match(/RO Survivors[^*\n]*?Build\s+([0-9a-f]{7,64})\b/i)?.[1];
-          console.log('LIVE_BUILD '+build);
-          for(const label of ['Prontera Librarian','(Rare/Epic)','(Epic/Legendary)','(Legendary)',': Soldier Skeleton, Sohee','Dragon Breath','Snake Ring','Search','Búsqueda']){
-            let pos=-1, hits=[];
-            while((pos=code.indexOf(label,pos+1))>=0){hits.push(code.slice(Math.max(0,pos-130),pos+label.length+130));}
-            console.log('LABEL_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,12)}));
-          }
-          const checks=[
-            ['librarian',/librar|bibliotec/gi],
-            ['quality-pair',/rare.{0,12}epic|epic.{0,12}legendary|raro.{0,12}épico|épico.{0,12}legendario/gi],
-            ['soldier-sohee',/skel_soldier|soldier skeleton|sohee/gi],
-            ['festival-gear',/Lantern Festival gear|equipo del Festival|data-pane-tab|wk-search/gi],
-            ['items',/\b2527\b|\b2986\b/g]
-          ];
-          for(const [name,re] of checks){
-            const hits=[...code.matchAll(re)];
-            console.log('CONTEXT_AUDIT '+JSON.stringify({name,count:hits.length,contexts:hits.slice(0,15).map(h=>code.slice(Math.max(0,h.index-170),h.index+h[0].length+170))}));
-          }
-          for(const label of ['Prontera Librarian','(Rare/Epic)','(Epic/Legendary)','(Legendary)',': Soldier Skeleton, Sohee','Dragon Breath','Snake Ring']){
-            const hits=[];let p=-1;while((p=html.indexOf(label,p+1))>=0)hits.push(Object.assign([label],{index:p}));
-            console.log('HTML_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,3).map(h=>html.slice(Math.max(0,h.index-100),h.index+h[0].length+100))}));
-          }
-          const index=code.indexOf('Lantern Festival gear: dropped by its monsters');
-          if(index>=0)console.log('FESTIVAL_RENDER '+JSON.stringify({before:code.slice(index-3500,index),after:code.slice(index,index+10000)}));
-          for(const label of ['2527','2986']){
-            const hits=[...code.matchAll(new RegExp('\\b'+label+'\\b','g'))];
-            console.log('ITEM_ID_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,10).map(h=>code.slice(Math.max(0,h.index-120),h.index+h[0].length+120))}));
-          }
-          const m=JSON.parse(await get(origin+'assets/manifest.json?v='+build));
-          for(const label of ['Dragon Breath','Snake Ring']){
-            const found=Object.entries(m.items??{}).filter(([id,v])=>v.name===label);
-            console.log('ITEM_AUDIT '+JSON.stringify({label,found:found.map(([id,v])=>({id,name:v.name,keys:Object.keys(v)}))}));
-          }
-          NODE
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/wiki-nine-audit.mjs
