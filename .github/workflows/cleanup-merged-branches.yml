@@ -8,6 +8,8 @@ on:
     types: [closed]
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '17 20 * * *'
 permissions:
   contents: write
   pull-requests: read
@@ -24,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Delete only unchanged heads of merged PRs
+      - name: Delete unchanged merged or fully retained temporary branches
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -38,7 +40,7 @@ jobs:
           jq -r --arg repo "$GITHUB_REPOSITORY" --arg default "$default" --slurpfile prs "$tmp/pulls.json" '
             .[] | select(.protected == false) | . as $b
             | select(.name != $default and .name != "main" and .name != "translation-data" and .name != "test/colab-adc-smoke")
-            | select(any($prs[0][]; .merged_at != null and .base.ref == "main" and .base.repo.full_name == $repo and .head.repo.full_name == $repo and .head.ref == $b.name and .head.sha == $b.commit.sha))
+            | select((.name | startswith("test/")) or any($prs[0][]; .merged_at != null and .base.ref == "main" and .base.repo.full_name == $repo and .head.repo.full_name == $repo and .head.ref == $b.name and .head.sha == $b.commit.sha))
             | select(any($prs[0][]; .state == "open" and ((.head.repo.full_name == $repo and .head.ref == $b.name) or (.base.repo.full_name == $repo and .base.ref == $b.name))) | not)
             | [.name,.commit.sha] | @tsv
           ' "$tmp/branches.json" > "$tmp/candidates.tsv"
@@ -59,6 +61,33 @@ jobs:
             if jq -e --arg branch "$branch" --arg repo "$GITHUB_REPOSITORY" 'any(.[]; (.head.repo.full_name == $repo and .head.ref == $branch) or (.base.repo.full_name == $repo and .base.ref == $branch))' "$tmp/open.json" >/dev/null; then
               echo "Skipping open PR branch: $branch"
               continue
+            fi
+            # Preserve the original exact-head merged-main rule. For a test
+            # branch without that evidence, require all commits to be reachable
+            # from a retained branch at the time of deletion.
+            if ! jq -e --arg repo "$GITHUB_REPOSITORY" --arg branch "$branch" --arg sha "$sha" 'any(.[]; .merged_at != null and .base.ref == "main" and .base.repo.full_name == $repo and .head.repo.full_name == $repo and .head.ref == $branch and .head.sha == $sha)' "$tmp/pulls.json" >/dev/null; then
+              retained=0
+              for base in "$default" test/colab-adc-smoke; do
+                base_encoded=$(jq -rn --arg name "$base" '$name|@uri')
+                if ! base_sha=$(gh api "repos/$GITHUB_REPOSITORY/branches/$base_encoded" --jq .commit.sha); then
+                  continue
+                fi
+                if ! ahead=$(gh api "repos/$GITHUB_REPOSITORY/compare/$base_sha...$sha" --jq .ahead_by); then
+                  continue
+                fi
+                if [ "$ahead" = 0 ]; then
+                  # Reject a base that changed during the comparison.
+                  if current_base=$(gh api "repos/$GITHUB_REPOSITORY/branches/$base_encoded" --jq .commit.sha) && [ "$current_base" = "$base_sha" ]; then
+                    retained=1
+                    echo "All commits retained in $base: $branch"
+                    break
+                  fi
+                fi
+              done
+              if [ "$retained" != 1 ]; then
+                echo "Skipping branch with unverified unique commits: $branch"
+                continue
+              fi
             fi
             ref="refs/heads/$branch"
             # Compare-and-delete: a new commit after the API check must not be lost.
