@@ -7,6 +7,7 @@ storage. Never allocate, restart, or prolong an idle runtime.
 import base64
 import importlib.util
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -27,24 +28,33 @@ def assignment_count():
     from colab_cli.common import state
     state.auth_provider=AuthProvider.ADC
     return len(state.client.list_assignments())
-def invoke(args,limit,on_line=None):
+def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
     lines=[]
     q=queue.Queue()
     with subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT,text=True,errors="replace",bufsize=1) as p:
+                          stderr=subprocess.STDOUT,text=True,errors="replace",bufsize=1,
+                          env=dict(os.environ,PYTHONUNBUFFERED="1")) as p:
         def reader():
             try:
                 for line in p.stdout: q.put(line)
             finally: q.put(None)
         t=threading.Thread(target=reader,daemon=True);t.start()
-        deadline=time.monotonic()+limit
+        started=last_output=time.monotonic()
+        deadline=started+limit
+        next_heartbeat=started+heartbeat
         try:
             while True:
-                remaining=deadline-time.monotonic()
+                now=time.monotonic()
+                remaining=deadline-now
                 if remaining<=0: raise subprocess.TimeoutExpired(args,limit)
-                try: line=q.get(timeout=min(remaining,10))
+                if on_wait and now>=next_heartbeat:
+                    on_wait(int(now-started),int(now-last_output))
+                    next_heartbeat=now+heartbeat
+                wait=min(remaining,10,max(0.01,next_heartbeat-now)) if on_wait else min(remaining,10)
+                try: line=q.get(timeout=wait)
                 except queue.Empty: continue
                 if line is None: break
+                last_output=time.monotonic()
                 lines.append(line)
                 if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
             return p.wait(timeout=max(0.1,deadline-time.monotonic())),"".join(lines)
@@ -107,11 +117,13 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
             if not s.endswith("\n"): f.write("\n")
     def record(row):
         append("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")))
-    def execute(source,limit,on_line):
+    def execute(source,limit,on_line,phase):
         script=log.with_name("kernel-call.py")
         script.write_text(source,encoding="utf-8")
         args=[*cli,"exec","-s",session,"--timeout",str(limit),"-f",str(script)]
-        if run is invoke: return run(args,limit+30,on_line=on_line)
+        emit(f"COLAB_CALL_START={phase} timeout={limit}s",flush=True)
+        if run is invoke:
+            return run(args,limit+30,on_line=on_line,on_wait=lambda elapsed,silent:emit(f"COLAB_CALL_WAIT={phase} elapsed={elapsed}s no_cli_output={silent}s (remote progress unconfirmed)",flush=True))
         rc,raw=run(args,limit+30)
         for line in raw.splitlines(): on_line(line)
         return rc,raw
@@ -125,7 +137,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
     init=("ro_bench_ns={'__name__':'__main__'}\n"
         "exec(compile("+repr(worker)+",'benchmark-model.py','exec'),ro_bench_ns)\n"
         "print("+repr(ready)+",flush=True)\n")
-    rc,raw=execute(init,1800,lambda line:safe_progress(line,emit))
+    rc,raw=execute(init,1800,lambda line:safe_progress(line,emit),"MODEL_INIT")
     append(raw)
     if rc or ready not in raw.splitlines():
         return report_failure("INIT",raw,probe,emit)
@@ -161,7 +173,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
                 "        print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
                 "if ro_errors: raise ro_errors[0]\n"
                 "print("+repr(done)+",flush=True)\n")
-            rc,raw=execute(code,1500,on_line)
+            rc,raw=execute(code,1500,on_line,f"TRANSLATION_BATCH_{i//batch_size+1}")
             if commit is not None:
                 commit.result()
                 emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)

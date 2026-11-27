@@ -60,6 +60,13 @@ class KernelTests(unittest.TestCase):
         self.assertEqual(rc,124)
         self.assertIn("GPU_READY",raw)
         self.assertEqual(seen,["GPU_READY"])
+    def test_wait_diagnostic_does_not_claim_remote_progress(self):
+        waits=[]
+        rc,raw=k.invoke([sys.executable,"-u","-c","import time; time.sleep(0.4); print('done',flush=True)"],3,on_wait=lambda elapsed,silent:waits.append((elapsed,silent)),heartbeat=0.1)
+        self.assertEqual(rc,0)
+        self.assertIn("done",raw)
+        self.assertGreaterEqual(len(waits),1)
+        self.assertTrue(all(elapsed>=silent>=0 for elapsed,silent in waits))
     def test_four_way_concurrency_and_asynchronous_checkpoint(self):
         started=threading.Event()
         release=threading.Event()

@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   prepare:
-    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark' || github.event.pull_request.head.ref == 'test/llm-kernel-transport' || github.event.pull_request.head.ref == 'test/llm-streaming-optimization') && github.event.pull_request.user.login == 'si0dev'
+    if: github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'test/llm-dependency-cache' || github.event.pull_request.head.ref == 'test/llm-transport-recovery' || github.event.pull_request.head.ref == 'test/llm-checkpoint-resume' || github.event.pull_request.head.ref == 'test/llm-fixed-benchmark' || github.event.pull_request.head.ref == 'test/llm-kernel-transport' || github.event.pull_request.head.ref == 'test/llm-streaming-optimization' || github.event.pull_request.head.ref == 'test/llm-live-diagnostics') && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

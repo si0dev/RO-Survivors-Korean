@@ -12,6 +12,7 @@ allocation_started=0
 check() {
   local phase="$1" limit="$2"
   shift 2
+  echo "COLAB_STEP_START=$phase timeout=${limit}s"
   if timeout "$limit" "$@" </dev/null >"$tmp/$phase.log" 2>&1; then
     echo "$phase: PASS"
   else
