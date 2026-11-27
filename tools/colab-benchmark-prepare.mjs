@@ -76,6 +76,9 @@ for(const group of ['skill','gear','job','wiki','news','ui']){
 }
 if(selected.length!==200||used.size!==200)throw Error('Invalid sample count');
 const references=selected.map((r,i)=>({...r,id:String(i+1).padStart(3,'0'),recordId:r.id}));
+const baseline=JSON.parse(await readFile(new URL('./colab-benchmark-baseline.json',import.meta.url),'utf8'));
+if(wiki.build!==baseline.build||JSON.stringify(references.map(({id,recordId})=>({id,recordId})))!==JSON.stringify(baseline.rows))throw Error('Comparison sample differs from Qwen baseline; refusing to compare');
+console.log('BASELINE_MATCH 200/200');
 await writeFile(temp+'/references.json',JSON.stringify(references));
 await writeFile(temp+'/inputs.json',JSON.stringify(references.map(({id,source,group,context})=>({id,source,group,context}))));
 console.log('BENCHMARK_BUILD '+wiki.build);

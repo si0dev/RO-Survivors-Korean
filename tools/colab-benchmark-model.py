@@ -3,12 +3,58 @@ from collections import Counter
 import torch
 assert torch.cuda.is_available() and "T4" in torch.cuda.get_device_name(0)
 print("GPU_READY",flush=True)
-subprocess.check_call([sys.executable,"-m","pip","install","-q","transformers==4.57.6","accelerate","bitsandbytes==0.48.2"])
-from transformers import AutoTokenizer,AutoModelForCausalLM,BitsAndBytesConfig
-model_id="Qwen/Qwen3-8B"
-tok=AutoTokenizer.from_pretrained(model_id,trust_remote_code=False)
-quant=BitsAndBytesConfig(load_in_4bit=True,bnb_4bit_quant_type="nf4",bnb_4bit_compute_dtype=torch.float16,bnb_4bit_use_double_quant=True)
-model=AutoModelForCausalLM.from_pretrained(model_id,quantization_config=quant,torch_dtype=torch.float16,device_map={"":"cuda:0"},trust_remote_code=False,use_safetensors=True).eval()
+import os,time,tempfile,tarfile,pathlib,atexit
+from concurrent.futures import ThreadPoolExecutor
+import urllib.request
+import requests
+
+# The official CUDA 12 release supports the Turing generation; pin the engine.
+tag="b12343"
+root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
+def download(url,path):
+    with requests.get(url,stream=True,timeout=(30,120)) as r:
+        r.raise_for_status()
+        with open(path,"wb") as f:
+            for chunk in r.iter_content(1024*1024):
+                if chunk: f.write(chunk)
+release=requests.get("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/"+tag,timeout=30)
+release.raise_for_status()
+assets=release.json()["assets"]
+def choose(prefix):
+    matches=[x for x in assets if x["name"].startswith(prefix) and "ubuntu-cuda-12" in x["name"] and "x64" in x["name"] and x["name"].endswith((".tar.gz",".tar.xz"))]
+    if len(matches)!=1: raise RuntimeError("ENGINE_ASSET_UNAVAILABLE")
+    return matches[0]
+for prefix in ("llama-","cudart-"):
+    asset=choose(prefix)
+    archive=root/asset["name"]
+    download(asset["browser_download_url"],archive)
+    with tarfile.open(archive,"r:*") as tf: tf.extractall(root,filter="data")
+    archive.unlink()
+server=next(root.rglob("llama-server"))
+model_path=root/"Index-Translate-9B.Q6_K.gguf"
+download("https://huggingface.co/IndexTeam/Index-Translate-9B-GGUF/resolve/main/Index-Translate-9B.Q6_K.gguf",model_path)
+assert model_path.stat().st_size>7_000_000_000
+print("INDEX_MODEL_DOWNLOADED",flush=True)
+libs=sorted({str(p.parent) for p in root.rglob("*.so*")})
+env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
+# Two independent slots, each with 4096 tokens; no CPU model offload.
+server_log=open(root/"server.log","w+")
+proc=subprocess.Popen([str(server),"-m",str(model_path),"-ngl","99","-c","8192","-np","2","--jinja","--chat-template-kwargs",'{"enable_thinking":false}',"--host","127.0.0.1","--port","18080"],stdout=server_log,stderr=subprocess.STDOUT,env=env)
+atexit.register(lambda: proc.terminate() if proc.poll() is None else None)
+base="http://127.0.0.1:18080"
+deadline=time.monotonic()+180
+while time.monotonic()<deadline:
+    if proc.poll() is not None: raise RuntimeError("ENGINE_START_FAILED")
+    try:
+        if requests.get(base+"/health",timeout=3).status_code==200: break
+    except requests.RequestException: pass
+    time.sleep(2)
+else: raise RuntimeError("ENGINE_READY_TIMEOUT")
+server_log.flush()
+log=(root/"server.log").read_text(errors="replace")
+offload=re.search(r"offloaded\s+(\d+)/(\d+)\s+layers to GPU",log,re.I)
+if not offload or offload.group(1)!=offload.group(2): raise RuntimeError("FULL_GPU_OFFLOAD_NOT_VERIFIED")
+print("INDEX_FULL_GPU_OFFLOAD "+offload.group(1)+"/"+offload.group(2),flush=True)
 print("MODEL_READY",flush=True)
 # Test contextual glossary and bounded repair rather than post-hoc rewriting.
 glossary={
@@ -53,25 +99,29 @@ def check_output(source,ko,terms):
         "terms":all(v in ko for v in terms.values()),
         "format":bool(ko) and "\n" not in ko and not ko.startswith(("\"", "'", "**")) and not ko.endswith(("\"", "'","**"))
     }
-# Batch inference to avoid 200 separate model startups; retry only failed rows.
-tok.padding_side="left"
-if tok.pad_token_id is None: tok.pad_token=tok.eos_token
+# Use the model family's constrained translation structure, not a generic chat prompt.
 def request_for(row):
     terms=required_terms(row["source"])
-    request="문맥: "+row["context"]+"\n필수 용어:\n"+"\n".join(f"{k} = {v}" for k,v in terms.items())+"\n번역할 영어 원문:\n"+row["source"]
-    messages=[{"role":"system","content":system}]
-    for en,ko_example in examples:
-        messages.extend([{"role":"user","content":"번역할 영어 원문:\n"+en},{"role":"assistant","content":ko_example}])
-    messages.append({"role":"user","content":request})
-    return terms,request,messages
+    hard="保留所有占位符、数字、正负号、百分号、单位和属性缩写，不得遗漏或增添信息。"
+    if terms:
+        hard+="严格使用术语："+", ".join(f"{k}:{v}" for k,v in terms.items())+"。"
+    request=("请将以下英文游戏文本翻译为韩语。\n〖源文〗"+row["source"]+
+             "\n1. 〖硬性要求〗"+hard+
+             "\n2. 〖注意〗游戏本地化语境："+row["context"]+"。自然、准确、简洁的韩语游戏用语；技能说明保留全部效果和条件。"+
+             "\n直接输出翻译结果，不要进行任何解释。")
+    return terms,request,[{"role":"user","content":request}]
+def generate_one(messages):
+    # Retry with a single translation prompt, appending the specific failed constraints.
+    response=requests.post(base+"/v1/chat/completions",json={"messages":messages,"temperature":0,"max_tokens":512,"stream":False,"chat_template_kwargs":{"enable_thinking":False}},timeout=180)
+    response.raise_for_status()
+    choice=response.json()["choices"][0]
+    if choice.get("finish_reason")=="length": raise RuntimeError("TRANSLATION_TRUNCATED")
+    return choice["message"]["content"] or ""
 def generate(messages):
-    prompts=[tok.apply_chat_template(m,tokenize=False,add_generation_prompt=True,enable_thinking=False) for m in messages]
-    inputs=tok(prompts,return_tensors="pt",padding=True).to(model.device)
-    with torch.inference_mode():
-        out=model.generate(**inputs,max_new_tokens=512,do_sample=False,pad_token_id=tok.pad_token_id)
-    return tok.batch_decode(out[:,inputs["input_ids"].shape[-1]:],skip_special_tokens=True)
-for i in range(0,len(samples),4):
-    batch=samples[i:i+4]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        return list(pool.map(generate_one,messages))
+for i in range(0,len(samples),2):
+    batch=samples[i:i+2]
     active=[(row,*request_for(row)) for row in batch]
     for attempt in range(1,4):
         if not active: break
@@ -82,7 +132,7 @@ for i in range(0,len(samples),4):
             checks=check_output(row["source"],ko,terms)
             if not all(checks.values()) and attempt<3:
                 failures=", ".join(k for k,v in checks.items() if not v)
-                messages.extend([{"role":"assistant","content":ko},{"role":"user","content":"검증 실패 항목: "+failures+"\n이전 번역을 수정하세요. "+request+"\n필수 용어와 변수 및 약어, 수치를 빠짐없이 보존한 한국어 번역문만 출력하세요."}])
+                messages=[{"role":"user","content":request+"\n必须重新核对以下未通过的要求："+failures+"。不要省略数值、变量或术语。"}]
                 retry.append((row,terms,request,messages))
             else:
                 print("BENCHMARK_RESULT="+json.dumps({"id":row["id"],"ko":ko,"checks":checks,"attempts":attempt},ensure_ascii=False,separators=(",",":")),flush=True)
