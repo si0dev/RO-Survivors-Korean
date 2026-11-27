@@ -46,7 +46,7 @@ jobs:
           python benchmark/tools/colab-benchmark-transport-test.py -v
           python benchmark/tools/colab-benchmark-checkpoint-test.py -v
       - name: Validate frozen sample and reject changed source/reference
-        run: node benchmark/tools/colab-benchmark-fixture-test.mjs reference
+        run: node benchmark/tools/colab-benchmark-fixture-check.mjs reference
       - name: Confirm dependency preparation
         run: echo "LLM_DEPENDENCY_PREPARATION_DONE"
   restore-test:
