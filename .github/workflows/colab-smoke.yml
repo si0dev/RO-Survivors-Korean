@@ -38,6 +38,7 @@ jobs:
         run: |
           python benchmark/tools/colab-benchmark-test.py -v
           python benchmark/tools/colab-benchmark-transport-test.py -v
+          python benchmark/tools/colab-benchmark-checkpoint-test.py -v
       - name: Extract and select approved reference pairs
         shell: bash
         run: |
@@ -150,6 +151,12 @@ jobs:
           timeout 180 python benchmark/tools/colab-session-cleanup.py PRE
           # Verify and repair the cache on the runner before reserving GPU time.
           check cache-preflight 2400 python benchmark/tools/colab-cache-populate.py
+          python benchmark/tools/colab-benchmark-checkpoint.py prepare "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp"
+          if [ -f "$tmp/checkpoint-complete" ]; then
+            echo "CHECKPOINT_COMPLETE_NO_GPU"
+            python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
+            exit 0
+          fi
           allocation_started=1
           # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
           # The CLI handles its own bounded retries of transient server failures.
@@ -177,8 +184,9 @@ jobs:
           with (p/"short.conf").open("w") as f: short.write(f)
           PY
           check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG"
-          rm -f "$tmp/short.conf" "$tmp/drive.conf"
-          python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
+          # Keep the refresh-capable Drive config only on the runner until cleanup.
+          rm -f "$tmp/short.conf"
+          python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" "$tmp/resume.json" <<'PY'
           import json,sys,os,pathlib
           inputs=json.load(open(sys.argv[1]))
           assert len(inputs)==200 and all("reference" not in row for row in inputs)
@@ -186,12 +194,14 @@ jobs:
           body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
           for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py","colab-benchmark-translate.py"):
               body+=(root/name).read_text()+"\n"
-          body+="\ntranslate_samples(INPUTS,base)\n"
+          resume=json.load(open(sys.argv[3]))
+          body+="\ntranslate_samples(INPUTS,base,resume=json.loads("+repr(json.dumps(resume,ensure_ascii=False))+"))\n"
           compile(body,"benchmark.py","exec")
           pathlib.Path(sys.argv[2]).write_text(body)
           PY
           rc=0
-          timeout 5700 python benchmark/tools/colab-benchmark-transport.py "$tmp/benchmark.py" "$tmp/translation.log" "$gpu" "$tmp/sessions.json" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" </dev/null || rc=$?
+          touch "$tmp/translation.log"
+          timeout 5700 python benchmark/tools/colab-benchmark-checkpoint.py collect "$tmp/drive.conf" "$RUNNER_TEMP/ro-benchmark" "$tmp" "$gpu" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" </dev/null || rc=$?
           python - "$tmp/translation.log" <<'PY'
           import json,sys,re
           for path in sys.argv[1:]:
