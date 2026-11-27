@@ -129,6 +129,17 @@ jobs:
             while((pos=code.indexOf(label,pos+1))>=0){hits.push(code.slice(Math.max(0,pos-130),pos+label.length+130));}
             console.log('LABEL_AUDIT '+JSON.stringify({label,count:hits.length,contexts:hits.slice(0,12)}));
           }
+          const checks=[
+            ['librarian',/librar|bibliotec/gi],
+            ['quality-pair',/rare.{0,12}epic|epic.{0,12}legendary|raro.{0,12}épico|épico.{0,12}legendario/gi],
+            ['soldier-sohee',/skel_soldier|soldier skeleton|sohee/gi],
+            ['festival-gear',/Lantern Festival gear|equipo del Festival|data-pane-tab|wk-search/gi],
+            ['items',/\b2527\b|\b2986\b/g]
+          ];
+          for(const [name,re] of checks){
+            const hits=[...code.matchAll(re)];
+            console.log('CONTEXT_AUDIT '+JSON.stringify({name,count:hits.length,contexts:hits.slice(0,15).map(h=>code.slice(Math.max(0,h.index-170),h.index+h[0].length+170))}));
+          }
           const m=JSON.parse(await get(origin+'assets/manifest.json?v='+build));
           for(const label of ['Dragon Breath','Snake Ring']){
             const found=Object.entries(m.items??{}).filter(([id,v])=>v.name===label);
