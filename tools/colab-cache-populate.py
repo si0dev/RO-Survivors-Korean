@@ -87,11 +87,11 @@ def check_existing(e,f):
     return True
 def upload_verified(p,e):
     name=e["name"]
-    limit=900 if e["kind"]=="model" else 300
+    limit=1200 if e["kind"]=="model" else 600
     for attempt in range(1,4):
         print("CACHE_UPLOAD_ATTEMPT",e["kind"],attempt,flush=True)
         try:
-            rc("copyto",str(p),REMOTE+"/"+name,"--checksum","--drive-chunk-size","8M",limit=limit)
+            rc("copyto",str(p),REMOTE+"/"+name,"--checksum","--drive-chunk-size","32M","--tpslimit","4","--tpslimit-burst","4",limit=limit)
         except RuntimeError as exc:
             code=str(exc)
             print("CACHE_UPLOAD_RETRY",e["kind"],attempt,code,flush=True)
