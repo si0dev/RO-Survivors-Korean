@@ -177,7 +177,7 @@ export function createWikiTranslator(entries,labels={}){
   // labels before the wiki renders. Recover only candidates backed by an
   // approved full source hash; never translate a fragment by guessing.
   for(const [source,ko] of Object.entries(labels)){
-    if(typeof ko!=='string'||!/[가-힣]/.test(ko)||!/[A-Za-z]/.test(source)||/[가-힣]/.test(source))continue;
+    if(typeof ko!=='string'||!/[A-Za-z]/.test(source)||/[가-힣]/.test(source)||(!/[가-힣]/.test(ko)&&!(/\{\w+\}/.test(ko)&&ko!==source)))continue;
     const key=norm(ko),original=norm(source);
     if(!key||!original)continue;
     // Native formatters substitute numeric placeholders before writing the DOM.
@@ -190,7 +190,7 @@ export function createWikiTranslator(entries,labels={}){
         names.push(part);
         return '([+-]?\\d+(?:[.,]\\d+)?)';
       }).join('');
-      if(names.length&&names.length<=12&&parts.some((p,i)=>i%2===0&&/[가-힣]/.test(p))){
+      if(names.length&&names.length<=12&&parts.some((p,i)=>i%2===0&&/[A-Za-z가-힣]/.test(p))){
         templates.push({pattern:new RegExp('^'+pattern+'$'),names,original});
       }
       continue;
@@ -206,7 +206,7 @@ export function createWikiTranslator(entries,labels={}){
   const LIMIT=256;
   function templateCandidates(value){
     const out=new Set();
-    if(!/\d/.test(value)||!/[가-힣]/.test(value))return out;
+    if(!/\d/.test(value))return out;
     for(const {pattern,names,original} of templates){
       const match=pattern.exec(value);
       if(!match)continue;
@@ -227,15 +227,15 @@ export function createWikiTranslator(entries,labels={}){
   function numericCandidates(value){
     // Equipment and pet tooltips join independent effects with a middle dot.
     // Preserve separators, stars and numeric values; require the final hash.
-    const parts=value.split(' · ');
+    const parts=value.split(/( · | → )/);
     let combinations=[''];
-    for(let i=0;i<parts.length;i++){
+    for(let i=0;i<parts.length;i+=2){
       const part=parts[i],prefix=part.startsWith('★ ')?'★ ':'',body=part.slice(prefix.length);
       const restored=templateCandidates(body);
       if(restored===null)return null;
       const options=new Set([body,...(reverse.get(body)??[]),...restored]);
       if(combinations.length*options.size>LIMIT)return null;
-      combinations=combinations.flatMap(start=>[...options].map(option=>start+(i?' · ':'')+prefix+option));
+      combinations=combinations.flatMap(start=>[...options].map(option=>start+(i?parts[i-1]:'')+prefix+option));
     }
     const whole=templateCandidates(value);
     if(whole===null)return null;
@@ -261,7 +261,7 @@ export function createWikiTranslator(entries,labels={}){
   async function resolve(normalized){
     const direct=await sha256(normalized);
     if(Object.hasOwn(entries,direct))return entries[direct];
-    if(!/[가-힣]/.test(normalized))return undefined;
+    if(!/[가-힣]/.test(normalized)&&!/\d/.test(normalized))return undefined;
     // Whole-string translations are more specific than fragment recovery.
     const exact=reverse.get(normalized);
     if(exact){

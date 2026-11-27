@@ -70,3 +70,23 @@ test('repeated numeric placeholders and conflicting template candidates are reje
   assert.equal(await translate('수치 2 및 2'),undefined);
   assert.equal(await translate('수치 2 및 3'),undefined);
 });
+
+test('wiki upgrade arrows and untranslated ASCII stat abbreviations retain exact source hashes',async()=>{
+  const sources={
+    '+1 INT · +2 cast speed → +2 INT · +4 cast speed':'INT +1 · 캐스팅 속도 +2 → INT +2 · 캐스팅 속도 +4',
+    '+1 DEX · +1% pierce chance → +2 DEX · +2% pierce chance':'DEX +1 · 관통 확률 +1% → DEX +2 · 관통 확률 +2%',
+    '+2 STR · +2 INT':'STR +2 · INT +2',
+    '+2 STR · +2 DEX':'STR +2 · DEX +2'
+  };
+  const entries=Object.fromEntries(await Promise.all(Object.entries(sources).map(async ([en,ko])=>[await sha256(en),ko])));
+  const translate=createWikiTranslator(entries,{
+    '+{0} cast speed':'캐스팅 속도 +{0}',
+    '+{0}% pierce chance':'관통 확률 +{0}%',
+    '+{0} STR':'STR +{0}'
+  });
+  assert.equal(await translate('+1 INT · 캐스팅 속도 +2 → +2 INT · 캐스팅 속도 +4'),Object.values(sources)[0]);
+  assert.equal(await translate('+1 DEX · 관통 확률 +1% → +2 DEX · 관통 확률 +2%'),Object.values(sources)[1]);
+  assert.equal(await translate('STR +2 · +2 INT'),Object.values(sources)[2]);
+  assert.equal(await translate('STR +2 · +2 DEX'),Object.values(sources)[3]);
+  assert.equal(await translate('STR +3 · +2 INT'),undefined);
+});
