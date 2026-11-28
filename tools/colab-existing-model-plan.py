@@ -10,7 +10,7 @@ loader.exec_module(cache)
 cache.REMOTE="rocache:RO-Survivors-Korean-cache/index-translate-9b-q6k-b12343-v1"
 def main():
     rev,entries=cache.metadata()
-    files=cache.listing()
+    files=cache.list_remote(cache.REMOTE)
     for e,url in entries:
         assert e.get("sha256") and len(e["sha256"])==64,"UPSTREAM_DIGEST_REQUIRED"
         if e["kind"]=="cudart":

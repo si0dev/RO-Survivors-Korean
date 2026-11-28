@@ -1,0 +1,28 @@
+name: Colab multi-model cache layout (CPU only)
+on:
+  pull_request:
+    branches: [test/colab-adc-smoke]
+    paths:
+      - '.github/workflows/colab-cache-layout-test.yml'
+      - 'tools/colab_cache_layout.py'
+      - 'tools/colab-cache-*.py'
+      - 'tools/colab-benchmark-*.py'
+      - 'tools/colab-benchmark-workflow.sh'
+permissions:
+  contents: read
+jobs:
+  layout:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline cache tests
+        run: |
+          python tools/colab-cache-layout-test.py -v
+          python -m py_compile tools/colab_cache_layout.py tools/colab-cache-populate.py tools/colab-benchmark-bootstrap.py tools/colab-cache-mount.py tools/colab-benchmark-cache.py tools/colab-benchmark-review.py
+          bash -n tools/colab-benchmark-workflow.sh

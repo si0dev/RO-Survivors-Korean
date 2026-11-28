@@ -1,9 +1,12 @@
 """Populate a private Drive cache via rclone; refresh credentials only on Actions."""
 import hashlib,json,os,pathlib,subprocess,time,requests,traceback,re
-TAG="b12343"
-REPO="IndexTeam/Index-Translate-9B-GGUF"
-MODEL="Index-Translate-9B.Q6_K.gguf"
-REMOTE="rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1"
+import runpy
+layout=runpy.run_path(str(pathlib.Path(__file__).with_name("colab_cache_layout.py")))
+SPEC=layout["selected"]()
+TAG,REPO,MODEL=SPEC["engine"],SPEC["repo"],SPEC["filename"]
+REMOTE,ENGINE_REMOTE=SPEC["model_remote"],SPEC["engine_remote"]
+def asset_remote(name):
+    return REMOTE if name==MODEL or name=="manifest.json" else ENGINE_REMOTE
 tmp=pathlib.Path(os.environ["RO_CACHE_TMP"])
 conf=tmp/"drive.conf"
 def rc(*args,limit=120):
@@ -29,12 +32,22 @@ def metadata():
         x=matches[0];digest=x.get("digest") or ""
         entries.append(({"kind":kind,"name":x["name"],"size":x["size"],"sha256":digest.removeprefix("sha256:") if digest.startswith("sha256:") else None},x["browser_download_url"]))
     return rev,entries
-def listing():
-    rows=json.loads(rc("lsjson",REMOTE,"--files-only","--hash"))
+def list_remote(remote):
+    rows=json.loads(rc("lsjson",remote,"--files-only","--hash"))
     files={}
     for row in rows:
         name=row["Name"]
         if name in files: raise RuntimeError("CACHE_DUPLICATE_NAME")
+        files[name]=row
+    return files
+def listing():
+    model_files=list_remote(REMOTE)
+    engine_files=list_remote(ENGINE_REMOTE)
+    # Legacy engine files in the model directory are not authoritative.
+    files={name:row for name,row in model_files.items() if name in (MODEL,"manifest.json")}
+    for name,row in engine_files.items():
+        if name in files or name.endswith(".gguf") or name=="manifest.json":
+            raise RuntimeError("CACHE_DUPLICATE_NAME")
         files[name]=row
     return files
 def hashes(row):
@@ -50,7 +63,7 @@ def remote_digest(name):
     # Read the existing Drive file as a stream, never write a second local copy.
     sha=hashlib.sha256();md5=hashlib.md5();size=0
     with (tmp/"digest-error.log").open("wb") as err:
-        proc=subprocess.Popen(["rclone","--config",str(conf),"--contimeout","30s","--timeout","180s","cat",REMOTE+"/"+name],stdout=subprocess.PIPE,stderr=err)
+        proc=subprocess.Popen(["rclone","--config",str(conf),"--contimeout","30s","--timeout","180s","cat",asset_remote(name)+"/"+name],stdout=subprocess.PIPE,stderr=err)
         try:
             while b:=proc.stdout.read(4*1024*1024):
                 sha.update(b);md5.update(b);size+=len(b)
@@ -91,7 +104,7 @@ def upload_verified(p,e):
     for attempt in range(1,4):
         print("CACHE_UPLOAD_ATTEMPT",e["kind"],attempt,flush=True)
         try:
-            rc("copyto",str(p),REMOTE+"/"+name,"--checksum","--drive-chunk-size","32M","--tpslimit","4","--tpslimit-burst","4",limit=limit)
+            rc("copyto",str(p),asset_remote(name)+"/"+name,"--checksum","--drive-chunk-size","32M","--tpslimit","4","--tpslimit-burst","4",limit=limit)
         except RuntimeError as exc:
             code=str(exc)
             print("CACHE_UPLOAD_RETRY",e["kind"],attempt,code,flush=True)
@@ -122,12 +135,39 @@ def valid(d,files):
         if type(e.get("size")) is not int or e["size"]<=0: return False
         if not isinstance(e.get("sha256"),str) or not re.fullmatch(r"[a-f0-9]{64}",e["sha256"]): return False
         if not isinstance(e.get("md5"),str) or not re.fullmatch(r"[a-f0-9]{32}",e["md5"]): return False
-        if e["kind"]=="model" and (name!=MODEL or e["size"]<7_000_000_000): return False
+        if e["kind"]=="model" and (name!=MODEL or e["size"]<SPEC["min_bytes"]): return False
     return all(check_existing(e,files.get(e["name"])) for e in entries)
+def promote_legacy_engine(d,files):
+    """Copy verified old engine assets server-side, never duplicate the model."""
+    if not SPEC["legacy"] or not isinstance(d,dict):
+        return files
+    entries=d.get("files")
+    if not isinstance(entries,list) or len(entries)!=3 or any(not isinstance(e,dict) for e in entries):
+        return files
+    if not any(e.get("kind") in ("llama","cudart") and not files.get(e.get("name")) for e in entries):
+        return files
+    old=list_remote(REMOTE)
+    # Only reuse assets whose old manifest and Drive hashes agree, without streaming
+    # a model or trusting a filename alone. Otherwise the normal repair path applies.
+    if not all(isinstance(e.get("name"),str) and isinstance(e.get("size"),int)
+               and verified_remote(e,old.get(e["name"])) for e in entries):
+        return files
+    if not valid(d,old):
+        return files
+    for e in entries:
+        if e["kind"] in ("llama","cudart") and not files.get(e["name"]):
+            name=e["name"]
+            rc("copyto",REMOTE+"/"+name,ENGINE_REMOTE+"/"+name,"--checksum",limit=600)
+            if not check_existing(e,file_info(name,e["size"])):
+                raise RuntimeError("UPLOAD_HASH_MISMATCH")
+            print("CACHE_ENGINE_REUSED",e["kind"],flush=True)
+    return listing()
+
 def main():
     t=time.monotonic()
     print("CACHE_STAGE: listing",flush=True)
     rc("mkdir",REMOTE)
+    rc("mkdir",ENGINE_REMOTE)
     files=listing()
     mode="created"
     if "manifest.json" in files:
@@ -137,6 +177,7 @@ def main():
             d=json.loads(raw)
         except (ValueError, UnicodeError):
             d=None
+        files=promote_legacy_engine(d,files)
         if valid(d,files):
             mode="hit"
         else:

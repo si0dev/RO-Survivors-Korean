@@ -1,7 +1,7 @@
 """Bootstrap pinned rclone from private Drive; no FUSE or apt."""
 import os, pathlib, tempfile, subprocess, shutil, atexit, configparser, json, hashlib, zipfile, re
 import requests
-REMOTE="rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1"
+REMOTE=CACHE_SPEC["model_remote"]
 cache=pathlib.Path(tempfile.mkdtemp(prefix="ro-drive-local-"))
 atexit.register(lambda: shutil.rmtree(cache,ignore_errors=True))
 atexit.register(lambda: pathlib.Path(CONFIG).unlink(missing_ok=True))
