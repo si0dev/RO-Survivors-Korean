@@ -43,9 +43,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    env:
-      UPDATE_DIR: ${{ runner.temp }}/ro-update
-      LLM_DIR: ${{ runner.temp }}/ro-update-llm
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,6 +50,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Initialize temporary paths
+        run: |
+          echo "UPDATE_DIR=$RUNNER_TEMP/ro-update" >> "$GITHUB_ENV"
+          echo "LLM_DIR=$RUNNER_TEMP/ro-update-llm" >> "$GITHUB_ENV"
       - name: Check for existing automated update PR
         id: gate
         env:
@@ -147,7 +148,7 @@ jobs:
           source tools/llm/workflow.sh
           cleanup
       - name: Validate candidate translation build
-        if: steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
+        if: success() && steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
         run: |
           npm test
           npm run build
@@ -156,7 +157,7 @@ jobs:
           expected=$(node -p 'require(process.env.UPDATE_DIR+"/summary.json").build')
           test "$(node tools/llm/extract-update.mjs --build-only)" = "$expected"
       - name: Open candidate update pull request
-        if: steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
+        if: success() && steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
         env:
           GH_TOKEN: ${{ secrets.TRANSLATION_UPDATE_TOKEN || github.token }}
         run: |
@@ -177,4 +178,5 @@ jobs:
           gh pr create --base main --head "$branch" --title "Korean translation update" --body "$summary. Model candidates require review before merge. Rejected rows are not imported."
       - name: Discard extracted sources and temporary candidates
         if: always()
-        run: rm -rf "$UPDATE_DIR" "$LLM_DIR"
+        run: |
+          rm -rf "$RUNNER_TEMP/ro-update" "$RUNNER_TEMP/ro-update-llm"
