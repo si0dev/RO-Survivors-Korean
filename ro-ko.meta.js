@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name RO Survivors 한국어 (비공식)
 // @namespace local.ro-survivors.ko
-// @version 0.4.22
+// @version 0.4.23
 // @description 비공식 팬 번역. 게임 운영자와 무관하며 사용 허용 여부는 확인되지 않았습니다.
 // @match https://ro-survivors.com/*
 // @match https://www.ro-survivors.com/*
