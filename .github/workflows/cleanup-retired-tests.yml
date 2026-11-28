@@ -139,3 +139,39 @@ jobs:
           print(f"SMOKE_FAILURES_DELETED={deleted} REMAINING={len(remaining)}",flush=True)
           if remaining: raise RuntimeError("Failed smoke runs remain")
           PY
+
+      - name: Remove obsolete benchmark archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The production pipeline is independent of the frozen 200-row benchmark.
+          # Leave other diagnostic archives and all published translations intact.
+          python3 - <<'PY'
+          import subprocess
+          targets = {
+              "colab-adc-smoke": "8609fa7d37609a4eb33ac16e921ed78a5e029e2e",
+              "llm-cache-layout": "edb7f09e9b33218d2d4e4ecae10655ad288d9c69",
+              "llm-live-diagnostics": "6812fce3c89cf39d3f2e05938a00f4ac263b2acb",
+          }
+          def remote(ref):
+              return subprocess.check_output(
+                  ["git", "ls-remote", "--refs", "origin", ref], text=True
+              ).strip()
+          refs = {"refs/tags/archive/retired-tests/2026-11-28/" + name: sha
+                  for name, sha in targets.items()}
+          present = {}
+          for ref, sha in refs.items():
+              value = remote(ref)
+              if value:
+                  if value.split() != [sha, ref]:
+                      raise RuntimeError("Archive changed: " + ref)
+                  present[ref] = sha
+          if present:
+              subprocess.run(["git", "push", "--atomic",
+                  *["--force-with-lease=" + ref + ":" + sha for ref, sha in present.items()],
+                  "origin", *[":" + ref for ref in present]], check=True)
+          remaining = [ref for ref in refs if remote(ref)]
+          print(f"BENCHMARK_ARCHIVES_DELETED={len(present)} REMAINING={len(remaining)}", flush=True)
+          if remaining:
+              raise RuntimeError("Benchmark archives remain")
+          PY
