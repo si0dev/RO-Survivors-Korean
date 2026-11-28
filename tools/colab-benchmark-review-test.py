@@ -66,6 +66,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(len({x["name"] for x in profiles}),3)
         self.assertEqual(len({x["profile"]["engine"] for x in profiles}),1)
         subprocess.run(["bash","-n",str(r.ROOT/"colab-benchmark-workflow.sh")],check=True)
+        compile((r.ROOT/"colab-cache-populate.py").read_text(),"cache-populate.py","exec")
         workflow=(r.ROOT.parent/".github/workflows/colab-smoke.yml").read_text()
         self.assertNotIn("matrix:",workflow)
         self.assertIn("prepare_comparison_cache",workflow)

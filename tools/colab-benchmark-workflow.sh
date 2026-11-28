@@ -153,7 +153,17 @@ unset COLAB_ADC_JSON
   timeout 180 python benchmark/tools/colab-session-cleanup.py PRE
 }
 prepare_cache() {
-  check cache-preflight 2400 python benchmark/tools/colab-cache-populate.py
+  # Emit only fixed, sanitized progress lines; never stream raw credential logs.
+  local rc=0
+  timeout 2400 python benchmark/tools/colab-cache-populate.py </dev/null 2>&1 | python -u -c '
+import sys,re
+safe=re.compile(r"(?:CACHE_STAGE: (?:listing|verify_manifest|repair_invalid_manifest|source_metadata|(?:model|llama|cudart)_(?:recover|download|upload)|publish_manifest)|CACHE_(?:FILE_(?:REUSED|SAVED) (?:model|llama|cudart) [0-9]+|ENGINE_REUSED (?:llama|cudart)|UPLOAD_(?:ATTEMPT|RETRY) (?:model|llama|cudart) [1-3](?: [A-Za-z0-9_: -]+)?|ERROR:[A-Za-z]+:[A-Za-z0-9_:= -]+:line=[0-9]+)|CACHE_PREPARED=\\{.*\\})")
+for line in sys.stdin:
+    line=line.rstrip("\\r\\n")
+    if safe.fullmatch(line): print(line,flush=True)
+' | tee "$tmp/cache-preflight.log" || rc=$?
+  if [ "$rc" != 0 ]; then echo "cache-preflight: FAIL (exit $rc)"; return "$rc"; fi
+  echo "cache-preflight: PASS"
   python - "$tmp/cache-preflight.log" <<'PY'
 import json,sys
 for line in open(sys.argv[1]):

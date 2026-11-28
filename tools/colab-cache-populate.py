@@ -20,9 +20,15 @@ def rc(*args,limit=120):
         raise RuntimeError("RCLONE_FAILED:"+category)
     return p.stdout
 def metadata():
-    r=requests.get("https://huggingface.co/api/models/"+REPO,params={"blobs":"true"},timeout=60)
-    r.raise_for_status();m=r.json();rev=m["sha"]
-    lfs=next(x["lfs"] for x in m["siblings"] if x["rfilename"]==MODEL)
+    # Pin the exact official Qwen LFS pointer verified at this revision.
+    # Avoid dependence on optional /api/models blob metadata for this asset.
+    if (REPO,MODEL)==("Qwen/Qwen3-14B-GGUF","Qwen3-14B-Q4_K_M.gguf"):
+        rev="530227a7d994db8eca5ab5ced2fb692b614357fd"
+        lfs={"size":9001752960,"sha256":"500a8806e85ee9c83f3ae08420295592451379b4f8cf2d0f41c15dffeb6b81f0"}
+    else:
+        r=requests.get("https://huggingface.co/api/models/"+REPO,params={"blobs":"true"},timeout=60)
+        r.raise_for_status();m=r.json();rev=m["sha"]
+        lfs=next(x["lfs"] for x in m["siblings"] if x["rfilename"]==MODEL)
     entries=[({"kind":"model","name":MODEL,"size":lfs["size"],"sha256":lfs["sha256"]},"https://huggingface.co/"+REPO+"/resolve/"+rev+"/"+MODEL)]
     r=requests.get("https://api.github.com/repos/ggml-org/llama.cpp/releases/tags/"+TAG,timeout=60)
     r.raise_for_status();assets=r.json()["assets"]
@@ -236,5 +242,9 @@ if __name__=="__main__":
         msg=str(e)
         frame=traceback.extract_tb(e.__traceback__)[-1]
         detail=msg if msg in safe or msg.startswith("RCLONE_FAILED:") else ("key="+str(e.args[0]) if isinstance(e,KeyError) and e.args and e.args[0] in keys else "other")
+        if isinstance(e,requests.HTTPError) and e.response is not None:
+            detail="http="+str(e.response.status_code)
+        elif isinstance(e,StopIteration):
+            detail="metadata_entry_missing"
         print("CACHE_ERROR:"+type(e).__name__+":"+detail+":line="+str(frame.lineno),flush=True)
         raise SystemExit(1)
