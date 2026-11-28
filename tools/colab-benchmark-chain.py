@@ -101,10 +101,17 @@ def correct_one(row,base):
             "如果初稿没有语义错误，逐字原样返回；仅修正明确错误，不要为润色而重写。"
             "不得添加原文没有的状态、伤害、对象或条件。保留原文的数字、符号、变量、单位和关系。"
             "只输出最终一行韩语译文，不要解释。\n")
+    # Reuse the signed-modifier prompt that actually corrected the regression in #53.
+    # Its example must never be passed to unrelated ordinary descriptions.
     if is_duration_modifier(row["source"]):
-        prompt+=("本条是带正负号的属性时长变化量。"
-                 "韩语必须采用属性名称加持续时间加带符号的数值的简短词条形式，"
-                 "不得改写为施加状态若干秒的句子。\n")
+        prompt=("你是英韩游戏翻译校订员。英文原文是事实依据，韩语初稿是需要校订的已有译文。"
+                "保留初稿中正确的部分，仅修正错误、遗漏或术语问题；不得从头自由重译。"
+                "原文的前置正负号是属性变化量，不是固定状态持续时间。"
+                "属性词条必须保留属性变化的语法，不能变成施加状态的描述。"
+                "例如：+2 s of poison 表示 중독 지속 시간 +2초，而不是 +2초 동안 중독됩니다。"
+                "保留相对时长表达，如 half as long 应保留为 절반，不计算新的绝对秒数。"
+                "必须保留全部数值、变量、单位、目标、条件、频率及否定。使用自然韩语游戏用语。"
+                "若初稿准确，原样返回。只输出最终一行韩语译文，不要解释。\n")
     if re.search(r"\bhalf as long\b",row["source"],re.I):
         prompt+=("本条有相对时长条件。必须保留相对于前述时长的比例关系，"
                  "不得计算或写入新的绝对秒数。\n")
@@ -119,7 +126,15 @@ def correct_one(row,base):
         if choice["finish_reason"]!="stop" or not text or "\n" in text or not re.search(r"[가-힣]",text):
             raise ValueError("CHAIN_CORRECTION_INVALID")
         issues=correction_issues(row["source"],text)
-        if not issues or attempt==3: return text
+        if not issues: return text
+        if attempt==3:
+            # Do not replace an otherwise structurally valid draft with a
+            # correction that violates known constraints. Qwen still verifies it.
+            if not correction_issues(row["source"],row["draft"]):
+                print("CHAIN_CORRECTION_FALLBACK=original_draft",flush=True)
+                return row["draft"]
+            print("CHAIN_CORRECTION_UNRESOLVED",flush=True)
+            return text
         print("CHAIN_CORRECTION_RETRY="+str(attempt)+":"+",".join(issues),flush=True)
         data={"English":row["source"],"Korean draft":row["draft"],"Context":row["context"],
               "Previous correction":text,"Detected errors":issues,
@@ -211,7 +226,7 @@ def run(tmp,session,stage):
                 raise RuntimeError("CHAIN_RESULT_CONFLICT")
             results[i]=value
             print(f"CHAIN_PROGRESS={stage}:{len(results)}/{len(rows)} id={i}",flush=True)
-        elif line=="PRELOADED_MODEL_REUSED" or re.fullmatch(r"CHAIN_CORRECTION_RETRY=[12]:[a-z_,]+",line):
+        elif line in ("PRELOADED_MODEL_REUSED","CHAIN_CORRECTION_FALLBACK=original_draft","CHAIN_CORRECTION_UNRESOLVED") or re.fullmatch(r"CHAIN_CORRECTION_RETRY=[12]:[a-z_,]+",line):
             print(line,flush=True)
         else:
             kernel.safe_progress(line,print)

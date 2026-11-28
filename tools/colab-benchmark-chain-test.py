@@ -78,6 +78,24 @@ class ChainTests(unittest.TestCase):
             self.assertNotIn("属性时长变化量",first)
             self.assertIn("相对时长条件",first)
             self.assertIn("unsupported_poison_effect",post.call_args.kwargs["json"]["messages"][0]["content"])
+    def test_invalid_correction_does_not_replace_valid_draft(self):
+        source="You throw magic sand on a group of enemies: they fall asleep for 2.5 s (bosses, half as long)."
+        draft="적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간)."
+        response=Mock()
+        response.json.return_value={"choices":[{"message":{"content":"2.5초 동안 잠들고 보스는 1.25초 동안 잠듭니다."},"finish_reason":"stop"}]}
+        with patch.object(requests,"post",return_value=response) as post:
+            self.assertEqual(c.correct_one({"source":source,"draft":draft,"context":"skill"},"mock"),draft)
+            self.assertEqual(post.call_count,3)
+    def test_invalid_original_is_not_treated_as_valid_fallback(self):
+        response=Mock()
+        response.json.return_value={"choices":[{"message":{"content":"+0.3초 동안 빙결."},"finish_reason":"stop"}]}
+        row={"source":"+0.3 s of freeze.","draft":"+0.3초 동안 얼음 상태가 됩니다.","context":"talent"}
+        with patch.object(requests,"post",return_value=response) as post:
+            result=c.correct_one(row,"mock")
+            self.assertEqual(post.call_count,3)
+            self.assertEqual(result,"+0.3초 동안 빙결.")
+            self.assertTrue(c.correction_issues(row["source"],result))
+            self.assertIn("+2 s of poison",post.call_args_list[0].kwargs["json"]["messages"][0]["content"])
     def test_correction_retries_wrong_duration(self):
         responses=[]
         for text in ("+0.3초 동안 빙결 상태가 됩니다.","동빙 시간 +0.3초."):
