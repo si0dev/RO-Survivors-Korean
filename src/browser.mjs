@@ -65,7 +65,7 @@ export function bindStatusPosition(node,doc=document,pathname=location.pathname)
     }
     if(mode==='panel'){
       if(anchor.nextElementSibling!==node)anchor.after(node);
-      Object.assign(node.style,{display:'block',position:'static',left:'auto',top:'auto',transform:'none',right:'auto',bottom:'auto',zIndex:'auto',fontSize:'10px',lineHeight:'1.5',color:'#64748b',background:'transparent',padding:'0',margin:'4px 0 0',borderRadius:'0',maxWidth:'100%',whiteSpace:'nowrap',textAlign:'center'});
+      Object.assign(node.style,{display:'block',position:'static',left:'auto',top:'auto',transform:'none',right:'auto',bottom:'auto',zIndex:'auto',fontSize:'10px',lineHeight:'1.5',color:'#64748b',background:'transparent',padding:'0',margin:'4px 0 0',borderRadius:'0',maxWidth:'100%',whiteSpace:'normal',textAlign:'center'});
     }else if(mode==='game'){
       if(node.parentElement!==doc.body)doc.body.append(node);
       const view=doc.defaultView;
@@ -73,7 +73,7 @@ export function bindStatusPosition(node,doc=document,pathname=location.pathname)
       Object.assign(node.style,{display:'block',position:'fixed',left:'50%',top:top+'px',transform:'translateX(-50%)',right:'auto',bottom:'auto',zIndex:'2147483640',fontSize:'12px',lineHeight:'1.5',color:'#e5e7eb',background:'#171717e6',padding:'4px 8px',margin:'0',borderRadius:'4px',maxWidth:'90vw',whiteSpace:'normal',textAlign:'center'});
     }else{
       if(node.parentElement!==doc.body)doc.body.append(node);
-      Object.assign(node.style,{display:'block',position:'fixed',left:'auto',top:'auto',transform:'none',right:'12px',bottom:'10px',zIndex:'2147483640',fontSize:'12px',lineHeight:'1.5',color:'#b0b0b0',background:'#171717e6',padding:'4px 8px',margin:'0',borderRadius:'4px',maxWidth:'95vw',whiteSpace:'nowrap',textAlign:'center'});
+      Object.assign(node.style,{display:'block',position:'fixed',left:'auto',top:'auto',transform:'none',right:'12px',bottom:'10px',zIndex:'2147483640',fontSize:'12px',lineHeight:'1.5',color:'#b0b0b0',background:'#171717e6',padding:'4px 8px',margin:'0',borderRadius:'4px',maxWidth:'95vw',whiteSpace:'normal',textAlign:'center'});
     }
     node.style.setProperty('--ro-ko-warning',mode==='panel'?'#966300':'#fbbf24');
     node.style.setProperty('--ro-ko-success',mode==='panel'?'#15803d':'#86efac');
@@ -133,7 +133,13 @@ export function bindGamePatchInfo(node,doc=document,pathname=location.pathname){
   view.addEventListener('resize',sync);
   findPad();
 }
-let statusNode,statusSync,statusRefresh;
+export function engineNoticeText(requested,inGame){
+  if(!requested)return {message:'',link:ENGINE_UPDATE_LABEL};
+  return inGame
+    ?{message:'업데이트 설치 후 새로고침 (',link:'다시 설치',suffix:')'}
+    :{message:'업데이트 설치 후 게임을 새로고침해 주세요.',link:'업데이트 설치 창 다시 열기'};
+}
+let statusNode,statusSync,statusRefresh,engineInstallRequested=false;
 function showStatus(state,engineVersion){
   if(!statusNode){
     statusNode=document.createElement('div');statusNode.id='ro-ko-status';statusNode.setAttribute('role','status');
@@ -160,6 +166,7 @@ function showStatus(state,engineVersion){
   version.style.display='inline';
   version.style.color='inherit';
   const inGame=mode==='game';
+  if(!state.engineUpdateAvailable)engineInstallRequested=false;
   const parts=inGame?[]:[title,version];
   const prefix=()=>parts.length?' · ':'';
   function add(text,color){
@@ -167,16 +174,32 @@ function showStatus(state,engineVersion){
     span.textContent=prefix()+text;span.style.color=color;parts.push(span);
   }
   const label=stateLabel(state);
-  if(!inGame&&label)add(label,'var(--ro-ko-warning)');
-  if(state.engineUpdated)add('업데이트 완료','var(--ro-ko-success)');
+  if(!inGame&&label)add(label,state.scanFailed?'var(--ro-ko-warning)':'inherit');
+  if(state.engineUpdated&&!state.engineUpdateAvailable)add('최신 한국어 패치가 적용되었습니다.','var(--ro-ko-success)');
   if(state.engineUpdateAvailable){
+    const {message,link:linkText,suffix}=engineNoticeText(engineInstallRequested,inGame);
     const link=document.createElement('a');
-    link.textContent=prefix()+ENGINE_UPDATE_LABEL;
+    link.textContent=linkText;
     link.href=DATA_URL+'ro-ko.user.js';
     link.target='_blank';link.rel='noopener noreferrer';
     link.title='한국어 패치 스크립트 업데이트';
     Object.assign(link.style,{color:'var(--ro-ko-warning)',pointerEvents:'auto',textDecoration:'underline',cursor:'pointer'});
-    parts.push(link);
+    link.addEventListener('click',()=>{
+      engineInstallRequested=true;
+      // Keep the clicked link intact until the browser opens its installation tab.
+      setTimeout(()=>statusRefresh?.(),0);
+    });
+    const notice=document.createElement('span');
+    notice.style.color='var(--ro-ko-warning)';
+    if(message){
+      if(!inGame){
+        notice.style.display='block';
+        const instruction=document.createElement('div');
+        instruction.textContent=message;
+        notice.append(instruction,link);
+      }else notice.append(message,link,suffix??'');
+    }else notice.append(prefix(),link);
+    parts.push(notice);
   }
   node.replaceChildren(...parts);
   statusSync();
