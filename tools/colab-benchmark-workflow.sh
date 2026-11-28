@@ -94,6 +94,12 @@ PY
 check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG" || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|file or directory not found|502|503|504" "$tmp/token-upload.log" && ! grep -Eqi "401|403|429|quota|permission denied|invalid_grant" "$tmp/token-upload.log"; then session_rc=75; fi; return 0; }
 # Keep the refresh-capable Drive config only on the runner until cleanup.
 rm -f "$tmp/short.conf"
+if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
+  echo "COLAB_PHASE=SEMANTIC_REVIEW"
+  session_rc=0
+  timeout 1800 python benchmark/tools/colab-benchmark-review.py "$tmp" "$gpu" </dev/null || session_rc=$?
+  return 0
+fi
 python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
 import json,sys,os,pathlib
 inputs=json.load(open(sys.argv[1]))
@@ -163,6 +169,12 @@ run_benchmark() {
   trap cleanup_on_exit EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
+  if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
+    run_session 1 "$((SECONDS+1800))"
+    local rc="$session_rc"
+    release_session
+    return "$rc"
+  fi
   source benchmark/tools/colab-benchmark-recover.sh
   recover_benchmark
 }

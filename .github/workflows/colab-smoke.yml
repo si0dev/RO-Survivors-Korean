@@ -1,4 +1,4 @@
-name: Colab cached Index-Translate Q6_K benchmark (temporary)
+name: Colab Index-Translate Q6_K semantic review only (temporary)
 on:
   pull_request:
     branches: [main]
@@ -14,7 +14,9 @@ jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
     runs-on: ubuntu-24.04
-    timeout-minutes: 165
+    timeout-minutes: 45
+    env:
+      RO_BENCHMARK_MODE: semantic-review
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,16 +38,8 @@ jobs:
         with:
           reference-dir: reference
           browser: 'false'
-      - name: Independent translation contract and evaluation tests
-        run: |
-          python benchmark/tools/colab-benchmark-test.py -v
-          python benchmark/tools/colab-benchmark-transport-test.py -v
-          python benchmark/tools/colab-benchmark-checkpoint-test.py -v
-          python benchmark/tools/colab-benchmark-kernel-test.py -v
-          bash benchmark/tools/colab-benchmark-recover-test.sh
-      - name: Prepare fixed approved reference pairs offline
-        shell: bash
-        run: node benchmark/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
+      - name: Independent semantic reviewer contract tests
+        run: python benchmark/tools/colab-benchmark-review-test.py -v
       - name: Restore pinned rclone archive
         id: rclone
         uses: actions/cache/restore@v4
@@ -82,22 +76,11 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_cache
-      - name: Restore translation checkpoint
-        shell: bash
-        run: |
-          source benchmark/tools/colab-benchmark-workflow.sh
-          restore_checkpoint
-      - name: GPU allocation, model preparation and streaming translation with recovery
+      - name: GPU semantic review only (12 candidate verdicts, zero translations)
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           run_benchmark
-      - name: Assess completed translations
-        shell: bash
-        run: |
-          source benchmark/tools/colab-benchmark-workflow.sh
-          grep -qx BENCHMARK_DONE "$tmp/translation.log"
-          python benchmark/tools/colab-benchmark-assess.py "$RUNNER_TEMP/ro-benchmark/references.json" "$tmp/translation.log"
       - name: Verify zero active sessions and remove private temporary files
         if: always()
         shell: bash
