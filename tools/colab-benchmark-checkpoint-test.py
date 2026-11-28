@@ -83,6 +83,51 @@ class CheckpointTests(unittest.TestCase):
         self.assertNotEqual(a,ck.fingerprint([1],[2],manifest,{"script":"b"}))
         manifest["files"][0]["sha256"]="b"*64
         self.assertNotEqual(a,ck.fingerprint([1],[2],manifest,{"script":"a"}))
+    def test_migration_retains_valid_and_numeric_false_positive_only(self):
+        samples=[
+            {"id":"001","source":source},
+            {"id":"002","source":"up to double within 6 m"},
+            {"id":"003","source":"+0.3 s of freeze."},
+            {"id":"004","source":source},
+            {"id":"005","source":"+2 INT"},
+            {"id":"006","source":"1M"},
+        ]
+        def changed(i,output,**checks):
+            r=dict(row(i),ko=output)
+            r["checks"].update(checks)
+            return r
+        old={r["id"]:r for r in [
+            row(1),changed(2,"6m 이내 최대 2배",numbers=False),
+            changed(3,"0.3초 동안 동빙",numbers=False),
+            changed(4,ko,format=False),
+            changed(5,"지능 +2",abbreviations=False),
+            changed(6,"1M",hangul=False),
+        ]}
+        def make_store(k):
+            return ck.Store("",k,ids,pathlib.Path(self.tmp.name)/"upload.json",self.drive.run)
+        make_store("b"*64).save(old)
+        # A newer snapshot may supply a repaired missing row but must not
+        # replace an already verified original translation.
+        make_store("c"*64).save({"003":changed(3,"동빙 시간 +0.3초"),"001":changed(1,"120% ATK 피해를 입힙니다.")})
+        out=[]
+        migrated=ck.migrate_legacy(self.store,["b"*64,"c"*64],samples,tr,make_store,emit=lambda s,**kw:out.append(s))
+        self.assertEqual(set(migrated),{"001","002","003"})
+        self.assertEqual(migrated["001"],row(1))
+        self.assertTrue(migrated["002"]["checks"]["numbers"])
+        self.assertEqual(self.store.restore(),migrated)
+        self.assertIn("CHECKPOINT_REUSED=3/6 REQUIRES_TRANSLATION=3",out)
+    def test_migration_keys_preserve_input_and_model_identity(self):
+        manifest={"engine":"b12343","repo":"Index","files":[{"kind":"model","name":"m","size":10,"sha256":"a"*64}]}
+        current=next(iter(ck.COMPATIBLE_TRANSLATOR_SHA256))
+        scripts={ck.TRANSLATOR:current,"other":"a"}
+        keys=ck.migration_keys([1],[2],manifest,scripts)
+        self.assertEqual(len(keys),3)
+        self.assertNotIn(ck.current_key([1],[2],manifest,scripts),keys)
+        self.assertNotEqual(keys,ck.migration_keys([3],[2],manifest,scripts))
+        self.assertNotEqual(keys,ck.migration_keys([1],[2],manifest,{**scripts,"other":"b"}))
+        self.assertEqual(ck.migration_keys([1],[2],manifest,{**scripts,ck.TRANSLATOR:"unknown"}),[])
+        manifest["files"][0]["sha256"]="b"*64
+        self.assertNotEqual(keys,ck.migration_keys([1],[2],manifest,scripts))
     def test_replay_does_not_overwrite_or_duplicate(self):
         saved=ck.advance(self.store,{},raw([row(1),row(2)]))
         self.assertEqual(ck.advance(self.store,saved,raw([row(1)])),saved)

@@ -5,6 +5,54 @@ CACHE="rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1"
 STORE=CACHE+"/benchmark-checkpoints-v1"
 SCRIPTS=("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py","colab-benchmark-translate.py")
 CHECKS={"hangul","placeholders","numbers","abbreviations","terms","format"}
+TRANSLATOR="colab-benchmark-translate.py"
+# Explicit compatibility only: same model, engine, inputs, references and
+# other generation scripts. These revisions differ in numeric validation and
+# targeted retry instructions. Never discover arbitrary historical snapshots.
+COMPATIBLE_TRANSLATOR_SHA256={
+    "4d28addc01da7540414748e293efe6f11cac9e86ce06cc1f3d3557b906f96e10":(
+        "0daef402321e3e32877d38b90e43287fcbd9b15731aef15f3221b79a8518b1c9", # c9e5dfe
+        "4d28addc01da7540414748e293efe6f11cac9e86ce06cc1f3d3557b906f96e10", # 717c486
+        "0928269d5c40b7fa840a6d47ff4a8d59b1a929b67f8276c19a11d012edeb6c54", # a5351d8
+    ),
+}
+def migration_keys(inputs,refs,manifest,scripts):
+    return [fingerprint(inputs,refs,manifest,{**scripts,TRANSLATOR:old})
+            for old in COMPATIBLE_TRANSLATOR_SHA256.get(scripts[TRANSLATOR],())]
+
+def current_key(inputs,refs,manifest,scripts):
+    # Separate namespace so a fully completed but failed legacy snapshot
+    # cannot shadow the revalidated snapshot or cause same-count conflicts.
+    return fingerprint(inputs,refs,manifest,{**scripts,"checkpoint-policy":"revalidated-v1"})
+
+def revalidate_legacy(rows,inputs,translator):
+    sources={r["id"]:r["source"] for r in inputs}
+    retained={}
+    for i,row in rows.items():
+        # Only numeric false positives may be promoted. In particular a
+        # truncated generation cannot be recovered by checking its text alone.
+        if any(not row["checks"][name] for name in CHECKS-{"numbers"}):
+            continue
+        source=sources[i]
+        checks=translator.check_output(source,row["ko"],translator.required_terms(source))
+        if set(checks)==CHECKS and all(checks.values()):
+            retained[i]={**row,"checks":checks}
+    return retained
+
+def migrate_legacy(store,keys,inputs,translator,make_store,emit=print):
+    retained={}
+    for key in keys:
+        if key==store.key: continue
+        old=make_store(key).restore()
+        eligible=revalidate_legacy(old,inputs,translator)
+        previous=len(retained)
+        for i,row in eligible.items():
+            retained.setdefault(i,row)
+        emit(f"CHECKPOINT_MIGRATION source_rows={len(old)} eligible={len(eligible)} added={len(retained)-previous}",flush=True)
+        if len(retained)==len(inputs): break
+    if retained: store.save(retained)
+    emit(f"CHECKPOINT_REUSED={len(retained)}/{len(inputs)} REQUIRES_TRANSLATION={len(inputs)-len(retained)}",flush=True)
+    return retained
 def canonical(value):
     return json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
 def digest(data):
@@ -117,9 +165,20 @@ def main():
         store=Store(config,"",ids,tmp/"checkpoint-upload.json")
         manifest=json.loads(store.run("cat",CACHE+"/manifest.json"))
         refs=json.loads((bench/"references.json").read_text())
-        key=fingerprint(inputs,refs,manifest,{name:digest((ROOT/name).read_bytes()) for name in SCRIPTS})
-        store=Store(config,key,ids,tmp/"checkpoint-upload.json")
+        scripts={name:digest((ROOT/name).read_bytes()) for name in SCRIPTS}
+        key=current_key(inputs,refs,manifest,scripts)
+        def make_store(key):
+            return Store(config,key,ids,tmp/"checkpoint-upload.json")
+        store=make_store(key)
         rows=store.restore()
+        if not rows:
+            spec=importlib.util.spec_from_file_location("translator",ROOT/TRANSLATOR)
+            translator=importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(translator)
+            rows=migrate_legacy(store,migration_keys(inputs,refs,manifest,scripts),
+                                inputs,translator,make_store)
+        else:
+            print(f"CHECKPOINT_REUSED={len(rows)}/{len(inputs)} REQUIRES_TRANSLATION={len(inputs)-len(rows)}",flush=True)
         (tmp/"checkpoint-key").write_text(key)
         (tmp/"resume.json").write_bytes(canonical(list(rows.values())))
         print("CHECKPOINT_RESTORED",len(rows),flush=True)
