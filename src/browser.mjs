@@ -91,6 +91,48 @@ export function bindStatusPosition(node,doc=document,pathname=location.pathname)
 export function hasGameNotice({engineUpdateAvailable,engineUpdated}){
   return !!(engineUpdateAvailable||engineUpdated);
 }
+// The game creates #pad-hints directly under body and toggles .hidden.
+export function gamePatchInfoBottom(pad,view){
+  if(!pad||pad.hidden||pad.classList.contains('hidden'))return 8;
+  const style=view.getComputedStyle(pad);
+  if(style.display==='none'||style.visibility==='hidden'||style.visibility==='collapse')return 8;
+  const rect=pad.getBoundingClientRect();
+  if(rect.width<=0||rect.height<=0||rect.bottom<=0||rect.top>=view.innerHeight)return 8;
+  return Math.max(8,Math.ceil(view.innerHeight-rect.top+6));
+}
+export function bindGamePatchInfo(node,doc=document,pathname=location.pathname){
+  const view=doc.defaultView;
+  let pad=null;
+  const sync=()=>{
+    const visible=patchStatusPlacement(doc,pathname).mode==='game';
+    node.style.display=visible?'block':'none';
+    if(visible)node.style.bottom=gamePatchInfoBottom(pad,view)+'px';
+  };
+  const resizeObserver=view.ResizeObserver?new view.ResizeObserver(sync):null;
+  const padObserver=new view.MutationObserver(sync);
+  const findPad=()=>{
+    const next=doc.getElementById('pad-hints');
+    if(next!==pad){
+      padObserver.disconnect();
+      resizeObserver?.disconnect();
+      pad=next;
+      if(pad){
+        padObserver.observe(pad,{attributes:true,attributeFilter:['class','hidden','style'],childList:true,subtree:true,characterData:true});
+        resizeObserver?.observe(pad);
+      }
+    }
+    sync();
+  };
+  const screenObserver=new view.MutationObserver(sync);
+  for(const id of STATUS_SCREENS){
+    const screen=doc.getElementById(id);
+    if(screen)screenObserver.observe(screen,{attributes:true,attributeFilter:['class','hidden']});
+  }
+  // The controller hint may not exist until the first controller interaction.
+  new view.MutationObserver(findPad).observe(doc.body,{childList:true});
+  view.addEventListener('resize',sync);
+  findPad();
+}
 let statusNode,statusSync,statusRefresh;
 function showStatus(state,engineVersion){
   if(!statusNode){
@@ -98,6 +140,12 @@ function showStatus(state,engineVersion){
     Object.assign(statusNode.style,{display:'none',pointerEvents:'none'});
     document.body.append(statusNode);
     statusSync=bindStatusPosition(statusNode);
+    const info=document.createElement('div');
+    info.id='ro-ko-game-info';
+    info.textContent='비공식 한국어 패치 · v'+engineVersion;
+    Object.assign(info.style,{display:'none',position:'fixed',right:'8px',bottom:'8px',zIndex:'2147483639',fontSize:'11px',lineHeight:'1.4',color:'#fff',opacity:'0.5',textShadow:'0 1px 2px #000',background:'transparent',whiteSpace:'nowrap',pointerEvents:'none',userSelect:'none'});
+    document.body.append(info);
+    bindGamePatchInfo(info);
   }
   const node=statusNode;
   const mode=patchStatusPlacement(document,location.pathname).mode;
