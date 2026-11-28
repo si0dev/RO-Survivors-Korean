@@ -5,9 +5,11 @@ import {wikiRuntimeKey} from '../tools/wiki-verification-key.mjs';
 const [browser,session,pkg,workflow]=await Promise.all(['src/browser.mjs','src/session.mjs','package.json','.github/workflows/extract-wiki.yml'].map(path=>readFile(new URL('../'+path,import.meta.url),'utf8')));
 const key=wikiRuntimeKey(browser,session,pkg);
 test('UI position, status text and engine version do not invalidate wiki cache',()=>{
-  assert.ok(browser.includes("right:'43px'"));
-  assert.ok(session.includes('일부 미번역'));
-  assert.equal(wikiRuntimeKey(browser.replace("right:'43px'","right:'44px'"),session.replace('일부 미번역','일부 원문 표시'),JSON.stringify({...JSON.parse(pkg),version:'99.0.0'})),key);
+  const uiMarker='// Keep status presentation separate from the translation session.';
+  const labelMarker='export const ENGINE_UPDATE_LABEL=';
+  assert.ok(browser.includes(uiMarker));
+  assert.ok(session.includes(labelMarker));
+  assert.equal(wikiRuntimeKey(browser.replace(uiMarker,uiMarker+'\n// presentation change'),session.replace(labelMarker,labelMarker+' /* label edit */ '),JSON.stringify({...JSON.parse(pkg),version:'99.0.0'})),key);
 });
 test('translation runtime, build configuration and unknown boundaries invalidate wiki cache',()=>{
   assert.notEqual(wikiRuntimeKey(browser+'\n// runtime edit',session,pkg),key);

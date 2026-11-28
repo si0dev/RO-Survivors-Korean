@@ -48,7 +48,10 @@ jobs:
       - name: Fingerprint translation-relevant runtime inputs
         id: inputs
         shell: bash
-        run: echo "hash=$(node tools/wiki-verification-key.mjs)" >> "$GITHUB_OUTPUT"
+        run: |
+          hash=$(node tools/wiki-verification-key.mjs)
+          [[ "$hash" =~ ^[0-9a-f]{64}$ ]]
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
       - name: Restore successful verification marker
         id: verified
         uses: actions/cache@v4
