@@ -53,7 +53,8 @@ def compact_amount(source,ko):
     if not en or not kr: return False
     return Decimal(en[1])*{"K":1000,"M":1000000,"B":1000000000}[en[2]]==Decimal(kr[1])*{"천":1000,"만":10000,"억":100000000}[kr[2]]
 def numbers_match(source,ko):
-    if compact_amount(source,ko): return True
+    if re.fullmatch(r"\d+(?:\.\d+)?[KMB]",source.strip()):
+        return compact_amount(source,ko)
     expected=Counter(re.findall(NUMERIC,source))
     actual=Counter(re.findall(NUMERIC,ko))
     if expected-actual: return False

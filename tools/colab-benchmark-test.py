@@ -77,7 +77,7 @@ class TranslationTests(unittest.TestCase):
             ("+0.3 s of freeze.","0.3초 동안 동빙"),
             ("6 m, up to double","5m, 최대 2배"),
             ("two columns","3열"),
-            ("1M","10만"),
+            ("1M","10만"),("1M","1억"),("1M","1개"),
             ("Deals 10% damage","피해량 10"),
             ("Deals 10% damage","피해량 10%, 1회"),
             ("double damage","피해량 2배, 2배"),
