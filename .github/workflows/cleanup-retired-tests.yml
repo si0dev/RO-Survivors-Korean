@@ -1,0 +1,141 @@
+name: Clean retired Colab and wiki tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cleanup-retired-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+concurrency:
+  group: cleanup-retired-tests
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Archive and remove explicitly retired test branches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess,urllib.parse
+          repo=os.environ["GITHUB_REPOSITORY"]
+          # Only these reviewed, completed test heads may be retired.
+          targets={
+              "test/llm-live-diagnostics":("6812fce3c89cf39d3f2e05938a00f4ac263b2acb",18),
+              "test/wiki-nine-audit":("0742a0c67a0cfa7adf243f5ad48ec8426ed0c2e0",15),
+              "test/colab-drive-mount":("398ac565d60ab09878b76921f22342d26e2369b7",8),
+              "test/llm-cache-layout":("edb7f09e9b33218d2d4e4ecae10655ad288d9c69",None),
+              "test/colab-adc-smoke":("8609fa7d37609a4eb33ac16e921ed78a5e029e2e",4),
+          }
+          def api(endpoint,*args):
+              return subprocess.check_output(["gh","api",*args,endpoint],text=True)
+          def pages(endpoint):
+              return json.loads(api(endpoint,"--paginate","--slurp"))
+          def run(*args):
+              subprocess.run(args,check=True)
+          def branches():
+              return {b["name"]:b for page in pages(f"repos/{repo}/branches?per_page=100") for b in page}
+          def open_prs():
+              return [p for page in pages(f"repos/{repo}/pulls?state=open&per_page=100") for p in page]
+          def touches(p,b):
+              return any(p[k]["repo"] and p[k]["repo"]["full_name"]==repo and p[k]["ref"]==b for k in ("head","base"))
+          def active(b):
+              q=urllib.parse.urlencode({"branch":b,"per_page":100})
+              return any(r["status"]!="completed" for page in pages(f"repos/{repo}/actions/runs?{q}") for r in page["workflow_runs"])
+          existing=branches()
+          retired_prs={n for _,n in targets.values() if n is not None}
+          # Preflight the entire retirement, including cross-branch PRs.
+          for b,(sha,_) in targets.items():
+              if b not in existing: continue
+              if existing[b]["protected"] or existing[b]["commit"]["sha"]!=sha or active(b):
+                  raise RuntimeError("Branch protected, changed or active: "+b)
+              for p in open_prs():
+                  if touches(p,b) and p["number"] not in retired_prs:
+                      raise RuntimeError("Unrelated open PR: "+b)
+          for b,(sha,n) in targets.items():
+              if b not in existing: continue
+              if n is not None:
+                  p=json.loads(api(f"repos/{repo}/pulls/{n}"))
+                  if p["head"]["repo"]["full_name"]!=repo or p["head"]["ref"]!=b or p["head"]["sha"]!=sha:
+                      raise RuntimeError("PR head changed: "+str(n))
+              tag="archive/retired-tests/2026-11-28/"+b.removeprefix("test/")
+              # Preserve the exact unmerged historical commit without retaining a branch.
+              ref="refs/tags/"+tag
+              remote=subprocess.check_output(["git","ls-remote","origin",ref],text=True).strip()
+              if remote:
+                  if remote.split()[0]!=sha: raise RuntimeError("Archive tag conflict: "+tag)
+              else:
+                  run("git","fetch","--no-tags","origin",sha)
+                  run("git","push","origin",sha+":"+ref)
+              proof=subprocess.check_output(["git","ls-remote","origin",ref],text=True).strip()
+              if not proof or proof.split()[0]!=sha: raise RuntimeError("Archive verification failed")
+              print("ARCHIVED "+b+" "+sha,flush=True)
+          # Close only explicitly identified temporary PRs, not unrelated work.
+          for b,(sha,n) in targets.items():
+              if b not in existing or n is None: continue
+              p=json.loads(api(f"repos/{repo}/pulls/{n}"))
+              if p["head"]["sha"]!=sha or p["head"]["ref"]!=b: raise RuntimeError("PR changed")
+              if p["state"]=="open":
+                  api(f"repos/{repo}/pulls/{n}","--method","PATCH","-f","state=closed")
+                  print("CLOSED_PR="+str(n),flush=True)
+          deleted=0
+          for b,(sha,_) in targets.items():
+              current=branches().get(b)
+              if current is None: continue
+              if current["protected"] or current["commit"]["sha"]!=sha or active(b) or any(touches(p,b) for p in open_prs()):
+                  raise RuntimeError("Branch retirement no longer safe: "+b)
+              ref="refs/heads/"+b
+              run("git","push","--force-with-lease="+ref+":"+sha,"origin",":"+ref)
+              deleted+=1
+              print("DELETED_BRANCH="+b,flush=True)
+          remaining=set(branches())&set(targets)
+          if remaining: raise RuntimeError("Retired branches remain: "+str(sorted(remaining)))
+          print("BRANCH_CLEANUP_DELETED="+str(deleted)+" REMAINING=0",flush=True)
+          PY
+      - name: Delete only completed failed smoke workflow runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,subprocess,time
+          repo=os.environ["GITHUB_REPOSITORY"]
+          workflow_id=432316389
+          workflow_path=".github/workflows/colab-smoke.yml"
+          def api(endpoint,*args):
+              return subprocess.check_output(["gh","api",*args,endpoint],text=True)
+          def matching(run):
+              return (run["workflow_id"]==workflow_id and run["path"]==workflow_path
+                      and run["status"]=="completed" and run["conclusion"]=="failure")
+          def scan():
+              # Snapshot all pages first, then mutate, so deletions cannot shift pagination.
+              pages=json.loads(api(f"repos/{repo}/actions/runs?status=failure&per_page=100","--paginate","--slurp"))
+              return {r["id"]:r for p in pages for r in p["workflow_runs"] if matching(r)}
+          targets=scan()
+          print("SMOKE_FAILURES_FOUND="+str(len(targets)),flush=True)
+          deleted=0
+          for run_id,old in targets.items():
+              endpoint=f"repos/{repo}/actions/runs/{run_id}"
+              fresh=json.loads(api(endpoint))
+              if not matching(fresh) or fresh["run_attempt"]!=old["run_attempt"] or fresh["updated_at"]!=old["updated_at"]:
+                  raise RuntimeError("Smoke run changed during cleanup: "+str(run_id))
+              api(endpoint,"--method","DELETE")
+              deleted+=1
+              print("DELETED_SMOKE_FAILURE="+str(run_id),flush=True)
+              time.sleep(1)
+          remaining=scan()
+          print(f"SMOKE_FAILURES_DELETED={deleted} REMAINING={len(remaining)}",flush=True)
+          if remaining: raise RuntimeError("Failed smoke runs remain")
+          PY
