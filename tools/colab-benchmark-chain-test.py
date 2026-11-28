@@ -52,6 +52,24 @@ class ChainTests(unittest.TestCase):
             self.assertNotIn("def copy_asset(",body)
             self.assertNotIn("CONFIG=",body)
             self.assertIn("PRELOADED_MODEL_REUSED",body)
+    def test_duration_and_relative_number_regressions(self):
+        self.assertIn("duration_modifier_rendered_as_fixed_duration",c.correction_issues("+0.3 s of freeze.","+0.3초 동안 빙결 상태가 됩니다."))
+        self.assertEqual(c.correction_issues("+0.3 s of freeze.","동빙 시간 +0.3초."),[])
+        source="You throw magic sand on a group of enemies: they fall asleep for 2.5 s (bosses, half as long)."
+        self.assertEqual(c.correction_issues(source,"2.5초 동안 잠들게 됩니다(보스는 절반 시간)."),[])
+        self.assertIn("numeric_tokens_changed",c.correction_issues(source,"2.5초 동안 잠들게 되며 보스는 1.25초 동안 잠듭니다."))
+        self.assertEqual(c.correction_issues("Frozen for 3 seconds.","3초 동안 빙결됩니다."),[])
+    def test_correction_retries_wrong_duration(self):
+        responses=[]
+        for text in ("+0.3초 동안 빙결 상태가 됩니다.","동빙 시간 +0.3초."):
+            response=Mock()
+            response.json.return_value={"choices":[{"message":{"content":text},"finish_reason":"stop"}]}
+            responses.append(response)
+        row={"source":"+0.3 s of freeze.","draft":"+0.3초 동안 얼음 상태가 됩니다.","context":"talent"}
+        with patch.object(requests,"post",side_effect=responses) as post:
+            self.assertEqual(c.correct_one(row,"mock"),"동빙 시간 +0.3초.")
+            self.assertEqual(post.call_count,2)
+            self.assertIn("duration_modifier_rendered_as_fixed_duration",post.call_args.kwargs["json"]["messages"][0]["content"])
     def test_correction_consumes_draft(self):
         response=Mock()
         response.json.return_value={"choices":[{"message":{"content":"동빙 시간 +0.3초."},"finish_reason":"stop"}]}
