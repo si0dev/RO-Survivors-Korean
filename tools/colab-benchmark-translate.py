@@ -1,5 +1,6 @@
 import json,re,time
 from collections import Counter
+from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor
 import requests
 
@@ -31,17 +32,49 @@ def required_terms(source):
         key=next(k for k in glossary if k.casefold()==m.group().casefold())
         found[key]=glossary[key]
     return found
+ABBREVIATIONS=r"(?<![A-Za-z0-9_])(?:ATK|MATK|HP|SP|DEF|MDEF|STR|AGI|VIT|INT|DEX|LUK)(?![A-Za-z0-9_])"
+NUMERIC=r"[+-]?\d+(?:\.\d+)?%?"
+# Only allow explicit digits introduced by a matching, narrowly defined
+# numeric expression in the source. Never waive a missing explicit number,
+# sign or percent. This is structural validation, not semantic scoring.
+IMPLICIT_NUMBERS=(
+    (r"\bonce per second\b",r"(?<![\d.+-])1\s*초",1),
+    (r"\bonce per second\b",r"(?<![\d.+-])1\s*회",1),
+    (r"\b(?:double|twice)\b",r"(?<![\d.+-])2\s*배",1),
+    (r"\b(?:one primary stat|at most one)\b",r"(?<![\d.+-])1\s*개",1),
+    (r"\bhalf per level of difference\b",r"(?<![\d.+-])1\s*당",1),
+    (r"\b(?:a|one) quarter\b",r"(?<![\d.+-])(?:4\s*분의\s*1|1\s*/\s*4)(?!\d)",1),
+    (r"\bfirst minute\b",r"(?<![\d.+-])1\s*분(?!의)",1),
+    (r"\btwo columns\b",r"(?<![\d.+-])2\s*열",1),
+)
+def compact_amount(source,ko):
+    en=re.fullmatch(r"(\d+(?:\.\d+)?)([KMB])",source.strip())
+    kr=re.fullmatch(r"(\d+(?:\.\d+)?)\s*(천|만|억)",ko.strip())
+    if not en or not kr: return False
+    return Decimal(en[1])*{"K":1000,"M":1000000,"B":1000000000}[en[2]]==Decimal(kr[1])*{"천":1000,"만":10000,"억":100000000}[kr[2]]
+def numbers_match(source,ko):
+    if compact_amount(source,ko): return True
+    expected=Counter(re.findall(NUMERIC,source))
+    actual=Counter(re.findall(NUMERIC,ko))
+    if expected-actual: return False
+    extra=actual-expected
+    if not extra: return True
+    allowed=Counter()
+    for en,kr,limit in IMPLICIT_NUMBERS:
+        count=len(re.findall(en,source,re.I))*limit
+        for match in list(re.finditer(kr,ko))[:count]:
+            allowed.update(re.findall(NUMERIC,match.group()))
+    return not (extra-allowed)
+
 def check_output(source,ko,terms):
     # The explicitly approved ordinal rendering is semantically numeric.
     en_numbers=re.sub(r"\b1st level-up\b","",source,flags=re.I)
     ko_numbers=ko.replace("첫 레벨 업","") if "1st level-up" in terms else ko
-    abbreviations=r"(?<![A-Za-z0-9_])(?:ATK|MATK|HP|SP|DEF|MDEF|STR|AGI|VIT|INT|DEX|LUK)(?![A-Za-z0-9_])"
-    numeric=r"[+-]?\d+(?:\.\d+)?%?"
     return {
         "hangul":bool(re.search(r"[가-힣]",ko)),
         "placeholders":Counter(re.findall(r"\{\w+\}",source))==Counter(re.findall(r"\{\w+\}",ko)),
-        "numbers":Counter(re.findall(numeric,en_numbers))==Counter(re.findall(numeric,ko_numbers)),
-        "abbreviations":Counter(re.findall(abbreviations,source))==Counter(re.findall(abbreviations,ko)),
+        "numbers":numbers_match(en_numbers,ko_numbers),
+        "abbreviations":Counter(re.findall(ABBREVIATIONS,source))==Counter(re.findall(ABBREVIATIONS,ko)),
         "terms":all(v in ko for v in terms.values()),
         "format":bool(ko) and "\n" not in ko and not ko.startswith(("\"", "'", "**")) and not ko.endswith(("\"", "'","**"))
     }
@@ -57,6 +90,18 @@ def request_for(row, failures=()):
              +hard+"\n游戏语境："+row["context"]+"。使用自然准确的游戏术语，保留全部效果和条件。\n")
     if failures:
         request+="重新核对："+", ".join(failures)+"。\n"
+        if "numbers" in failures:
+            explicit=re.findall(NUMERIC,row["source"])
+            if explicit:
+                request+="逐一保留原文中的数字及其正负号和百分号："+", ".join(explicit)+"。增量不能译成持续时间。\n"
+        if "abbreviations" in failures:
+            abbreviations=re.findall(ABBREVIATIONS,row["source"])
+            if abbreviations:
+                request+="以下属性缩写必须原样输出，不可译成全称："+", ".join(abbreviations)+"。\n"
+        if "hangul" in failures:
+            request+="输出韩语，不得原样复制英文。数字缩写K/M/B使用等值的韩语数量单位。\n"
+    if re.fullmatch(r"\d+(?:\.\d+)?[KMB]",row["source"].strip()):
+        request+="将数量缩写K/M/B译为等值的韩语数量单位，不得原样复制。\n"
     request+="〖源文〗"+row["source"]
     return terms,request,[{"role":"user","content":request}]
 

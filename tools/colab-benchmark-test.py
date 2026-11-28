@@ -57,6 +57,42 @@ class TranslationTests(unittest.TestCase):
         self.assertTrue(all(row["checks"].values()))
         self.assertIn("TRANSLATION_RETRY=",out[0])
         self.assertTrue(post.call_args.kwargs["json"]["messages"][0]["content"].endswith(ROW["source"]))
+    def test_equivalent_numeric_expressions(self):
+        pairs=[
+            ("repeats 2 more times, once per second, with 30% healing","1초에 한 번씩 2회 더 반복되며 회복량은 30%"),
+            ("up to double within 6 m","6m 이내에서 최대 2배"),
+            ("One primary stat + crit","주 스탯 1개 + 크리티컬"),
+            ("at most 4 or 8; each boss drops at most one","최대 4개 또는 8개, 보스는 최대 1개"),
+            ("half per level of difference","레벨 차이 1당 절반"),
+            ("100 points halve cooldowns; 300 leave a quarter","100포인트면 절반, 300포인트면 4분의 1"),
+            ("within the first minute","첫 1분 이내"),
+            ("two columns","2열"),
+            ("1M","100만"),("2.5M","250만"),("2B","20억"),
+        ]
+        for source,ko in pairs:
+            with self.subTest(source=source):
+                self.assertTrue(mod.check_output(source,ko,mod.required_terms(source))["numbers"])
+    def test_numbers_still_reject_real_errors(self):
+        for source,ko in [
+            ("+0.3 s of freeze.","0.3초 동안 동빙"),
+            ("6 m, up to double","5m, 최대 2배"),
+            ("two columns","3열"),
+            ("1M","10만"),
+            ("Deals 10% damage","피해량 10"),
+            ("Deals 10% damage","피해량 10%, 1회"),
+            ("double damage","피해량 2배, 2배"),
+            ("one primary stat + 2 ATK","주 스탯 1개 + 3 ATK"),
+        ]:
+            with self.subTest(source=source):
+                self.assertFalse(mod.check_output(source,ko,mod.required_terms(source))["numbers"])
+        self.assertFalse(mod.check_output("+2 armor · +2 INT","방어력 +2 · 지능 +2",{})["abbreviations"])
+        self.assertFalse(mod.check_output("1M","1M",{})["hangul"])
+    def test_targeted_retry_instructions(self):
+        _,prompt,_=mod.request_for(dict(ROW,source="+2 INT"),["numbers","abbreviations"])
+        self.assertIn("+2",prompt)
+        self.assertIn("INT",prompt)
+        self.assertIn("不可译成全称",prompt)
+        self.assertTrue(prompt.endswith("〖源文〗+2 INT"))
     def test_truncation_repair(self):
         row,post,_=self.run_row([response(finish="length"),response()])
         self.assertEqual(row["attempts"],2)
