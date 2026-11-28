@@ -22,6 +22,7 @@ jobs:
     env:
       RO_BENCHMARK_MODE: semantic-review
       RO_REVIEW_COMPARISON: '1'
+      RO_REVIEW_SCOPE: duration
     steps:
       - uses: actions/checkout@v4
         with:

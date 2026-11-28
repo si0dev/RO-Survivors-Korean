@@ -23,12 +23,31 @@ def sample_rows():
     # Avoid showing related pairs consecutively to the model (each call is isolated).
     return rows[::2]+rows[1::2]
 
+def selected_rows():
+    scope=os.environ.get("RO_REVIEW_SCOPE","all")
+    rows=sample_rows()
+    if scope=="all":
+        return rows
+    if scope=="duration":
+        # Include the correct counterpart, so rejecting everything cannot pass.
+        return [row for row in rows if row["category"]=="duration"]
+    raise ValueError("UNKNOWN_REVIEW_SCOPE")
+
 def review_one(row,base):
     import json,requests
-    prompt=("你是英韩游戏翻译审校员。只判断韩语译文是否保留英文原文的游戏效果和条件。"
-            "仔细核对增减、时长变化与固定时长、目标、触发条件、频率、否定和数值。"
-            "不要因措辞不同而判错。语义正确输出 ACCEPT，语义错误输出 REJECT。"
-            "只输出一个英文标签，不要翻译、解释或输出其他内容。\n"
+    prompt=("你是英韩游戏数值与技能效果的语义审校员，不是译者。"
+            "独立解析英文和韩文，再比较它们表示的机制，而不是比较相同的数字或单词。\n"
+            "检查清单：效果主体、目标、属性、运算方式、数值、单位、持续时间、触发条件、频率、否定、概率、上限和下限。"
+            "运算方式必须一致：增加量、减少量、倍率、百分比、绝对值、固定持续时间不能互换。"
+            "尤其是简短属性词条：前置 + 或 - 表示相对于原有属性的变化量；"
+            "正数持续时间的加成不是一次施加状态的固定持续时间。"
+            "例如，某个状态时长增加 2 秒与使目标进入该状态 2 秒是不同机制。"
+            "译文即使保留 + 符号和数值，如果语法把变化量改成固定时长，也应拒绝。"
+            "同样，不得把增加的伤害值当成最终伤害，不得省略或新增条件。"
+            "允许自然的韩语词序和简洁属性标签，不因非实质措辞差异拒绝。\n"
+            "只有所有明确的原文机制均被保留且没有新增或冲突含义时输出 ACCEPT。"
+            "发现任一明确语义差异或无法确认机制一致时输出 REJECT。"
+            "只输出一个英文标签 ACCEPT 或 REJECT，不要翻译、解释或输出其他内容。\n"
             +json.dumps({"English":row["source"],"Korean":row["candidate"]},ensure_ascii=False))
     try:
         res=requests.post(base+"/v1/chat/completions",
@@ -74,7 +93,7 @@ def main(tmp,session):
     tmp=pathlib.Path(tmp)
     spec=importlib.util.spec_from_file_location("kernel",ROOT/"colab-benchmark-kernel.py")
     kernel=importlib.util.module_from_spec(spec);spec.loader.exec_module(kernel)
-    rows=sample_rows()
+    rows=selected_rows()
     ids={r["id"] for r in rows}
     marker="RO_REVIEW_"+uuid.uuid4().hex+"="
     bootstrap=json.loads((tmp/"bootstrap.json").read_text())
@@ -124,6 +143,7 @@ def main(tmp,session):
         else:
             kernel.safe_progress(line,print)
     print("SEMANTIC_REVIEW_MODEL="+os.environ.get("RO_REVIEW_MODEL","default"),flush=True)
+    print("SEMANTIC_REVIEW_SCOPE="+os.environ.get("RO_REVIEW_SCOPE","all"),flush=True)
     print(f"SEMANTIC_REVIEW_START={len(rows)} TRANSLATION_REQUESTS=0",flush=True)
     args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout","1500","-f",str(path)]
     rc,raw=kernel.invoke(args,1530,on_line=on_line,

@@ -16,6 +16,16 @@ class ReviewTests(unittest.TestCase):
         self.assertNotIn('"expected"',remote)
         self.assertNotIn('"category"',remote)
         self.assertNotIn("translate_one",remote)
+    def test_targeted_scope_keeps_both_verdicts(self):
+        with patch.dict(os.environ,{"RO_REVIEW_SCOPE":"duration"}):
+            rows=r.selected_rows()
+            self.assertEqual({x["id"] for x in rows},{"01","02"})
+            self.assertEqual({x["expected"] for x in rows},{"ACCEPT","REJECT"})
+            self.assertNotIn('"expected"',r.remote_source(rows,"marker="))
+        with patch.dict(os.environ,{"RO_REVIEW_SCOPE":"all"}):
+            self.assertEqual(len(r.selected_rows()),12)
+        with patch.dict(os.environ,{"RO_REVIEW_SCOPE":"unknown"}):
+            with self.assertRaises(ValueError): r.selected_rows()
     def test_verdict_strict_and_no_reference(self):
         row=r.sample_rows()[0]
         for answer,finish,expected in [("ACCEPT","stop","ACCEPT"),("REJECT","stop","REJECT"),
@@ -28,6 +38,8 @@ class ReviewTests(unittest.TestCase):
                 self.assertNotIn('"expected"',prompt)
                 self.assertIn(row["source"],prompt)
                 self.assertIn(row["candidate"],prompt)
+                self.assertIn("变化量",prompt)
+                self.assertIn("固定持续时间",prompt)
     def test_assessment_rejects_false_accept_and_invalid(self):
         rows=r.sample_rows()
         verdicts={x["id"]:x["expected"] for x in rows}
@@ -58,7 +70,7 @@ class ReviewTests(unittest.TestCase):
                     return 0,""
                 fake.invoke.side_effect=invoke
                 loader=Mock()
-                with patch.object(r.importlib.util,"spec_from_file_location",return_value=loader), patch.object(r.importlib.util,"module_from_spec",return_value=fake), patch.dict(os.environ,{"REMOTE_CONFIG":"/tmp/test.conf","RO_REVIEW_SHARED_ROOT":"/tmp/test-shared"}), contextlib.redirect_stdout(io.StringIO()):
+                with patch.object(r.importlib.util,"spec_from_file_location",return_value=loader), patch.object(r.importlib.util,"module_from_spec",return_value=fake), patch.dict(os.environ,{"REMOTE_CONFIG":"/tmp/test.conf","RO_REVIEW_SHARED_ROOT":"/tmp/test-shared","RO_REVIEW_SCOPE":"all"}), contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(r.main(tmp,"one-session"),expected)
     def test_comparison_profiles_and_shell_syntax(self):
         profiles=json.loads((r.ROOT/"colab-benchmark-profiles.json").read_text())
