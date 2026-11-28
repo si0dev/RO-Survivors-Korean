@@ -90,7 +90,7 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           comparison_profiles > "$tmp/profiles.tsv"
-      - name: Restore actual Index-Translate drafts (read only, no inference)
+      - name: Restore actual Index drafts (Drive or verified #42 log, no inference)
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh

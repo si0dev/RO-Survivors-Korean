@@ -11,6 +11,17 @@ class ChainTests(unittest.TestCase):
         selected=c.select_drafts(inputs,rows)
         self.assertEqual(selected[0]["draft"],rows["189"]["ko"])
         self.assertNotIn("reference",selected[0])
+    def test_logged_actual_drafts_match_fixed_fixture(self):
+        refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]
+        inputs=[{k:r[k] for k in ("id","source","group","context")} for r in refs]
+        selected=c.restore_logged_drafts(inputs,refs)
+        self.assertEqual([r["id"] for r in selected],["189","005"])
+        self.assertEqual(selected[0]["draft"],"+0.3초 동안 얼음 상태가 됩니다.")
+        self.assertEqual(selected[1]["draft"],"적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간).")
+        self.assertTrue(all("reference" not in r for r in selected))
+        refs= [dict(r,source="wrong") if r["id"]=="189" else r for r in refs]
+        with self.assertRaisesRegex(RuntimeError,"CHAIN_LOG_SOURCE_MISMATCH"):
+            c.restore_logged_drafts(inputs,refs)
     def test_chained_payload(self):
         review=c.load("review",ROOT/"colab-benchmark-review.py")
         row={"id":"189","source":"source-example","draft":"original-draft","corrected":"corrected-draft","context":"game","reference":"secret-reference"}

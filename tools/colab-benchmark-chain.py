@@ -27,6 +27,22 @@ def select_drafts(inputs,rows):
         raise RuntimeError("CHAIN_FIXTURE_CHANGED")
     return selected
 
+def restore_logged_drafts(inputs,refs):
+    fixture=read(ROOT/"colab-benchmark-chain-index-run42.json")
+    if (fixture["schema"],fixture["run_id"],fixture["job_id"],fixture["head_sha"])!=(1,46094961170,140825568619,"97616b2423e1e04e13f33987a8aeac4ee4778f95"):
+        raise RuntimeError("CHAIN_LOG_PROVENANCE")
+    records={r["id"]:r for r in refs}
+    rows={}
+    for row in fixture["rows"]:
+        i=row["id"]
+        if i in rows or i not in records:
+            raise RuntimeError("CHAIN_LOG_ID")
+        if any(row[k]!=records[i][k] for k in ("source","group","context","recordId")):
+            raise RuntimeError("CHAIN_LOG_SOURCE_MISMATCH")
+        rows[i]=row
+    if set(rows)!={"005","189"}: raise RuntimeError("CHAIN_LOG_SELECTION")
+    return select_drafts(inputs,rows)
+
 def restore(tmp,bench,historical):
     cp=load("historical_checkpoint",historical/"colab-benchmark-checkpoint.py")
     inputs=read(bench/"inputs.json");refs=read(bench/"references.json")
@@ -42,10 +58,21 @@ def restore(tmp,bench,historical):
         if args[0] not in ("lsjson","cat"): raise RuntimeError("CHAIN_READ_ONLY")
         return reader.run(*args)
     store=cp.Store(config,key,ids,tmp/"unused.json",run=readonly)
-    rows=store.restore()
-    if len(rows)!=200: raise RuntimeError("CHAIN_CHECKPOINT_INCOMPLETE")
-    write(tmp/"chain-drafts.json",select_drafts(inputs,rows))
-    print("CHAIN_INDEX_CHECKPOINT_RESTORED=200 SELECTED=2 INDEX_INFERENCE=0",flush=True)
+    try:
+        rows=store.restore()
+        if len(rows)!=200: raise RuntimeError("CHAIN_CHECKPOINT_INCOMPLETE")
+    except RuntimeError as exc:
+        # The two selected drafts are also present verbatim in the actual #42
+        # assessment log. Use that fixed record rather than regenerate anything.
+        if str(exc) not in ("CHECKPOINT_DRIVE_IO","CHECKPOINT_DRIVE_TIMEOUT","CHAIN_CHECKPOINT_INCOMPLETE"):
+            raise
+        print("CHAIN_DRIVE_RESTORE_UNAVAILABLE="+str(exc),flush=True)
+        selected=restore_logged_drafts(inputs,refs)
+        print("CHAIN_INDEX_SOURCE=RUN42_LOG SELECTED=2 INDEX_INFERENCE=0",flush=True)
+    else:
+        selected=select_drafts(inputs,rows)
+        print("CHAIN_INDEX_CHECKPOINT_RESTORED=200 SELECTED=2 INDEX_INFERENCE=0",flush=True)
+    write(tmp/"chain-drafts.json",selected)
 
 def correct_one(row,base):
     import json,requests

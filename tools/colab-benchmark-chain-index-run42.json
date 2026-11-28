@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "run_id": 46094961170,
+  "job_id": 140825568619,
+  "head_sha": "97616b2423e1e04e13f33987a8aeac4ee4778f95",
+  "rows": [
+    {
+      "id": "005",
+      "source": "You throw magic sand on a group of enemies: they fall asleep for 2.5 s (bosses, half as long).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "recordId": "33a41fb2aa20b250db3d421381fc9b638f485a8060a527d434cf2fae1b108338",
+      "attempts": 1,
+      "checks": {
+        "abbreviations": true,
+        "format": true,
+        "hangul": true,
+        "numbers": true,
+        "placeholders": true,
+        "terms": true
+      },
+      "ko": "적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간)."
+    },
+    {
+      "id": "189",
+      "source": "+0.3 s of freeze.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "recordId": "48bc8d1837ec1a97c85b8a216eb1959f6c8a3298a13e6930d7d5662982da9f7f",
+      "attempts": 2,
+      "checks": {
+        "abbreviations": true,
+        "format": true,
+        "hangul": true,
+        "numbers": true,
+        "placeholders": true,
+        "terms": true
+      },
+      "ko": "+0.3초 동안 얼음 상태가 됩니다."
+    }
+  ]
+}
