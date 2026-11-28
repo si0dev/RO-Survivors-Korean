@@ -108,7 +108,11 @@ if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
   echo "COLAB_PHASE=SEMANTIC_REVIEW"
   session_rc=0
   if [ "${RO_CHAINED_REVIEW:-0}" = 1 ]; then
-    timeout 1800 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$RO_CHAIN_STAGE" </dev/null || session_rc=$?
+    if [ "$RO_CHAIN_STAGE" = prefetch ]; then
+      timeout 1800 python benchmark/tools/colab-benchmark-chain.py prefetch "$tmp" "$gpu" </dev/null || session_rc=$?
+    else
+      timeout 1800 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$RO_CHAIN_STAGE" </dev/null || session_rc=$?
+    fi
   else
     timeout 1800 python benchmark/tools/colab-benchmark-review.py "$tmp" "$gpu" </dev/null || session_rc=$?
   fi
@@ -229,20 +233,31 @@ run_comparison_model() {
   fi
   return "$session_rc"
 }
-run_chain_model() {
-  local name="$1"
-  export RO_CHAIN_STAGE="$2"
-  select_comparison_model "$name"
+chain_session_context() {
   gpu="ro-translate-$GITHUB_RUN_ID-1"
   test "$(cat "$tmp/comparison-session")" = "$gpu"
   test -s "$tmp/sessions.json"
   allocation_started=1
   allocation_ready=1
   export RO_REVIEW_SHARED_ROOT="/tmp/ro-review-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-  cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
-  echo "CHAIN_SESSION_REUSED=$RO_CHAIN_STAGE"
+}
+prefetch_chain_models() {
+  chain_session_context
+  select_comparison_model 'Hy-MT3-7B-Q8_0'
+  export RO_CHAIN_STAGE=prefetch
+  cp "$tmp/bootstrap-$RO_REVIEW_MODEL.json" "$tmp/bootstrap.json"
   run_session 1 "$((SECONDS+1800))"
   return "$session_rc"
+}
+run_chain_model() {
+  local name="$1" stage="$2"
+  chain_session_context
+  select_comparison_model "$name"
+  test -f "$tmp/chain-prefetch-ready"
+  cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
+  echo "CHAIN_SESSION_REUSED=$stage"
+  # Local model files already verified; no Drive token upload or model copy.
+  timeout 1800 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$stage" </dev/null
 }
 summarize_comparison() {
   local overall=0 name profile rc

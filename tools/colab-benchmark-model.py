@@ -9,42 +9,65 @@ import urllib.request
 import requests
 
 load_start=time.monotonic()
-d=verified_manifest()
-assert d is not None,"CACHE_NOT_READY"
-root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
-if shutil.disk_usage(root).free<sum(e["size"] for e in d["files"])+2*1024**3:
-    raise RuntimeError("LOCAL_DISK_SPACE_INSUFFICIENT")
-engine_root=root
-if globals().get("REVIEW_SHARED_ROOT"):
-    engine_root=pathlib.Path(REVIEW_SHARED_ROOT)/"engine"
-engine_entries=[e for e in d["files"] if e["kind"]!="model"]
-engine_proof=[{k:e[k] for k in ("name","size","sha256")} for e in sorted(engine_entries,key=lambda e:e["kind"])]
-proof_path=engine_root/"verified-engine.json"
-if engine_root!=root and proof_path.is_file():
-    assert json.loads(proof_path.read_text())==engine_proof,"SHARED_ENGINE_MANIFEST_MISMATCH"
-    print("SHARED_ENGINE_REUSED",flush=True)
+if globals().get("PRELOADED_MODEL",False):
+    import hashlib,shutil
+    root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
+    shared=pathlib.Path(REVIEW_SHARED_ROOT)
+    model_dir=shared/"models"/CACHE_SPEC["slug"]/CACHE_SPEC["quant"]
+    manifest=model_dir/"manifest.json"
+    assert hashlib.sha256(manifest.read_bytes()).hexdigest()==MANIFEST_SHA,"PRELOADED_MANIFEST_MISMATCH"
+    d=json.loads(manifest.read_text())
+    assert d["repo"]==CACHE_SPEC["repo"] and d["engine"]==CACHE_SPEC["engine"]
+    entry=next(e for e in d["files"] if e["kind"]=="model")
+    assert entry["name"]==CACHE_SPEC["filename"]
+    model_path=model_dir/entry["name"]
+    proof=json.loads((model_dir/"verified-model.json").read_text())
+    assert proof=={"sha256":entry["sha256"],"size":entry["size"],"mtime_ns":model_path.stat().st_mtime_ns},"PRELOADED_MODEL_PROOF_MISMATCH"
+    assert model_path.stat().st_size==entry["size"],"PRELOADED_MODEL_SIZE_MISMATCH"
+    with model_path.open("rb") as f: assert f.read(4)==b"GGUF","PRELOADED_MODEL_HEADER_MISMATCH"
+    engine_root=shared/"engine"
+    engine_entries=[e for e in d["files"] if e["kind"]!="model"]
+    engine_proof=[{k:e[k] for k in ("name","size","sha256")} for e in sorted(engine_entries,key=lambda e:e["kind"])]
+    assert json.loads((engine_root/"verified-engine.json").read_text())==engine_proof,"SHARED_ENGINE_MANIFEST_MISMATCH"
+    server=next(engine_root.rglob("llama-server"))
+    print("PRELOADED_MODEL_REUSED",flush=True)
 else:
-    if engine_root!=root:
-        if engine_root.exists(): shutil.rmtree(engine_root)
-        engine_root.mkdir(mode=0o700)
-    try:
-        for entry in engine_entries:
-            archive=cache/entry["name"]
-            copy_asset(CONFIG,entry["name"],archive,entry)
-            with tarfile.open(archive,"r:*") as tf: tf.extractall(engine_root,filter="data")
-            archive.unlink()
-        if engine_root!=root: proof_path.write_text(json.dumps(engine_proof))
-    except BaseException:
-        if engine_root!=root: shutil.rmtree(engine_root,ignore_errors=True)
-        raise
-server=next(engine_root.rglob("llama-server"))
-entry=next(e for e in d["files"] if e["kind"]=="model")
-model_path=root/MODEL
-print("LOCAL_MODEL_COPY_START",flush=True)
-copy_seconds,verify_seconds=copy_asset(CONFIG,MODEL,model_path,entry)
-with model_path.open("rb") as f: assert f.read(4)==b"GGUF","LOCAL_MODEL_HASH_MISMATCH"
-pathlib.Path(CONFIG).unlink(missing_ok=True)
-print("LOCAL_MODEL_COPY="+json.dumps({"bytes":entry["size"],"copy_seconds":round(copy_seconds,1),"verify_seconds":round(verify_seconds,1)}),flush=True)
+    d=verified_manifest()
+    assert d is not None,"CACHE_NOT_READY"
+    root=pathlib.Path(tempfile.mkdtemp(prefix="index-llama-"))
+    if shutil.disk_usage(root).free<sum(e["size"] for e in d["files"])+2*1024**3:
+        raise RuntimeError("LOCAL_DISK_SPACE_INSUFFICIENT")
+    engine_root=root
+    if globals().get("REVIEW_SHARED_ROOT"):
+        engine_root=pathlib.Path(REVIEW_SHARED_ROOT)/"engine"
+    engine_entries=[e for e in d["files"] if e["kind"]!="model"]
+    engine_proof=[{k:e[k] for k in ("name","size","sha256")} for e in sorted(engine_entries,key=lambda e:e["kind"])]
+    proof_path=engine_root/"verified-engine.json"
+    if engine_root!=root and proof_path.is_file():
+        assert json.loads(proof_path.read_text())==engine_proof,"SHARED_ENGINE_MANIFEST_MISMATCH"
+        print("SHARED_ENGINE_REUSED",flush=True)
+    else:
+        if engine_root!=root:
+            if engine_root.exists(): shutil.rmtree(engine_root)
+            engine_root.mkdir(mode=0o700)
+        try:
+            for entry in engine_entries:
+                archive=cache/entry["name"]
+                copy_asset(CONFIG,entry["name"],archive,entry)
+                with tarfile.open(archive,"r:*") as tf: tf.extractall(engine_root,filter="data")
+                archive.unlink()
+            if engine_root!=root: proof_path.write_text(json.dumps(engine_proof))
+        except BaseException:
+            if engine_root!=root: shutil.rmtree(engine_root,ignore_errors=True)
+            raise
+    server=next(engine_root.rglob("llama-server"))
+    entry=next(e for e in d["files"] if e["kind"]=="model")
+    model_path=root/MODEL
+    print("LOCAL_MODEL_COPY_START",flush=True)
+    copy_seconds,verify_seconds=copy_asset(CONFIG,MODEL,model_path,entry)
+    with model_path.open("rb") as f: assert f.read(4)==b"GGUF","LOCAL_MODEL_HASH_MISMATCH"
+    pathlib.Path(CONFIG).unlink(missing_ok=True)
+    print("LOCAL_MODEL_COPY="+json.dumps({"bytes":entry["size"],"copy_seconds":round(copy_seconds,1),"verify_seconds":round(verify_seconds,1)}),flush=True)
 libs=sorted({str(p.parent) for p in engine_root.rglob("*.so*")})
 env=dict(os.environ,LD_LIBRARY_PATH=":".join(libs+[os.environ.get("LD_LIBRARY_PATH","")]))
 # Validate the executable and retain only non-sensitive failure classifications.

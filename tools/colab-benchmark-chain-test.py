@@ -33,6 +33,25 @@ class ChainTests(unittest.TestCase):
         self.assertIn("corrected-draft",second)
         self.assertNotIn("original-draft",second)
         self.assertNotIn("secret-reference",first+second)
+    def test_prefetch_and_execution_are_separate(self):
+        import os,tempfile
+        review=c.load("review",ROOT/"colab-benchmark-review.py")
+        b={"RCLONE_DRIVE_ID":"fake","RCLONE_ZIP_SHA":"0"*64,"MANIFEST_SHA":"1"*64,"CACHE_SPEC":{}}
+        prefetch=c.prefetch_source([("first",b),("second",b)],"/tmp/test-shared","/tmp/short.conf","done")
+        compile(prefetch,"prefetch.py","exec")
+        self.assertIn("copy_asset(CONFIG,entry",prefetch)
+        self.assertNotIn("proc=subprocess.Popen",prefetch)
+        with tempfile.TemporaryDirectory() as d:
+            tmp=pathlib.Path(d)
+            c.write(tmp/"bootstrap.json",b)
+            with patch.dict(os.environ,{"RO_REVIEW_SHARED_ROOT":"/tmp/test-shared"}):
+                body,marker=review.build_remote(tmp,"print('test')\n","marker=",preloaded=True)
+            compile(body,"execute.py","exec")
+            self.assertIn("PRELOADED_MODEL=True",body)
+            self.assertNotIn("RCLONE_BOOTSTRAP_START",body)
+            self.assertNotIn("def copy_asset(",body)
+            self.assertNotIn("CONFIG=",body)
+            self.assertIn("PRELOADED_MODEL_REUSED",body)
     def test_correction_consumes_draft(self):
         response=Mock()
         response.json.return_value={"choices":[{"message":{"content":"동빙 시간 +0.3초."},"finish_reason":"stop"}]}

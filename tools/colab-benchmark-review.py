@@ -89,17 +89,24 @@ def assess(rows,verdicts,emit=print):
     # Small screening test, not proof of production accuracy.
     return 0 if stats["correct"]==stats["total"] else 1
 
-def build_remote(tmp,payload,marker):
+def build_remote(tmp,payload,marker,preloaded=False):
     cleanup_marker=None
     bootstrap=json.loads((tmp/"bootstrap.json").read_text())
-    body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\nREVIEW_ONLY=True\n"
+    body="REVIEW_ONLY=True\n"
+    if preloaded:
+        body+="PRELOADED_MODEL=True\n"
+    else:
+        body+="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
     for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
         body+=key+"="+repr(bootstrap[key])+"\n"
     shared=os.environ.get("RO_REVIEW_SHARED_ROOT")
     if shared:
         body+="REVIEW_SHARED_ROOT="+repr(shared)+"\n"
-    for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
-        body+=(ROOT/name).read_text()+"\n"
+    if preloaded:
+        if not shared: raise RuntimeError("CHAIN_SHARED_SESSION_REQUIRED")
+    else:
+        for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
+            body+=(ROOT/name).read_text()+"\n"
     # Explicit process cleanup before the next model in the same VM.
     if shared:
         cleanup_marker=marker+"CLEANUP"
@@ -114,8 +121,9 @@ def build_remote(tmp,payload,marker):
         body+="        except subprocess.TimeoutExpired: child.kill(); child.wait(timeout=30)\n"
         body+="    if globals().get('server_log') is not None: server_log.close()\n"
         body+="    if globals().get('root') is not None: shutil.rmtree(root)\n"
-        body+="    pathlib.Path(CONFIG).unlink(missing_ok=True)\n"
-        body+="    shutil.rmtree(cache,ignore_errors=True)\n"
+        if not preloaded:
+            body+="    pathlib.Path(CONFIG).unlink(missing_ok=True)\n"
+            body+="    shutil.rmtree(cache,ignore_errors=True)\n"
         body+="    print("+repr(cleanup_marker)+",flush=True)\n"
     else:
         body+=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+payload

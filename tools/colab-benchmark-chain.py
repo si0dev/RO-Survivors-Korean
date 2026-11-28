@@ -105,13 +105,60 @@ def payload(rows,marker,stage,review):
         +"    result="+worker.__name__+"(row,base)\n"
         +"    print("+repr(marker)+"+json.dumps({'id':row['id'],'value':result},ensure_ascii=False),flush=True)\n")
 
+def prefetch_source(bootstraps,shared,config,marker):
+    # All model files live on the same Colab VM, outside per-model log directories.
+    first=bootstraps[0][1]
+    body="CONFIG="+repr(config)+"\nREVIEW_SHARED_ROOT="+repr(shared)+"\n"
+    for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
+        body+=key+"="+repr(first[key])+"\n"
+    body+=(ROOT/"colab-cache-mount.py").read_text()+"\n"
+    body+="import tarfile\n"
+    body+="BOOTSTRAPS="+repr(bootstraps)+"\n"
+    body+="CACHE_CODE="+repr((ROOT/"colab-benchmark-cache.py").read_text())+"\n"
+    body+="DONE_MARKER="+repr(marker)+"\n"
+    body+=(ROOT/"colab-benchmark-prefetch-remote.py").read_text()+"\n"
+    return body
+
+def prefetch(tmp,session):
+    kernel=load("kernel",ROOT/"colab-benchmark-kernel.py")
+    names=("Hy-MT3-7B-Q8_0","Qwen3-14B-Q4_K_M")
+    bootstraps=[(name,read(tmp/("bootstrap-"+name+".json"))) for name in names]
+    marker="RO_PREFETCH_"+uuid.uuid4().hex
+    body=prefetch_source(bootstraps,os.environ["RO_REVIEW_SHARED_ROOT"],os.environ["REMOTE_CONFIG"],marker)
+    compile(body,"prefetch-remote.py","exec")
+    path=tmp/"prefetch-remote.py";path.write_text(body,encoding="utf-8")
+    ready=False
+    seen=set()
+    def on_line(line):
+        nonlocal ready
+        if line==marker:
+            ready=True
+        elif line.startswith("PREFETCH_MODEL_READY="):
+            name=line.split("=",1)[1]
+            if name not in names or name in seen: raise RuntimeError("PREFETCH_RESULT_CONFLICT")
+            seen.add(name);print(line,flush=True)
+        elif line in {"PREFETCH_MODEL_START="+n for n in names} or re.fullmatch(r"PREFETCH_DISK_(?:FREE|REQUIRED)_BYTES=\d+",line):
+            print(line,flush=True)
+        else:
+            kernel.safe_progress(line,print)
+    args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout","1650","-f",str(path)]
+    rc,raw=kernel.invoke(args,1680,on_line=on_line,on_wait=lambda elapsed:print(f"PREFETCH_WAIT={elapsed}s models={len(seen)}/{len(names)}",flush=True))
+    if rc or not ready or seen!=set(names):
+        if rc: kernel.report_failure("PREFETCH",raw,kernel.assignment_count,print)
+        raise RuntimeError("CHAIN_PREFETCH_INCOMPLETE")
+    (tmp/"chain-prefetch-ready").touch()
+    print("CHAIN_PREFETCH_READY=2 MODELS GPU_LOADS=0",flush=True)
+    return 0
+
 def run(tmp,session,stage):
     if stage not in ("correct","verify"): raise ValueError("CHAIN_STAGE")
     review=load("review",ROOT/"colab-benchmark-review.py")
     kernel=load("kernel",ROOT/"colab-benchmark-kernel.py")
     rows=read(tmp/("chain-drafts.json" if stage=="correct" else "chain-corrected.json"))
     marker="RO_CHAIN_"+uuid.uuid4().hex+"="
-    body,cleanup_marker=review.build_remote(tmp,payload(rows,marker,stage,review),marker)
+    if not (tmp/"chain-prefetch-ready").is_file():
+        raise RuntimeError("CHAIN_PREFETCH_REQUIRED")
+    body,cleanup_marker=review.build_remote(tmp,payload(rows,marker,stage,review),marker,preloaded=True)
     if cleanup_marker is None: raise RuntimeError("CHAIN_SHARED_SESSION_REQUIRED")
     compile(body,"chain-remote.py","exec")
     path=tmp/"chain-remote.py";path.write_text(body,encoding="utf-8")
@@ -129,6 +176,8 @@ def run(tmp,session,stage):
                 raise RuntimeError("CHAIN_RESULT_CONFLICT")
             results[i]=value
             print(f"CHAIN_PROGRESS={stage}:{len(results)}/{len(rows)} id={i}",flush=True)
+        elif line=="PRELOADED_MODEL_REUSED":
+            print(line,flush=True)
         else:
             kernel.safe_progress(line,print)
     args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout","1500","-f",str(path)]
@@ -170,6 +219,7 @@ def report(tmp,bench):
 if __name__=="__main__":
     mode,tmp,*args=sys.argv[1:];tmp=pathlib.Path(tmp)
     if mode=="restore": restore(tmp,*map(pathlib.Path,args))
+    elif mode=="prefetch": raise SystemExit(prefetch(tmp,*args))
     elif mode=="run": raise SystemExit(run(tmp,*args))
     elif mode=="report": raise SystemExit(report(tmp,pathlib.Path(args[0])))
     else: raise SystemExit("CHAIN_MODE")

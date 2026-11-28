@@ -84,6 +84,8 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(workflow.count("prepare_comparison_model_cache "),2)
         self.assertEqual(workflow.count("run_chain_model "),2)
         self.assertEqual(workflow.count("allocate_comparison_session"),1)
+        self.assertEqual(workflow.count("prefetch_chain_models"),1)
+        self.assertLess(workflow.index("prefetch_chain_models"),workflow.index("run_chain_model 'Hy-MT3"))
         self.assertIn("colab-benchmark-chain.py restore",workflow)
         self.assertIn("colab-benchmark-chain.py report",workflow)
         self.assertLess(workflow.index("run_chain_model 'Hy-MT3"),workflow.index("run_chain_model 'Qwen3"))

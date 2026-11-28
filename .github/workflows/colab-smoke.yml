@@ -112,6 +112,11 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           allocate_comparison_session
+      - name: Common Colab preparation - copy and verify both models and shared engine
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          prefetch_chain_models
       - name: Hy-MT3 - correct existing Index-Translate drafts
         id: correct
         shell: bash
