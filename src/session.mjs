@@ -17,9 +17,9 @@ export const TRANSLATION_CHECK_INTERVAL_MS=60*1000;
 export function shouldScan({navigationType,build,translationVersion,previous}){
   return navigationType!=='reload'||!previous||previous.build!==build||previous.translationVersion!==translationVersion;
 }
-export const ENGINE_UPDATE_LABEL='새 한국어 패치가 있습니다. 업데이트하려면 클릭해 주세요.';
+export const ENGINE_UPDATE_LABEL='새로운 한국어 패치가 있습니다. 클릭하여 업데이트해 주세요.';
 export function stateLabel({hasMissing,scanFailed}){
-  return scanFailed?'번역 상태 확인 불가':hasMissing?'일부 미번역':'';
+  return scanFailed?'현재 한국어 패치의 최신 상태를 확인할 수 없습니다.':hasMissing?'일부 콘텐츠는 번역이 반영될 때까지 원문으로 표시됩니다.':'';
 }
 // Dependency-injected storage/network/scan adapters.
 export function createSession({read,write,check,download,scan,notify,verify,onUpdate=()=>{}}){

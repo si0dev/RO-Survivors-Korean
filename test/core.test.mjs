@@ -58,11 +58,11 @@ test('Unicode and single-quoted source strings are parsed',()=>{
 });
 
 test('translation status never announces pending translation updates',()=>{
- assert.equal(stateLabel({hasMissing:true}),'일부 미번역');
+ assert.equal(stateLabel({hasMissing:true}),'일부 콘텐츠는 번역이 반영될 때까지 원문으로 표시됩니다.');
  assert.equal(stateLabel({}),'');
  assert.equal(stateLabel({updateReady:true}),'');
- assert.equal(stateLabel({hasMissing:true,updateReady:true}),'일부 미번역');
- assert.equal(stateLabel({scanFailed:true,updateReady:true}),'번역 상태 확인 불가');
+ assert.equal(stateLabel({hasMissing:true,updateReady:true}),'일부 콘텐츠는 번역이 반영될 때까지 원문으로 표시됩니다.');
+ assert.equal(stateLabel({scanFailed:true,updateReady:true}),'현재 한국어 패치의 최신 상태를 확인할 수 없습니다.');
 });
 
 test('embedded and cached translation versions compare numerically without downgrading',()=>{
