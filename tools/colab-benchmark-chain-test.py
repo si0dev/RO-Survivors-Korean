@@ -34,6 +34,25 @@ class ChainTests(unittest.TestCase):
         self.assertIn("original-draft",second)
         self.assertIn("verify_task",second)
         self.assertNotIn("secret-reference",first+second)
+    def test_longest_approved_term_overrides_generic(self):
+        self.assertEqual(c.chain_terms("Ore Discovery",{"Ore Discovery":"광석발견"}),{"Ore Discovery":"광석발견"})
+        self.assertTrue(c.quality_checks("Ore Discovery","광석발견",{"Ore Discovery":"광석발견"})["terms"])
+        self.assertFalse(c.quality_checks("Ore Discovery","아이템 희귀도",{"Ore Discovery":"광석발견"})["terms"])
+    def test_retry_restores_only_rejected_and_keeps_exact_reference_out(self):
+        import tempfile
+        refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]
+        snap=c.read(ROOT/"colab-benchmark-chain-run57.json")
+        rejected=[r for r in snap["rows"] if not r.get("excluded") and r["verdict"]!="ACCEPT"]
+        with tempfile.TemporaryDirectory() as d:
+            tmp=pathlib.Path(d)
+            c.write(tmp/"references.json",refs)
+            c.write(tmp/"chain-memory.json",[{"id":r["id"],"source":r["source"],"terms":{},"exact":"DO_NOT_SEND"} for r in rejected])
+            c.restore_retry(tmp,tmp)
+            drafts=c.read(tmp/"chain-drafts.json")
+            self.assertEqual(len(drafts),28)
+            self.assertTrue(all("exact" not in row and "reference" not in row for row in drafts))
+            self.assertEqual({r["id"] for r in drafts},{r["id"] for r in rejected})
+            self.assertNotIn("DO_NOT_SEND",c.payload(drafts,"marker=","correct",None))
     def test_full_scope_and_exclusion(self):
         import os
         refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]

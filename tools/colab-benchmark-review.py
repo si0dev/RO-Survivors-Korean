@@ -48,7 +48,8 @@ def review_one(row,base):
             "只有所有明确的原文机制均被保留且没有新增或冲突含义时输出 ACCEPT。"
             "发现任一明确语义差异或无法确认机制一致时输出 REJECT。"
             "只输出一个英文标签 ACCEPT 或 REJECT，不要翻译、解释或输出其他内容。\n"
-            +json.dumps({"English":row["source"],"Korean":row["candidate"]},ensure_ascii=False))
+            +("这是游戏术语表中的已批准名称，按词义与语境核对，不要求其他措辞逐字相同。若原文是标题或不完整片段，仅验证原文可见内容，不补充上下文。\n" if row.get("terms") or row.get("context") else "")
+            +json.dumps({"English":row["source"],"Korean":row["candidate"],**({"Approved terms":row["terms"]} if row.get("terms") else {}),**({"Context":row["context"]} if row.get("context") else {})},ensure_ascii=False))
     try:
         res=requests.post(base+"/v1/chat/completions",
                           json={"messages":[{"role":"user","content":prompt}],

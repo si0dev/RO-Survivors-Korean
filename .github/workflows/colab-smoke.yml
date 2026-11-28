@@ -16,14 +16,14 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
-    name: 200 cached Index drafts → Hy-MT3 correction → Qwen3 before/after verification
+    name: Retry 28 rejected translations with approved term memory
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       RO_BENCHMARK_MODE: semantic-review
       RO_REVIEW_COMPARISON: '1'
       RO_REVIEW_SCOPE: duration
-      RO_CHAIN_SCOPE: all
+      RO_CHAIN_SCOPE: retry
       RO_CHAINED_REVIEW: '1'
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +57,7 @@ jobs:
         run: |
           python benchmark/tools/colab-benchmark-review-test.py -v
           python benchmark/tools/colab-benchmark-chain-test.py -v
+          node --test benchmark/tools/colab-benchmark-memory-test.mjs
       - name: Restore pinned rclone archive
         id: rclone
         uses: actions/cache/restore@v4
@@ -93,11 +94,12 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           comparison_profiles > "$tmp/profiles.tsv"
-      - name: Restore actual Index drafts (Drive or verified #42 log, no inference)
+      - name: Restore 28 rejected drafts and resolve approved translation memory
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           node historical/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
+          node benchmark/tools/colab-benchmark-memory.mjs benchmark benchmark/tools/colab-benchmark-chain-run57.json "$tmp/chain-memory.json"
           python benchmark/tools/colab-benchmark-chain.py restore "$tmp" "$RUNNER_TEMP/ro-benchmark" historical/tools
       - name: Drive cache - Hy-MT3-7B-Q8_0
         shell: bash

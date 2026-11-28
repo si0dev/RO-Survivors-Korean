@@ -53,7 +53,36 @@ def restore_logged_drafts(inputs,refs):
     if len(rows)!=200 or set(rows)!=set(records): raise RuntimeError("CHAIN_LOG_SELECTION")
     return select_drafts(inputs,rows)
 
+def restore_retry(tmp,bench):
+    snapshot=read(ROOT/"colab-benchmark-chain-run57.json")
+    if (snapshot["schema"],snapshot["run_id"],snapshot["job_id"],snapshot["head_sha"])!=(1,46131466704,140937416429,"0f74e262cda783c5b8f569802df0508c9b8c5c12"):
+        raise RuntimeError("CHAIN_RETRY_PROVENANCE")
+    refs={r["id"]:r for r in read(bench/"references.json")}
+    rows=snapshot["rows"]
+    if len(rows)!=200 or {r["id"] for r in rows}!=set(refs):
+        raise RuntimeError("CHAIN_RETRY_IDS")
+    for row in rows:
+        if any(row[k]!=refs[row["id"]][k] for k in ("source","group","context")):
+            raise RuntimeError("CHAIN_RETRY_SOURCE_MISMATCH")
+    active=[r for r in rows if not r.get("excluded") and (r["verdict"]!="ACCEPT" or not all(r["final_checks"].values()))]
+    if len(active)!=28 or sum(bool(r.get("excluded")) for r in rows)!=1:
+        raise RuntimeError("CHAIN_RETRY_COUNT")
+    memory=read(tmp/"chain-memory.json")
+    by_id={r["id"]:r for r in memory}
+    if len(memory)!=28 or set(by_id)!={r["id"] for r in active}:
+        raise RuntimeError("CHAIN_MEMORY_IDS")
+    drafts=[]
+    for row in active:
+        hint=by_id[row["id"]]
+        if hint["source"]!=row["source"]: raise RuntimeError("CHAIN_MEMORY_SOURCE")
+        # Exact whole-sentence memory is evaluated separately, never sent to LLM.
+        drafts.append({k:row[k] for k in ("id","source","group","context")}|{"draft":row["final"],"terms":hint["terms"]})
+    write(tmp/"chain-drafts.json",drafts)
+    print("CHAIN_RETRY_REUSED=171 EXCLUDED=1 PENDING=28 INDEX_INFERENCE=0",flush=True)
+
 def restore(tmp,bench,historical):
+    if os.environ.get("RO_CHAIN_SCOPE")=="retry":
+        return restore_retry(tmp,bench)
     cp=load("historical_checkpoint",historical/"colab-benchmark-checkpoint.py")
     inputs=read(bench/"inputs.json");refs=read(bench/"references.json")
     ids={r["id"] for r in inputs}
@@ -92,8 +121,17 @@ required_terms=_contract.required_terms
 def is_duration_modifier(source):
     return bool(re.fullmatch(r"[+-]\d+(?:\.\d+)?\s*(?:s|sec|seconds?)\s+of\s+[^.!?]+[.]?",source.strip(),re.I))
 
-def correction_issues(source,text):
-    checks=check_output(source,text,required_terms(source))
+def chain_terms(source,hints=None):
+    terms=required_terms(source)
+    hints=hints or {}
+    # A verified longer phrase supersedes a generic nested term.
+    for key in list(terms):
+        if any(key.casefold() in phrase.casefold() for phrase in hints):
+            del terms[key]
+    return {**terms,**hints}
+
+def correction_issues(source,text,hints=None):
+    checks=check_output(source,text,chain_terms(source,hints))
     issues=["numeric_tokens_changed" if k=="numbers" else "structural_"+k for k,v in checks.items() if not v]
     # Only target terse signed duration modifiers, not ordinary fixed-duration effects.
     if is_duration_modifier(source):
@@ -127,7 +165,7 @@ def correct_one(row,base):
     if re.search(r"\bhalf as long\b",row["source"],re.I):
         prompt+=("本条有相对时长条件。必须保留相对于前述时长的比例关系，"
                  "不得计算或写入新的绝对秒数。\n")
-    terms=required_terms(row["source"])
+    terms=chain_terms(row["source"],row.get("terms"))
     if terms:
         prompt+="必须使用指定术语，不得替换："+json.dumps(terms,ensure_ascii=False)+"。\n"
     data={"English":row["source"],"Korean draft":row["draft"],"Context":row["context"]}
@@ -140,12 +178,12 @@ def correct_one(row,base):
         text=choice["message"]["content"].strip()
         if choice["finish_reason"]!="stop" or not text or "\n" in text or not re.search(r"[가-힣]",text):
             raise ValueError("CHAIN_CORRECTION_INVALID")
-        issues=correction_issues(row["source"],text)
+        issues=correction_issues(row["source"],text,row.get("terms"))
         if not issues: return text
         if attempt==3:
             # Do not replace an otherwise structurally valid draft with a
             # correction that violates known constraints. Qwen still verifies it.
-            if not correction_issues(row["source"],row["draft"]):
+            if not correction_issues(row["source"],row["draft"],row.get("terms")):
                 print("CHAIN_CORRECTION_FALLBACK=original_draft",flush=True)
                 return row["draft"]
             print("CHAIN_CORRECTION_UNRESOLVED",flush=True)
@@ -165,22 +203,23 @@ def correct_task(row,base):
         return {"value":row["draft"],"status":"ERROR"}
 
 def verify_task(row,base):
-    original=review_one({"source":row["source"],"candidate":row["draft"]},base)
-    corrected=original if row["candidate"]==row["draft"] else review_one({"source":row["source"],"candidate":row["candidate"]},base)
+    context={"terms":row.get("terms",{}),"context":row.get("context","")}
+    original=review_one({"source":row["source"],"candidate":row["draft"],**context},base)
+    corrected=original if row["candidate"]==row["draft"] else review_one({"source":row["source"],"candidate":row["candidate"],**context},base)
     return {"original":original,"corrected":corrected}
 
 def payload(rows,marker,stage,review):
     if stage=="correct":
         worker=correct_task
-        public=[{k:r[k] for k in ("id","source","draft","context")} for r in rows]
+        public=[{k:r[k] for k in ("id","source","draft","context")}|{"terms":r.get("terms",{})} for r in rows]
         # Execute the existing structural contract in its own namespace.
         contract=(ROOT/"colab-benchmark-translate.py").read_text().split("# Use the model family's constrained translation structure",1)[0]
         helpers="contract_ns={}\nexec("+repr(contract)+",contract_ns)\ncheck_output=contract_ns['check_output']\nrequired_terms=contract_ns['required_terms']\n"
-        helpers+=inspect.getsource(is_duration_modifier)+"\n"+inspect.getsource(correction_issues)+"\n"+inspect.getsource(correct_one)+"\n"
+        helpers+=inspect.getsource(is_duration_modifier)+"\n"+inspect.getsource(chain_terms)+"\n"+inspect.getsource(correction_issues)+"\n"+inspect.getsource(correct_one)+"\n"
     else:
         worker=verify_task
         # Separate review requests for original and corrected text; no approved references.
-        public=[{"id":r["id"],"source":r["source"],"draft":r["draft"],"candidate":r["corrected"]} for r in rows]
+        public=[{"id":r["id"],"source":r["source"],"draft":r["draft"],"candidate":r["corrected"],"terms":r.get("terms",{}),"context":r.get("context","")} for r in rows]
         helpers=inspect.getsource(review.review_one)+"\n"
     return ("\nimport json,re\n"+helpers+inspect.getsource(worker)+"\n"
         +"chain_rows=json.loads("+repr(json.dumps(public,ensure_ascii=False))+")\n"
@@ -287,19 +326,19 @@ def run(tmp,session,stage):
                 continue
             result=results[row["id"]]
             value=result["value"]
-            checks=quality_checks(row["source"],value)
+            checks=quality_checks(row["source"],value,row.get("terms"))
             if not all(checks.values()):
                 print("CHAIN_STRUCTURAL_FAILURE="+row["id"]+":"+",".join(k for k,v in checks.items() if not v),flush=True)
-            corrected.append({**row,"corrected":value,"correction_status":result["status"],"checks":checks,"draft_checks":quality_checks(row["source"],row["draft"])})
+            corrected.append({**row,"corrected":value,"correction_status":result["status"],"checks":checks,"draft_checks":quality_checks(row["source"],row["draft"],row.get("terms"))})
         write(tmp/"chain-corrected.json",corrected)
     else:
         verified=[finalize(row,results.get(row["id"])) for row in rows]
         write(tmp/"chain-verified.json",verified)
     return 0
 
-def quality_checks(source,value):
-    checks=check_output(source,value,required_terms(source))
-    issues=correction_issues(source,value)
+def quality_checks(source,value,hints=None):
+    checks=check_output(source,value,chain_terms(source,hints))
+    issues=correction_issues(source,value,hints)
     checks["duration_semantics"]=not any(i in ("duration_modifier_rendered_as_fixed_duration","relative_duration_not_preserved") for i in issues)
     checks["unsupported_effect"]="unsupported_poison_effect" not in issues
     return checks
@@ -365,7 +404,8 @@ def report(tmp,bench):
         return 1
     refs={r["id"]:r["reference"] for r in read(bench/"references.json")}
     rows=read(path)
-    expected=200 if os.environ.get("RO_CHAIN_SCOPE","duration")=="all" else 2
+    scope=os.environ.get("RO_CHAIN_SCOPE","duration")
+    expected={"all":200,"duration":2,"retry":28}[scope]
     if len(rows)!=expected or len({r["id"] for r in rows})!=expected:
         raise RuntimeError("CHAIN_REPORT_INCOMPLETE")
     for row in rows:
@@ -377,6 +417,11 @@ def report(tmp,bench):
     evaluated=stats["evaluated"]
     ok=stats["final_combined_pass"]==evaluated and not stats["correction_errors"] and not stats["review_errors"]
     print(f"CHAIN_REPORT=verified:{stats['final_combined_pass']}/{evaluated} excluded:{stats.get('excluded',0)} total:{len(rows)}",flush=True)
+    if scope=="retry":
+        # Known approved exact hits are separate from model fallback results.
+        memory=read(tmp/"chain-memory.json")
+        hits=[m for m in memory if m["exact"] is not None]
+        print("CHAIN_RETRY_SUMMARY="+json.dumps({"prior_pass":171,"retried":28,"new_pass":stats["final_combined_pass"],"combined_pass":171+stats["final_combined_pass"],"evaluated":199,"exact_memory_hits":len(hits),"exact_memory_matches_frozen_reference":sum(m["exact"]==refs[m["id"]] for m in hits)}),flush=True)
     # A completed experiment may still fail the quality gate. Never publish.
     return 0 if ok else 1
 

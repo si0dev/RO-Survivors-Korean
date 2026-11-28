@@ -1,0 +1,4000 @@
+{
+  "schema": 1,
+  "run_id": 46131466704,
+  "job_id": 140937416429,
+  "head_sha": "0f74e262cda783c5b8f569802df0508c9b8c5c12",
+  "rows": [
+    {
+      "id": "001",
+      "source": "What can improve",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "무엇을 개선할 수 있나요?",
+      "corrected": "무엇을 개선할 수 있나요?",
+      "final": "무엇을 개선할 수 있나요?",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "002",
+      "source": "Raises a wall of fire between you and the enemies. Those inside move 25% slower.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "당신과 적들 사이에 불의 장벽을 세웁니다. 그 안에 있는 적들의 이동 속도가 25% 느려집니다.",
+      "corrected": "당신과 적들 사이에 불의 장벽을 세웁니다. 그 안에 있는 적들의 이동 속도가 25% 느려집니다.",
+      "final": "당신과 적들 사이에 불의 장벽을 세웁니다. 그 안에 있는 적들의 이동 속도가 25% 느려집니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "003",
+      "source": "Coluceo: the Heal pulse repeats 2 more times, once per second, with 30% of its healing and 50% of its damage",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "콜루체오: 치유 펄스가 1초에 한 번씩 2회 더 반복되며, 치유량은 30%, 피해량은 50%가 적용됩니다.",
+      "corrected": "콜루체오: 치유 펄스가 1초에 한 번씩 2회 더 반복되며, 치유량은 30%, 피해량은 50%입니다.",
+      "final": "콜루체오: 치유 펄스가 1초에 한 번씩 2회 더 반복되며, 치유량은 30%, 피해량은 50%입니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "004",
+      "source": "Acid Terror",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "산성 공포",
+      "corrected": "산성 공포",
+      "final": "산성 공포",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "005",
+      "source": "You throw magic sand on a group of enemies: they fall asleep for 2.5 s (bosses, half as long).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간).",
+      "corrected": "적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간).",
+      "final": "적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "006",
+      "source": "Unhealed Wound: each caltrop hit opens a wound that bleeds 22% of the hit every 3 s until the monster dies (up to 6 wounds)",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "치유되지 않은 상처: 각 가시 발판 공격마다 상처가 하나 생깁니다. 이 상처는 몬스터가 죽을 때까지 3초마다 공격력의 22%에 해당하는 피해를 입힙니다(최대 6개의 상처).",
+      "corrected": "치유되지 않은 상처: 각 가시 발판 공격마다 상처가 하나 생깁니다. 이 상처는 몬스터가 죽을 때까지 3초마다 공격력의 22%에 해당하는 피해를 입힙니다(최대 6개의 상처).",
+      "final": "치유되지 않은 상처: 각 가시 발판 공격마다 상처가 하나 생깁니다. 이 상처는 몬스터가 죽을 때까지 3초마다 공격력의 22%에 해당하는 피해를 입힙니다(최대 6개의 상처).",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "007",
+      "source": "Summon Flora",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "플로라 소환",
+      "corrected": "플로라 소환",
+      "final": "플로라 소환",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "008",
+      "source": "Throws a stone at the nearest enemy: a solid hit that stuns it.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "가장 가까운 적에게 돌을 던져 기절시키는 확실한 공격을 가합니다.",
+      "corrected": "가장 가까운 적에게 돌을 던져 그 적을 기절시키는 확실한 공격을 가합니다.",
+      "final": "가장 가까운 적에게 돌을 던져 그 적을 기절시키는 확실한 공격을 가합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "009",
+      "source": "Armored Cart: when it triggers it heals you for 15% of your max HP and, while it lasts, whoever hits you is knocked away",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "장갑 수레: 발동 시 최대 HP의 15%만큼 회복되며, 지속되는 동안 자신을 공격한 대상은 뒤로 밀려납니다.",
+      "corrected": "장갑 수레: 발동 시 최대 HP의 15%만큼 회복되며, 지속되는 동안 자신을 공격한 대상은 뒤로 밀려납니다.",
+      "final": "장갑 수레: 발동 시 최대 HP의 15%만큼 회복되며, 지속되는 동안 자신을 공격한 대상은 뒤로 밀려납니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "010",
+      "source": "+12% area",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "+12% 범위",
+      "corrected": "+12% 범위",
+      "final": "+12% 범위",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "011",
+      "source": "Clementia: while Blessing lasts, you slowly regenerate health",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "클레멘시아: 축복이 지속되는 동안, 체력이 서서히 회복됩니다.",
+      "corrected": "클레멘시아: 축복이 지속되는 동안, 체력이 서서히 회복됩니다.",
+      "final": "클레멘시아: 축복이 지속되는 동안, 체력이 서서히 회복됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "012",
+      "source": "Sharp Shooting: the last arrow of each salvo flies straight, deals 60% of an arrow's damage with 25% extra critical chance, and pierces everything in line up to 6 m behind the target (against bosses, without the critical chance)",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "정밀 사격: 각 연사 마지막 화살은 직선으로 날아가며 화살 피해의 60%를 주고 치명타 확률이 25% 추가됩니다. 또한 목표물 뒤 6m까지의 모든 것을 관통합니다(보스에게는 치명타 확률 추가 효과 없음).",
+      "corrected": "정밀 사격: 각 연사 마지막 화살은 직선으로 날아가며 화살 피해의 60%를 주고 치명타 확률이 25% 추가되며, 목표물 뒤 6m까지의 모든 것을 관통합니다(보스에게는 치명타 확률 추가 효과 없음).",
+      "final": "정밀 사격: 각 연사 마지막 화살은 직선으로 날아가며 화살 피해의 60%를 주고 치명타 확률이 25% 추가되며, 목표물 뒤 6m까지의 모든 것을 관통합니다(보스에게는 치명타 확률 추가 효과 없음).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "013",
+      "source": "+15% damage",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "+15% 피해",
+      "corrected": "+15% 피해",
+      "final": "+15% 피해",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "014",
+      "source": "For 15 s you take 12% less damage and have +1 armor.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "15초 동안 받는 피해가 12% 감소하고 방어력이 +1 증가합니다.",
+      "corrected": "15초 동안 받는 피해가 12% 감소하고 방어력이 +1 증가합니다.",
+      "final": "15초 동안 받는 피해가 12% 감소하고 방어력이 +1 증가합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "015",
+      "source": "You throw two fans of knives in a row around you that hit every nearby enemy. With cards, up to 3 fans; each one hits 20% less than the one before.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "주변의 모든 적을 타격하는 두 개의 칼 부채를 연속으로 던집니다. 카드를 사용하면 최대 3개의 칼 부채를 사용할 수 있으며, 각 부채의 타격력은 이전 부채보다 20% 감소합니다.",
+      "corrected": "주변의 모든 적을 타격하는 두 개의 칼 부채를 연속으로 던집니다. 카드를 사용하면 최대 3개의 칼 부채를 사용할 수 있으며, 각 부채의 타격력은 이전 부채보다 20% 감소합니다.",
+      "final": "주변의 모든 적을 타격하는 두 개의 칼 부채를 연속으로 던집니다. 카드를 사용하면 최대 3개의 칼 부채를 사용할 수 있으며, 각 부채의 타격력은 이전 부채보다 20% 감소합니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "016",
+      "source": "+1 charge",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "+1 충전",
+      "corrected": "+1 충전",
+      "final": "+1 충전",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "017",
+      "source": "Picked at Lv 20: it transforms a skill",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "Lv 20에서 선택 시: 스킬을 변환합니다",
+      "corrected": "Lv 20에서 선택 시: 스킬을 변환합니다",
+      "final": "Lv 20에서 선택 시: 스킬을 변환합니다",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "018",
+      "source": "Sage keeps every Mage skill and learns these from its talent trees. 2nd jobs are still in development: their skills may change.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "세이지는 모든 메이지 스킬을 보유하며, 재능 트리를 통해 이 스킬들을 학습합니다. 2차 직업은 아직 개발 중이므로 스킬이 변경될 수 있습니다.",
+      "corrected": "세이지는 모든 메이지 스킬을 보유하며, 재능 트리를 통해 이 스킬들을 학습합니다. 2차 직업은 아직 개발 중이므로 스킬이 변경될 수 있습니다.",
+      "final": "세이지는 모든 메이지 스킬을 보유하며, 재능 트리를 통해 이 스킬들을 학습합니다. 2차 직업은 아직 개발 중이므로 스킬이 변경될 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "019",
+      "source": "Shadowstep",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "그림자 이동",
+      "corrected": "그림자 이동",
+      "final": "그림자 이동",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "020",
+      "source": "Plus every Mage Deity: the Wizard keeps those skills.",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "게다가 모든 마법사 신: 위저드는 해당 스킬들을 유지합니다.",
+      "corrected": "게다가 모든 마법사 신: 위저드는 해당 스킬들을 유지합니다.",
+      "final": "게다가 모든 마법사 신: 위저드는 해당 스킬들을 유지합니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "021",
+      "source": "Your Peco charges the strongest enemy within 6 m: hits harder the farther away it was (up to double) and stuns it.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "페코가 6m 내의 가장 강한 적을 공격합니다. 거리가 멀수록 더 강력한 피해를 입히며(최대 2배), 적을 기절시킵니다.",
+      "corrected": "페코가 6m 내의 가장 강한 적을 공격합니다. 거리가 멀수록 더 강력한 피해를 입히며(최대 2배), 적을 기절시킵니다.",
+      "final": "페코가 6m 내의 가장 강한 적을 공격합니다. 거리가 멀수록 더 강력한 피해를 입히며(최대 2배), 적을 기절시킵니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "022",
+      "source": "🛠️ In development",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "🛠️ 개발 중",
+      "corrected": "🛠️ 개발 중",
+      "final": "🛠️ 개발 중",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "023",
+      "source": "For 10 s: +12% AGI and DEX.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "10초 동안: AGI와 DEX +12%.",
+      "corrected": "10초 동안: AGI와 DEX +12%.",
+      "final": "10초 동안: AGI와 DEX +12%.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "024",
+      "source": "Ghostly blow on the nearest enemy and those around it. A moment later, a ghostly echo stuns those in the area for 0.8 s (except bosses).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "가장 가까운 적과 그 주변 적에게 유령의 일격을 가합니다. 잠시 후, 유령의 메아리가 해당 구역의 적들을 0.8초 동안 기절시킵니다(보스는 제외).",
+      "corrected": "가장 가까운 적과 그 주변 적에게 유령의 일격을 가합니다. 잠시 후, 유령의 메아리가 해당 구역의 적들을 0.8초 동안 기절시킵니다(보스는 제외).",
+      "final": "가장 가까운 적과 그 주변 적에게 유령의 일격을 가합니다. 잠시 후, 유령의 메아리가 해당 구역의 적들을 0.8초 동안 기절시킵니다(보스는 제외).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "025",
+      "source": "Bowling Bash Deity",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "볼링 배시 신",
+      "corrected": "볼링 배시 신",
+      "final": "볼링 배시 신",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "026",
+      "source": "Three thrusts in a row on the nearest enemy.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "가장 가까운 적을 향해 세 번 연속으로 찔러 공격합니다.",
+      "corrected": "가장 가까운 적을 향해 세 번 연속으로 찔릅니다.",
+      "final": "가장 가까운 적을 향해 세 번 연속으로 찔릅니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "027",
+      "source": "You consecrate the ground at your feet for 8 s: while inside you heal 1.5% of your HP per second, and enemies that step in burn (effective vs undead and shadow).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "발밑의 땅을 8초 동안 성스럽게 만듭니다. 이 효과 범위 내에 있는 동안에는 초당 HP의 1.5%를 회복하며, 범위 안으로 들어오는 적들은 화상 피해를 입습니다(언데드와 그림자 유닛에 효과적).",
+      "corrected": "발밑의 땅을 8초 동안 성스럽게 만듭니다. 이 효과 범위 내에 있는 동안에는 초당 HP의 1.5%를 회복하며, 범위 안으로 들어오는 적들은 화상 피해를 입습니다(언데드와 그림자 유닛에 효과적).",
+      "final": "발밑의 땅을 8초 동안 성스럽게 만듭니다. 이 효과 범위 내에 있는 동안에는 초당 HP의 1.5%를 회복하며, 범위 안으로 들어오는 적들은 화상 피해를 입습니다(언데드와 그림자 유닛에 효과적).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "028",
+      "source": "Swordsman",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "검객",
+      "corrected": "검객",
+      "final": "검객",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "029",
+      "source": "When an enemy hits you, you strike back very hard (and weaker at those around it).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "적에게 공격을 받으면 매우 강하게 반격합니다(주변 적에게는 약하게).",
+      "corrected": "적에게 공격을 받으면 매우 강하게 반격합니다(주변 적에게는 약하게).",
+      "final": "적에게 공격을 받으면 매우 강하게 반격합니다(주변 적에게는 약하게).",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "030",
+      "source": "You flood the ground at your feet for 8 s: while inside you heal 2% of your HP per second, and enemies that step in get soaked (slower and take some damage).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "발밑의 지면을 8초 동안 물로 채웁니다. 물속에 있는 동안에는 초당 HP의 2%를 회복하고, 물속으로 들어오는 적들은 젖게 되어(이동 속도가 느려지고 약간의 피해를 입음) 됩니다.",
+      "corrected": "발밑의 지면을 8초 동안 물로 채웁니다. 물속에 있는 동안에는 초당 HP의 2%를 회복하고, 물속으로 들어오는 적들은 젖게 되어(이동 속도가 느려지고 약간의 피해를 입음) 됩니다.",
+      "final": "발밑의 지면을 8초 동안 물로 채웁니다. 물속에 있는 동안에는 초당 HP의 2%를 회복하고, 물속으로 들어오는 적들은 젖게 되어(이동 속도가 느려지고 약간의 피해를 입음) 됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "031",
+      "source": "Wizard",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "마법사",
+      "corrected": "마법사",
+      "final": "마법사",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "032",
+      "source": "damage · cooldown · count · targets · pierce chance · speed · area",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "피해 · 재사용 대기시간 · 횟수 · 대상 · 관통 확률 · 속도 · 범위",
+      "corrected": "피해 · 재사용 대기시간 · 횟수 · 대상 · 관통 확률 · 속도 · 범위",
+      "final": "피해 · 재사용 대기시간 · 횟수 · 대상 · 관통 확률 · 속도 · 범위",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "033",
+      "source": "You throw your shield: it hits everything it passes through and returns to your arm. Requires a shield.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "방패를 던지면, 방패가 통과하는 모든 대상에게 피해를 입히고 다시 당신의 팔로 돌아옵니다. 방패가 필요합니다.",
+      "corrected": "방패를 던지면, 방패가 통과하는 모든 대상에게 피해를 입히고 다시 당신의 팔로 돌아옵니다. 방패가 필요합니다.",
+      "final": "방패를 던지면, 방패가 통과하는 모든 대상에게 피해를 입히고 다시 당신의 팔로 돌아옵니다. 방패가 필요합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "034",
+      "source": "Back Stab Deity",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "뒤치기 신",
+      "corrected": "배신의 신",
+      "final": "배신의 신",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "035",
+      "source": "When you're hurt, you throw yourself a potion that heals 18% of your max HP.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "피해를 입으면 최대 HP의 18%를 회복시키는 물약을 스스로에게 사용합니다.",
+      "corrected": "피해를 입으면 최대 HP의 18%를 회복시키는 물약을 스스로에게 사용합니다.",
+      "final": "피해를 입으면 최대 HP의 18%를 회복시키는 물약을 스스로에게 사용합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "036",
+      "source": "A column of holy light on the bosses in sight or, if there are none, on the biggest group of enemies: a very strong hit that also reaches those around it (effective vs undead and shadow).",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "시야 내 보스에게, 혹은 보스가 없을 경우 가장 큰 적 무리에 성스러운 빛의 기둥을 생성합니다. 주변 적에게도 피해를 주는 매우 강력한 공격입니다(언데드와 그림자 효과에 효과적).",
+      "corrected": "시야 내 보스에게, 혹은 보스가 없을 경우 가장 큰 적 무리에 성스러운 빛의 기둥을 생성합니다. 주변 적에게도 피해를 주는 매우 강력한 공격입니다(언데드와 그림자 효과에 효과적).",
+      "final": "시야 내 보스에게, 혹은 보스가 없을 경우 가장 큰 적 무리에 성스러운 빛의 기둥을 생성합니다. 주변 적에게도 피해를 주는 매우 강력한 공격입니다(언데드와 그림자 효과에 효과적).",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "037",
+      "source": "Venom Dust",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "독가루",
+      "corrected": "독가루",
+      "final": "독가루",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "038",
+      "source": "Huge phantom arrow: pierces every enemy and knocks them far away.",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "거대한 환영 화살: 모든 적을 관통하며 멀리 날려버립니다.",
+      "corrected": "거대한 환영 화살: 모든 적을 관통하며 멀리 날려버립니다.",
+      "final": "거대한 환영 화살: 모든 적을 관통하며 멀리 날려버립니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "039",
+      "source": "Adoramus: the orbs blind those they touch for 2 s and heal you 0.2% of your max HP for each one (up to 1% per second)",
+      "group": "skill",
+      "context": "wiki:deity",
+      "draft": "아도라무스: 오브는 접촉한 대상의 시야를 2초간 차단하고, 접촉한 오브 하나당 최대 HP의 0.2%를 회복시킵니다(초당 최대 1%까지).",
+      "corrected": "아도라무스: 오브는 접촉한 대상의 시야를 2초간 차단하고, 접촉한 오브 하나당 최대 HP의 0.2%를 회복시킵니다(초당 최대 1%까지).",
+      "final": "아도라무스: 오브는 접촉한 대상의 시야를 2초간 차단하고, 접촉한 오브 하나당 최대 HP의 0.2%를 회복시킵니다(초당 최대 1%까지).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "040",
+      "source": "Water",
+      "group": "skill",
+      "context": "wiki:skills",
+      "draft": "물",
+      "corrected": "물",
+      "final": "물",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "041",
+      "source": "Penomena Card",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "페노메나 카드",
+      "corrected": "페노메나 카드",
+      "final": "페노메나 카드",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "042",
+      "source": "+6% movement speed · +5% damage to bosses and undead",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "이동 속도 +6% · 보스 및 언데드 대상 피해 +5%",
+      "corrected": "이동 속도 +6% · 보스 및 언데드 대상 피해 +5%",
+      "final": "이동 속도 +6% · 보스 및 언데드 대상 피해 +5%",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "043",
+      "source": "Everything from epic and +10–20% damage to a skill: up to tier 2, a skill of a 1st job that can use the item; from tier 3, a skill of a 2nd job that can use it",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "에픽 및 +10–20% 스킬 피해부터 모든 아이템: 최대 티어 2까지 아이템을 사용할 수 있는 1차 직업의 스킬, 티어 3부터는 아이템을 사용할 수 있는 2차 직업의 스킬",
+      "corrected": "에픽 및 +10–20% 스킬 피해부터 모든 아이템: 최대 티어 2까지 아이템을 사용할 수 있는 1차 직업의 스킬, 티어 3부터는 아이템을 사용할 수 있는 2차 직업의 스킬",
+      "final": "에픽 및 +10–20% 스킬 피해부터 모든 아이템: 최대 티어 2까지 아이템을 사용할 수 있는 1차 직업의 스킬, 티어 3부터는 아이템을 사용할 수 있는 2차 직업의 스킬",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "044",
+      "source": "Skeleton Manteau",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "스켈레톤 망토",
+      "corrected": "스켈레톤 망토",
+      "final": "스켈레톤 망토",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "045",
+      "source": "Transparent Head Protector",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "투명 헤드 프로텍터",
+      "corrected": "투명 헤드 프로텍터",
+      "final": "투명 헤드 프로텍터",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "046",
+      "source": "🏮 = Lantern Festival gear: it only comes from its balls (the machine in the plaza), never from monsters. Many share a name with normal pieces but have a different ★.",
+      "group": "gear",
+      "context": "wiki:equip",
+      "draft": "🏮 = 등불 축제 장비: 오직 등불 공(광장에 있는 기계)에서만 획득 가능하며, 몬스터에서는 절대 획득할 수 없습니다. 많은 장비가 일반 장비와 이름이 같지만 ★ 등급은 다릅니다.",
+      "corrected": "🏮 = 등불 축제 장비: 오직 등불 공(광장에 있는 기계)에서만 획득 가능하며, 몬스터에서는 절대 획득할 수 없습니다. 많은 장비가 일반 장비와 이름이 같지만 ★ 등급은 다릅니다.",
+      "final": "🏮 = 등불 축제 장비: 오직 등불 공(광장에 있는 기계)에서만 획득 가능하며, 몬스터에서는 절대 획득할 수 없습니다. 많은 장비가 일반 장비와 이름이 같지만 ★ 등급은 다릅니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "047",
+      "source": "Whisper Egg",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "속삭임의 알",
+      "corrected": "속삭임의 알",
+      "final": "속삭임의 알",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "048",
+      "source": "Head (upper, middle, lower)",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "머리(상단, 중간, 하단)",
+      "corrected": "머리(상단, 중간, 하단)",
+      "final": "머리(상단, 중간, 하단)",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "049",
+      "source": "If a refine fails, the piece breaks and is lost with its cards. Up to +4 is safe. Ores are bought from the Ore Merchant with Kafra Points. Accessories, middle/lower headgear and starter gear can’t be refined. When you sell it, each refine level adds half of what its ore cost.",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "정제에 실패하면 아이템이 파손되어 해당 카드와 함께 소실됩니다. +4까지는 안전합니다. 광석은 카프라 포인트로 광석 상인에게서 구매할 수 있습니다. 액세서리, 중간/하단 헤드기어 및 시작 장비는 정제할 수 없습니다. 판매 시, 정제 레벨마다 광석 비용의 절반이 추가됩니다.",
+      "corrected": "정제에 실패하면 아이템이 파손되어 해당 카드와 함께 소실됩니다. +4까지는 안전합니다. 광석은 카프라 포인트로 광석 상인에게서 구매할 수 있습니다. 액세서리, 중간/하단 헤드기어 및 시작 장비는 정제할 수 없습니다. 판매 시, 각 정제 레벨마다 그 광석 비용의 절반이 추가됩니다.",
+      "final": "정제에 실패하면 아이템이 파손되어 해당 카드와 함께 소실됩니다. +4까지는 안전합니다. 광석은 카프라 포인트로 광석 상인에게서 구매할 수 있습니다. 액세서리, 중간/하단 헤드기어 및 시작 장비는 정제할 수 없습니다. 판매 시, 각 정제 레벨마다 그 광석 비용의 절반이 추가됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "050",
+      "source": "Rod",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "로드",
+      "corrected": "로드",
+      "final": "로드",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "051",
+      "source": "-4% damage taken · +30 max HP",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "받는 피해 -4% · 최대 HP +30",
+      "corrected": "받는 피해 -4% · HP 최대치 +30",
+      "final": "받는 피해 -4% · HP 최대치 +30",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "052",
+      "source": "Lantern Festival cards aren’t dropped by its monsters: they come, very rarely, from its balls at the machine in the plaza.",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "등불 축제 카드는 몬스터에게서 드롭되지 않습니다. 이 카드들은 극히 드물게 광장에 있는 기계의 공에서 획득할 수 있습니다.",
+      "corrected": "등불 축제 카드는 몬스터에게서 드롭되지 않으며, 극히 드물게 광장에 있는 기계의 공에서 획득할 수 있습니다.",
+      "final": "등불 축제 카드는 몬스터에게서 드롭되지 않으며, 극히 드물게 광장에 있는 기계의 공에서 획득할 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "053",
+      "source": "Zombie Card",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "좀비 카드",
+      "corrected": "좀비 카드",
+      "final": "좀비 카드",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "054",
+      "source": "One primary stat + crit, Haste or area (or pierce on armor and ranged weapons)",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "주 스탯 1개 + 치명타, 재빠름 또는 광역(또는 방어구와 원거리 무기의 관통)",
+      "corrected": "주 스탯 1개 + 치명타, 재빠름 또는 광역(또는 방어구와 원거리 무기의 관통)",
+      "final": "주 스탯 1개 + 치명타, 재빠름 또는 광역(또는 방어구와 원거리 무기의 관통)",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "055",
+      "source": "of the stage where it dropped. A tier 1 weapon has 25–45 ATK (or MATK for rods and books), and each tier adds 10%. Within that, the weapon type places it like RO: daggers, knuckles and whips at the bottom; swords and maces in the middle; axes and spears a bit higher; two-handers at the top. Armor DEF and affix values are multiplied by the tier (tier 2 = ×2).",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "드롭된 스테이지의 티어에 따라 결정됩니다. 티어 1 무기는 25–45 ATK(로드와 북의 경우 MATK)를 가지며, 각 티어마다 10%가 추가됩니다. 그 안에서 무기 유형에 따라 RO: 단검, 너클, 채찍은 최하위, 검과 메이스는 중간, 도끼와 창은 약간 상위, 양손 무기는 최상위에 위치합니다. 방어구 DEF와 접두사/접미사 수치는 티어에 따라 곱해집니다(티어 2 = ×2).",
+      "corrected": "드롭된 스테이지의 티어에 따라 결정됩니다. 티어 1 무기는 25–45 ATK(로드와 북의 경우 MATK)를 가지며, 각 티어마다 10%가 추가됩니다. 그 안에서 무기 유형에 따라 RO: 단검, 너클, 채찍은 최하위, 검과 메이스는 중간, 도끼와 창은 약간 상위, 양손 무기는 최상위에 위치합니다. 방어구 DEF와 접두사/접미사 수치는 티어에 따라 곱해집니다(티어 2 = ×2).",
+      "final": "드롭된 스테이지의 티어에 따라 결정됩니다. 티어 1 무기는 25–45 ATK(로드와 북의 경우 MATK)를 가지며, 각 티어마다 10%가 추가됩니다. 그 안에서 무기 유형에 따라 RO: 단검, 너클, 채찍은 최하위, 검과 메이스는 중간, 도끼와 창은 약간 상위, 양손 무기는 최상위에 위치합니다. 방어구 DEF와 접두사/접미사 수치는 티어에 따라 곱해집니다(티어 2 = ×2).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "056",
+      "source": "Affixes",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "접두사",
+      "corrected": "접두사",
+      "final": "접두사",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "057",
+      "source": "+8% Flee · +4% damage taken",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "+8% 도망 · +4% 받는 피해",
+      "corrected": "+8% 도망 · +4% 받는 피해",
+      "final": "+8% 도망 · +4% 받는 피해",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "058",
+      "source": "Each card only fits one kind of piece (headgear cards fit all three head slots). Every monster drops its own, very rarely; bosses (👑) a lot more often. Its bonus grows with the card’s tier (that of the lowest stage where its monster drops) and with the monster’s class: mini-boss cards give 25% more and MVP cards 50% more; if a card gives two things, each one stays at 60%. The piece’s refine doesn’t change it.",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "각 카드는 한 종류의 부품에만 장착됩니다(헤어 액세서리 카드는 세 개의 머리 슬롯 모두에 장착 가능). 모든 몬스터는 매우 드물게 자신만의 카드를 드롭하며, 보스(👑)는 훨씬 더 자주 드롭합니다. 카드의 보너스는 카드의 티어(해당 몬스터가 드롭되는 가장 낮은 단계의 티어)와 몬스터의 클래스에 따라 증가합니다. 미니 보스 카드는 25% 더, MVP 카드는 50% 더 제공되며, 카드가 두 가지 효과를 제공하는 경우 각 효과는 60%로 유지됩니다. 부품의 강화 레벨은 이 값에 영향을 주지 않습니다.",
+      "corrected": "각 카드는 한 종류의 부품에만 장착됩니다(헤어 액세서리 카드는 세 개의 머리 슬롯 모두에 장착 가능). 모든 몬스터는 매우 드물게 자신만의 카드를 드롭하며, 보스(👑)는 훨씬 더 자주 드롭합니다. 카드의 보너스는 카드의 티어(해당 몬스터가 드롭되는 가장 낮은 단계의 티어)와 몬스터의 클래스에 따라 증가합니다. 미니 보스 카드는 25% 더, MVP 카드는 50% 더 제공되며, 카드가 두 가지 효과를 제공하는 경우 각 효과는 60%로 유지됩니다. 부품의 강화 레벨은 이 값에 영향을 주지 않습니다.",
+      "final": "각 카드는 한 종류의 부품에만 장착됩니다(헤어 액세서리 카드는 세 개의 머리 슬롯 모두에 장착 가능). 모든 몬스터는 매우 드물게 자신만의 카드를 드롭하며, 보스(👑)는 훨씬 더 자주 드롭합니다. 카드의 보너스는 카드의 티어(해당 몬스터가 드롭되는 가장 낮은 단계의 티어)와 몬스터의 클래스에 따라 증가합니다. 미니 보스 카드는 25% 더, MVP 카드는 50% 더 제공되며, 카드가 두 가지 효과를 제공하는 경우 각 효과는 60%로 유지됩니다. 부품의 강화 레벨은 이 값에 영향을 주지 않습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "059",
+      "source": "Lute",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "루트",
+      "corrected": "루트",
+      "final": "루트",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "060",
+      "source": "★ +6% damage to bosses and undead",
+      "group": "gear",
+      "context": "wiki:equip",
+      "draft": "★ 보스 및 언데드 대상 피해량 +6%",
+      "corrected": "★ 보스 및 언데드 대상 피해량 +6%",
+      "final": "★ 보스 및 언데드 대상 피해량 +6%",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "061",
+      "source": "on the tooltip. It comes at every quality, on top of the affixes, and its value is multiplied by the tier of the stage where it drops (tier 2 = ×2) and by refine. 👑 = mini boss or MVP: they drop their gear much more often than normal monsters.",
+      "group": "gear",
+      "context": "wiki:equip",
+      "draft": "툴팁에 표시됩니다. 모든 등급으로 제공되며, 접두사/접미사 효과와 별도로 적용됩니다. 그 수치는 아이템이 드랍되는 단계의 티어(티어 2 = ×2)와 정제 수치에 따라 곱해집니다. 👑 = 미니 보스 또는 MVP: 일반 몬스터보다 장비 드랍률이 훨씬 높습니다.",
+      "corrected": "툴팁에 표시됩니다. 모든 등급으로 제공되며, 접두사/접미사 효과와 별도로 적용됩니다. 그 수치는 아이템이 드랍되는 단계의 티어(티어 2 = ×2)와 정제에 따라 곱해집니다. 👑 = 미니 보스 또는 MVP: 일반 몬스터보다 장비 드랍률이 훨씬 높습니다.",
+      "final": "툴팁에 표시됩니다. 모든 등급으로 제공되며, 접두사/접미사 효과와 별도로 적용됩니다. 그 수치는 아이템이 드랍되는 단계의 티어(티어 2 = ×2)와 정제에 따라 곱해집니다. 👑 = 미니 보스 또는 MVP: 일반 몬스터보다 장비 드랍률이 훨씬 높습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "062",
+      "source": "★ +3% zeny",
+      "group": "gear",
+      "context": "wiki:equip",
+      "draft": "★ 제니 +3%",
+      "corrected": "★ 제니 +3%",
+      "final": "★ 제니 +3%",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "063",
+      "source": "+8% damage to bosses and elites",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "보스 및 정예 적에게 +8% 피해",
+      "corrected": "보스 및 정예 적에게 +8% 피해",
+      "final": "보스 및 정예 적에게 +8% 피해",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "064",
+      "source": "Gear drops from monsters (each one’s RO drops) and belongs to the account: all your characters share it. Dying never costs you what you already had. During the run, what a monster drops falls on the ground: the piece, with the beam of its quality, or the card. It comes to you when you get close, from quite far away and without pausing the run, and tells you what it is. Even if you do not pick it up, it is already yours. If the run cannot be claimed when it ends (the game closes or the connection drops), its loot goes into your account when you come back in. In a group, everyone sees and picks up their own, and everything is shared out at the end. Regular monsters and elites drop at most 4 pieces per run at the lowest difficulty and up to 8 with everything maxed; each boss drops at most one, on top of that.",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "장비는 몬스터(각 몬스터의 RO 드롭)로부터 드롭되며 계정 소유물이므로 모든 캐릭터가 공유합니다. 사망 시 이미 획득한 아이템은 절대 잃지 않습니다. 진행 중 몬스터가 드롭한 아이템은 바닥에 떨어지며, 해당 아이템은 등급 표시줄이나 카드로 나타납니다. 아이템은 꽤 멀리서도 진행을 멈추지 않고 접근하면 자동으로 획득되며, 어떤 아이템인지 알려줍니다. 직접 주우지 않아도 이미 소유한 것이 됩니다. 진행이 끝났을 때 아이템을 획득하지 못했을 경우(게임 종료 또는 연결 끊김), 다시 접속하면 해당 아이템이 계정으로 들어옵니다. 파티 플레이 시에는 모든 구성원이 각자의 아이템을 확인하고 주울 수 있으며, 진행이 끝나면 모든 아이템이 공유됩니다. 일반 몬스터와 엘리트 몬스터는 가장 낮은 난이도에서 진행당 최대 4개, 모든 설정이 최대화되었을 때는 최대 8개까지 드롭됩니다. 각 보스는 이 외에 최대 1개를 추가로 드롭합니다.",
+      "corrected": "장비는 몬스터(각 몬스터의 RO 드롭)로부터 드롭되며 계정 소유물이므로 모든 캐릭터가 공유합니다. 사망 시 이미 획득한 아이템은 절대 잃지 않습니다. 진행 중 몬스터가 드롭한 아이템은 바닥에 떨어지며, 해당 아이템은 등급 표시줄 또는 카드로 나타납니다. 아이템은 꽤 멀리서도 진행을 멈추지 않고 접근하면 자동으로 획득되며, 어떤 아이템인지 알려줍니다. 직접 주우지 않아도 이미 소유한 것이 됩니다. 진행이 끝났을 때 아이템을 획득하지 못했을 경우(게임 종료 또는 연결 끊김), 다시 접속하면 해당 아이템이 계정으로 들어옵니다. 파티 플레이 시에는 모든 구성원이 각자의 아이템을 확인하고 주울 수 있으며, 진행이 끝나면 모든 아이템이 공유됩니다. 일반 몬스터와 엘리트 몬스터는 가장 낮은 난이도에서 진행당 최대 4개, 모든 설정이 최대화되었을 때는 최대 8개까지 드롭됩니다. 각 보스는 이 외에 최대 1개를 추가로 드롭합니다.",
+      "final": "장비는 몬스터(각 몬스터의 RO 드롭)로부터 드롭되며 계정 소유물이므로 모든 캐릭터가 공유합니다. 사망 시 이미 획득한 아이템은 절대 잃지 않습니다. 진행 중 몬스터가 드롭한 아이템은 바닥에 떨어지며, 해당 아이템은 등급 표시줄 또는 카드로 나타납니다. 아이템은 꽤 멀리서도 진행을 멈추지 않고 접근하면 자동으로 획득되며, 어떤 아이템인지 알려줍니다. 직접 주우지 않아도 이미 소유한 것이 됩니다. 진행이 끝났을 때 아이템을 획득하지 못했을 경우(게임 종료 또는 연결 끊김), 다시 접속하면 해당 아이템이 계정으로 들어옵니다. 파티 플레이 시에는 모든 구성원이 각자의 아이템을 확인하고 주울 수 있으며, 진행이 끝나면 모든 아이템이 공유됩니다. 일반 몬스터와 엘리트 몬스터는 가장 낮은 난이도에서 진행당 최대 4개, 모든 설정이 최대화되었을 때는 최대 8개까지 드롭됩니다. 각 보스는 이 외에 최대 1개를 추가로 드롭합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "065",
+      "source": "Cat O Nine Tails Egg",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "아홉 꼬리 고양이 알",
+      "corrected": "아홉 꼬리 고양이 알",
+      "final": "아홉 꼬리 고양이 알",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "066",
+      "source": "+1 armor · -3% damage taken",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "방어력 +1 · 받는 피해 -3%",
+      "corrected": "방어력 +1 · 받는 피해 -3%",
+      "final": "방어력 +1 · 받는 피해 -3%",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "067",
+      "source": "The account currency. Earn them by selling gear and cards to the Ore Merchant and spend them on ores, pet accessories and more. The ones you have earned since fair trading arrived are tradable: they can be given in a trade, including those you receive. Older ones cannot, and they are spent first.",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "계정 통화입니다. 광물 상인에게 장비와 카드를 판매하여 획득할 수 있으며, 광물, 펫 액세서리 등 다양한 항목에 사용할 수 있습니다. 공정한 거래가 도입된 이후에 획득한 통화는 거래가 가능하며, 받은 통화도 거래 시 제공할 수 있습니다. 이전 통화는 거래가 불가능하며, 먼저 사용됩니다.",
+      "corrected": "계정 통화입니다. 광물 상인에게 장비와 카드를 판매하여 획득할 수 있으며, 광물, 펫 액세서리 등 다양한 항목에 사용할 수 있습니다. 공정한 거래가 도입된 이후에 획득한 통화는 거래가 가능하며, 받은 통화도 거래 시 제공할 수 있습니다. 이전 통화는 거래가 불가능하며, 먼저 사용됩니다.",
+      "final": "계정 통화입니다. 광물 상인에게 장비와 카드를 판매하여 획득할 수 있으며, 광물, 펫 액세서리 등 다양한 항목에 사용할 수 있습니다. 공정한 거래가 도입된 이후에 획득한 통화는 거래가 가능하며, 받은 통화도 거래 시 제공할 수 있습니다. 이전 통화는 거래가 불가능하며, 먼저 사용됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "068",
+      "source": "Leaf Cat Card",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "잎 고양이 카드",
+      "corrected": "잎 고양이 카드",
+      "final": "잎 고양이 카드",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "069",
+      "source": "Costume Peony Hair Ornament",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "코스튬 모란 머리 장신구",
+      "corrected": "코스튬 모란 머리 장신구",
+      "final": "코스튬 모란 머리 장신구",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "070",
+      "source": ": +STR is great for a Swordsman and poor for a Mage. Each piece also adds by tier and quality. Stages require a minimum gearscore from what you wear (your pet counts too).",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "+STR은 검사에게는 훌륭하지만 마법사에게는 별로입니다. 각 장비는 티어와 등급에 따라 추가 효과도 제공합니다. 스테이지는 착용한 장비의 최소 기어스코어를 요구합니다(펫도 포함됩니다).",
+      "corrected": "+STR은 검사에게는 훌륭하지만 마법사에게는 별로입니다. 각 장비는 티어와 등급에 따라 추가 효과도 제공합니다. 스테이지는 착용한 장비의 최소 기어스코어를 요구합니다(펫도 포함됩니다).",
+      "final": "+STR은 검사에게는 훌륭하지만 마법사에게는 별로입니다. 각 장비는 티어와 등급에 따라 추가 효과도 제공합니다. 스테이지는 착용한 장비의 최소 기어스코어를 요구합니다(펫도 포함됩니다).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "071",
+      "source": "Lantern of Hope",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "희망의 등불",
+      "corrected": "희망의 등불",
+      "final": "희망의 등불",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "072",
+      "source": "+6% projectile speed · +3% damage",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "+6% 발사체 속도 · +3% 피해",
+      "corrected": "+6% 발사체 속도 · +3% 피해",
+      "final": "+6% 발사체 속도 · +3% 피해",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "073",
+      "source": "Every monster can drop its RO card (very rare; more likely from bosses). Socket them into gear slots from the character panel; they grant their bonuses while you wear the piece.",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "모든 몬스터는 RO 카드를 드롭할 수 있습니다(매우 희귀하며, 보스에게서 얻을 확률이 더 높음). 캐릭터 패널의 장비 슬롯에 카드를 장착하면 해당 장비를 착용하는 동안 보너스 효과를 얻게 됩니다.",
+      "corrected": "모든 몬스터는 RO 카드를 드롭할 수 있습니다(매우 희귀하며, 보스에게서 얻을 확률이 더 높음). 캐릭터 패널의 장비 슬롯에 카드를 소켓하면 해당 장비를 착용하는 동안 보너스 효과를 부여합니다.",
+      "final": "모든 몬스터는 RO 카드를 드롭할 수 있습니다(매우 희귀하며, 보스에게서 얻을 확률이 더 높음). 캐릭터 패널의 장비 슬롯에 카드를 소켓하면 해당 장비를 착용하는 동안 보너스 효과를 부여합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "074",
+      "source": "Mochi",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "모찌",
+      "corrected": "모찌",
+      "final": "모찌",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "075",
+      "source": "Wandering Wolf King Helmet",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "방랑하는 늑대왕의 투구",
+      "corrected": "방랑하는 늑대왕의 투구",
+      "final": "방랑하는 늑대왕의 투구",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "076",
+      "source": ": Savage Babe",
+      "group": "gear",
+      "context": "wiki:cards",
+      "draft": "야만적인 미녀",
+      "corrected": "야만적인 미녀",
+      "final": "야만적인 미녀",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "077",
+      "source": ": you see its quality, but its affixes are revealed when the run ends and the server claims it.",
+      "group": "gear",
+      "context": "wiki:gear",
+      "draft": "등급은 확인할 수 있지만, 속성은 플레이가 끝나고 서버가 아이템을 회수할 때 공개됩니다.",
+      "corrected": "등급은 확인할 수 있지만, 부가 정보는 런이 종료되고 서버가 해당 아이템을 회수할 때 공개됩니다.",
+      "final": "등급은 확인할 수 있지만, 부가 정보는 런이 종료되고 서버가 해당 아이템을 회수할 때 공개됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "078",
+      "source": "Romantic Gent",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "로맨틱 젠트",
+      "corrected": "로맨틱 젠트",
+      "final": "로맨틱 젠트",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "079",
+      "source": "Crown of Good and Evil(Dragon Knight)",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "선과 악의 왕관(드래곤 나이트)",
+      "corrected": "선과 악의 왕관(드래곤 나이트)",
+      "final": "선과 악의 왕관(드래곤 나이트)",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "080",
+      "source": "Infiltrator",
+      "group": "gear",
+      "context": "item/card name",
+      "draft": "침투자",
+      "corrected": "침투자",
+      "final": "침투자",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "081",
+      "source": "Ranged · DEX",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "원거리 · DEX",
+      "corrected": "원거리 · DEX",
+      "final": "원거리 · DEX",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "082",
+      "source": "You can reset talents from the character panel.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "캐릭터 패널에서 재능을 초기화할 수 있습니다.",
+      "corrected": "캐릭터 패널에서 재능을 초기화할 수 있습니다.",
+      "final": "캐릭터 패널에서 재능을 초기화할 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "083",
+      "source": "Monsters below your Base Lv give less and less EXP (half per level of difference): to keep leveling you have to move to higher stages.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "플레이어의 베이스 레벨보다 낮은 몬스터는 경험치를 점점 더 적게 제공합니다(레벨 차이가 1당 절반씩 감소). 레벨업을 계속하려면 더 높은 단계로 이동해야 합니다.",
+      "corrected": "플레이어의 베이스 레벨보다 낮은 몬스터는 경험치를 점점 더 적게 제공합니다(레벨 차이가 1당 절반씩 감소). 레벨업을 계속하려면 더 높은 단계로 이동해야 합니다.",
+      "final": "플레이어의 베이스 레벨보다 낮은 몬스터는 경험치를 점점 더 적게 제공합니다(레벨 차이가 1당 절반씩 감소). 레벨업을 계속하려면 더 높은 단계로 이동해야 합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "084",
+      "source": "1M",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "1M",
+      "corrected": "1M",
+      "final": "1M",
+      "verdict": "EXCLUDED",
+      "final_checks": {},
+      "excluded": "numeric_shorthand"
+    },
+    {
+      "id": "085",
+      "source": "Lots of HP and armor. Powerful melee blows.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "HP와 방어력이 매우 높습니다. 강력한 근접 공격을 사용합니다.",
+      "corrected": "HP와 방어력이 매우 높습니다. 강력한 근접 공격을 사용합니다.",
+      "final": "HP와 방어력이 매우 높습니다. 강력한 근접 공격을 사용합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "086",
+      "source": "the Prontera Castle story opens, where you advance to a 2nd job. Each 1st job chooses between two. Bard and Dancer are the same job: Bard for male characters and Dancer for female ones. The 2nd job keeps its 1st job’s tree and skills, adds its own trees with 50 more points, has ×2 to ×3 the HP and one more skill slot, and its ATK/MATK is worth a little more (×1.1).",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "프론테라 성 스토리가 시작되며, 이곳에서 2차 직업으로 진급하게 됩니다. 각 1차 직업은 두 가지 중 하나를 선택합니다. 바드와 댄서는 동일한 직업으로, 남성 캐릭터는 바드, 여성 캐릭터는 댄서가 됩니다. 2차 직업은 1차 직업의 트리와 스킬을 유지하면서, 50포인트가 추가된 자체 트리를 얻게 됩니다. 또한 HP는 ×2~×3로 증가하고 스킬 슬롯이 하나 더 추가되며, ATK/MATK도 약간 더 높아집니다(×1.1).",
+      "corrected": "프론테라 성 스토리가 시작되며, 이곳에서 2차 직업으로 진급하게 됩니다. 각 1차 직업은 두 가지 중 하나를 선택합니다. 바드와 댄서는 동일한 직업: 남성 캐릭터는 바드, 여성 캐릭터는 댄서입니다. 2차 직업은 1차 직업의 트리와 스킬을 유지하며, 50포인트가 추가된 자체 트리를 가집니다. HP는 ×2~×3이고, 스킬 슬롯이 하나 더 있으며, ATK/MATK는 약간 더 높습니다(×1.1).",
+      "final": "프론테라 성 스토리가 시작되며, 이곳에서 2차 직업으로 진급하게 됩니다. 각 1차 직업은 두 가지 중 하나를 선택합니다. 바드와 댄서는 동일한 직업: 남성 캐릭터는 바드, 여성 캐릭터는 댄서입니다. 2차 직업은 1차 직업의 트리와 스킬을 유지하며, 50포인트가 추가된 자체 트리를 가집니다. HP는 ×2~×3이고, 스킬 슬롯이 하나 더 있으며, ATK/MATK는 약간 더 높습니다(×1.1).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "087",
+      "source": "Bowling Bash",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "볼링 배쉬",
+      "corrected": "볼링 배쉬",
+      "final": "볼링 배쉬",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "088",
+      "source": "Very fast. Poisonous stabs.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "매우 빠름. 독성 찌르기.",
+      "corrected": "매우 빠름. 독성 찌르기.",
+      "final": "매우 빠름. 독성 찌르기.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "089",
+      "source": "spent in that tree per previous row, and some talents need another one maxed first (the tree’s arrow). Talents improve specific skills (more damage, more targets, cones, new effects) or your stats, and the ones in the last rows transform how a skill plays.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "이전 행에서 해당 트리에 사용되었으며, 일부 재능은 먼저 다른 재능 하나를 최대화해야 합니다(트리의 화살표 참조). 재능은 특정 스킬(더 많은 피해, 더 많은 대상, 원뿔, 새로운 효과)이나 능력치를 향상시키며, 마지막 행에 있는 재능은 스킬의 작동 방식을 변화시킵니다.",
+      "corrected": "이전 행에서 해당 트리에 사용되었으며, 일부 재능은 먼저 다른 재능 하나를 최대화해야 합니다(트리의 화살표 참조). 재능은 특정 스킬(더 많은 피해, 더 많은 대상, 원뿔, 새로운 효과)이나 능력치를 향상시키며, 마지막 행에 있는 재능은 스킬의 작동 방식을 변화시킵니다.",
+      "final": "이전 행에서 해당 트리에 사용되었으며, 일부 재능은 먼저 다른 재능 하나를 최대화해야 합니다(트리의 화살표 참조). 재능은 특정 스킬(더 많은 피해, 더 많은 대상, 원뿔, 새로운 효과)이나 능력치를 향상시키며, 마지막 행에 있는 재능은 스킬의 작동 방식을 변화시킵니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "090",
+      "source": "Demonstration",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "시연",
+      "corrected": "시연",
+      "final": "시연",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "091",
+      "source": "🌳 Browse every talent tree",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "🌳 모든 특성 트리를 탐색하세요",
+      "corrected": "🌳 모든 특성 트리를 탐색하세요",
+      "final": "🌳 모든 특성 트리를 탐색하세요",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "092",
+      "source": "Up to 99. Grants status points for STR, AGI, VIT, INT, DEX and LUK. Its EXP grows exponentially, like RO.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "최대 99까지. STR, AGI, VIT, INT, DEX, LUK에 상태 포인트를 부여합니다. EXP는 RO처럼 기하급수적으로 증가합니다.",
+      "corrected": "최대 99까지. STR, AGI, VIT, INT, DEX, LUK에 상태 포인트를 부여합니다. EXP는 RO처럼 기하급수적으로 증가합니다.",
+      "final": "최대 99까지. STR, AGI, VIT, INT, DEX, LUK에 상태 포인트를 부여합니다. EXP는 RO처럼 기하급수적으로 증가합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "093",
+      "source": "Ore Discovery",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "광석 발견:아이템 희귀도",
+      "corrected": "광석 아이템 희귀도 발견",
+      "final": "광석 아이템 희귀도 발견",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "094",
+      "source": "Devastating but slow zeny strikes.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "파괴적이지만 느린 제니 공격.",
+      "corrected": "파괴적이지만 느린 제니 타격.",
+      "final": "파괴적이지만 느린 제니 타격.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "095",
+      "source": "For male characters. Songs played on an instrument that empower you and confuse the horde. Shares skills and trees with the Dancer.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "남성 캐릭터 전용. 악기를 연주하여 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 노래를 연주합니다. 댄서와 스킬 및 스킬 트리를 공유합니다.",
+      "corrected": "남성 캐릭터 전용. 악기를 연주하여 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 노래를 연주합니다. 댄서와 스킬 및 스킬 트리를 공유합니다.",
+      "final": "남성 캐릭터 전용. 악기를 연주하여 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 노래를 연주합니다. 댄서와 스킬 및 스킬 트리를 공유합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "096",
+      "source": "Shield Boomerang",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "방패 부메랑",
+      "corrected": "방패 부메랑",
+      "final": "방패 부메랑",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "097",
+      "source": "From 1st job to 2nd job at Prontera Castle",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "프론테라 성에서 1차 직업에서 2차 직업으로",
+      "corrected": "프론테라 성에서 1차 직업에서 2차 직업으로",
+      "final": "프론테라 성에서 1차 직업에서 2차 직업으로",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "098",
+      "source": "For female characters. Whip dances that empower you and confuse the horde. Shares skills and trees with the Bard.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "여성 캐릭터 전용. 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 채찍 춤입니다. Bard와 스킬 및 스킬 트리를 공유합니다.",
+      "corrected": "여성 캐릭터 전용. 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 채찍 춤입니다. Bard와 스킬 및 스킬 트리를 공유합니다.",
+      "final": "여성 캐릭터 전용. 자신에게 힘을 부여하고 적 무리를 혼란에 빠뜨리는 채찍 춤입니다. Bard와 스킬 및 스킬 트리를 공유합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "099",
+      "source": "Hindsight",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "사후 고찰",
+      "corrected": "사후 고찰",
+      "final": "사후 고찰",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "100",
+      "source": "How far Job Lv rises in each stage",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "각 스테이지에서 직업 Lv가 얼마나 상승하는가",
+      "corrected": "각 스테이지에서 직업 Lv가 얼마나 상승하는가",
+      "final": "각 스테이지에서 직업 Lv가 얼마나 상승하는가",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "101",
+      "source": "As a 2nd job, only one of its three branches can receive points: your specialization. Your 1st job points stay as you spent them when you advanced. You choose it with the «Specialize in…» button on its branch and can reset it in the same panel for 200 Kafra Points.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "2차 직업의 경우, 세 가지 분기 중 하나인 '전공'에만 포인트를 할당할 수 있습니다. 1차 직업 포인트는 직업 승급 시 사용한 그대로 유지됩니다. 분기에 있는 «전공…» 버튼을 통해 전공을 선택할 수 있으며, 동일한 패널에서 200 카프라 포인트를 지불하고 재설정할 수도 있습니다.",
+      "corrected": "2차 직업의 경우, 세 가지 분기 중 하나인 '전공'에만 포인트를 할당할 수 있습니다. 1차 직업 포인트는 직업 승급 시 사용한 그대로 유지됩니다. 분기에 있는 «Specialize in…» 버튼을 통해 전공을 선택할 수 있으며, 동일한 패널에서 200 Kafra Points를 지불하고 재설정할 수도 있습니다.",
+      "final": "2차 직업의 경우, 세 가지 분기 중 하나인 '전공'에만 포인트를 할당할 수 있습니다. 1차 직업 포인트는 직업 승급 시 사용한 그대로 유지됩니다. 분기에 있는 «Specialize in…» 버튼을 통해 전공을 선택할 수 있으며, 동일한 패널에서 200 Kafra Points를 지불하고 재설정할 수도 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "102",
+      "source": "Blacksmith / Alchemist",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "대장장이 / 연금술사",
+      "corrected": "대장장이 / 연금술사",
+      "final": "대장장이 / 연금술사",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "103",
+      "source": "Katars, poisons and strikes from the shadows.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "카타르, 독, 그리고 그림자 속에서의 공격.",
+      "corrected": "카타르, 독, 그리고 그림자 속에서의 공격.",
+      "final": "카타르, 독, 그리고 그림자 속에서의 공격.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "104",
+      "source": "Past that Job Lv, the stage barely gives job EXP: move on to the next one. The last stretch to 50 means repeating Payon Cave.",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "해당 직업 레벨을 넘어서면 스테이지에서 직업 EXP가 거의 주어지지 않으므로 다음 스테이지로 넘어가세요. 50레벨까지 가는 마지막 구간은 페이온 동굴을 반복해야 합니다.",
+      "corrected": "해당 직업 레벨을 넘어서면 스테이지에서 직업 EXP가 거의 주어지지 않으므로 다음 스테이지로 넘어가세요. 50레벨까지 가는 마지막 구간은 페이온 동굴을 반복해야 합니다.",
+      "final": "해당 직업 레벨을 넘어서면 스테이지에서 직업 EXP가 거의 주어지지 않으므로 다음 스테이지로 넘어가세요. 50레벨까지 가는 마지막 구간은 페이온 동굴을 반복해야 합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "105",
+      "source": "Sandman",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "샌드맨",
+      "corrected": "샌드맨",
+      "final": "샌드맨",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "106",
+      "source": "A smith: stunning hammer blows and forged brute force.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "대장장이: 놀라운 망치 공격과 단련된 무력.",
+      "corrected": "대장장이: 놀라운 망치 공격과 단련된 무력.",
+      "final": "대장장이: 놀라운 망치 공격과 단련된 무력.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "107",
+      "source": "Peco Peco",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "페코 페코",
+      "corrected": "페코 페코",
+      "final": "페코 페코",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "108",
+      "source": "Each job has three permanent talent trees. Each row needs",
+      "group": "job",
+      "context": "wiki:progress",
+      "draft": "각 직업에는 세 개의 영구적인 특성 트리가 있습니다. 각 행에는",
+      "corrected": "각 직업에는 세 개의 영구적인 특성 트리가 있습니다. 각 행에는",
+      "final": "각 직업에는 세 개의 영구적인 특성 트리가 있습니다. 각 행에는",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "109",
+      "source": "Soul Strike",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "소울 스트라이크",
+      "corrected": "소울 스트라이크",
+      "final": "소울 스트라이크",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "110",
+      "source": "Fists, spirit spheres and combos all the way to Asura Strike.",
+      "group": "job",
+      "context": "wiki:jobs",
+      "draft": "주먹, 정령 구체, 그리고 아수라 타격까지 이어지는 콤보.",
+      "corrected": "주먹, 정령 구체, 그리고 아수라 타격까지 이어지는 콤보.",
+      "final": "주먹, 정령 구체, 그리고 아수라 타격까지 이어지는 콤보.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "111",
+      "source": "reduction",
+      "group": "wiki",
+      "context": "wiki:survival",
+      "draft": "감소",
+      "corrected": "감소",
+      "final": "감소",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "112",
+      "source": "The basic attack hits very often, so it scales with the",
+      "group": "wiki",
+      "context": "wiki:damage",
+      "draft": "기본 공격은 매우 자주 적중하므로, 에 따라 스케일됩니다.",
+      "corrected": "기본 공격은 매우 자주 적중하므로, 스케일됩니다.",
+      "final": "기본 공격은 매우 자주 적중하므로, 스케일됩니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "113",
+      "source": "When the run ends, all the party loot shows up at once on the summary screen and everyone picks Need, Greed or Pass: the highest Need roll wins; if nobody needs it, the highest Greed. Each player has 2 Needs per run, only for what their job can wear; whoever does not pick in time goes Greed. Even with more monsters, the same cards and eggs drop as when playing solo.",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "런이 끝나면 파티의 모든 전리품이 요약 화면에 한 번에 표시되며, 모든 플레이어는 '필요', '욕망', '통과' 중 하나를 선택합니다. '필요' 수치가 가장 높은 플레이어가 획득하며, 아무도 필요로 하지 않으면 '욕망' 수치가 가장 높은 플레이어가 획득합니다. 각 플레이어는 런당 2번의 '필요' 기회를 가지며, 이는 자신의 직업이 착용할 수 있는 아이템에만 적용됩니다. 제시간에 선택하지 않은 플레이어는 '욕망'으로 간주됩니다. 몬스터 수가 더 많아져도 솔로 플레이와 동일한 카드와 에그가 드롭됩니다.",
+      "corrected": "런이 끝나면 파티의 모든 전리품이 요약 화면에 한 번에 표시되며, 모든 플레이어는 '필요', '욕망', '통과' 중 하나를 선택합니다. 가장 높은 Need 롤을 한 플레이어가 획득하며, 아무도 필요로 하지 않으면 가장 높은 Greed를 한 플레이어가 획득합니다. 각 플레이어는 런당 2 Needs를 가지며, 이는 자신의 직업이 착용할 수 있는 것에만 적용됩니다. 제시간에 선택하지 않은 플레이어는 Greed로 간주됩니다. 몬스터 수가 더 많아져도 솔로 플레이와 동일한 카드와 에그가 드롭됩니다.",
+      "final": "런이 끝나면 파티의 모든 전리품이 요약 화면에 한 번에 표시되며, 모든 플레이어는 '필요', '욕망', '통과' 중 하나를 선택합니다. 가장 높은 Need 롤을 한 플레이어가 획득하며, 아무도 필요로 하지 않으면 가장 높은 Greed를 한 플레이어가 획득합니다. 각 플레이어는 런당 2 Needs를 가지며, 이는 자신의 직업이 착용할 수 있는 것에만 적용됩니다. 제시간에 선택하지 않은 플레이어는 Greed로 간주됩니다. 몬스터 수가 더 많아져도 솔로 플레이와 동일한 카드와 에그가 드롭됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "114",
+      "source": "Toad",
+      "group": "wiki",
+      "context": "wiki:stages",
+      "draft": "개구리",
+      "corrected": "개구리",
+      "final": "개구리",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "115",
+      "source": "Bash, Mammonite, Envenom, weapon strikes…",
+      "group": "wiki",
+      "context": "wiki:damage",
+      "draft": "파쇄, 마몬의 돌, 독 주입, 무기 공격…",
+      "corrected": "파쇄, 마몬의 돌, 독 주입, 무기 타격…",
+      "final": "파쇄, 마몬의 돌, 독 주입, 무기 타격…",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "116",
+      "source": "Uses the stats from the Stats calculator. It is an estimate: it ignores marks, buffs, talents with special effects and target vulnerability.",
+      "group": "wiki",
+      "context": "wiki:damage",
+      "draft": "Stats 계산기의 스탯을 사용합니다. 이는 추정치이며, 마크, 버프, 특수 효과가 있는 특성 및 대상의 취약성은 무시합니다.",
+      "corrected": "Stats 계산기의 스탯을 사용합니다. 이는 추정치이며, 마크, 버프, 특수 효과가 있는 특성 및 대상의 취약성은 무시합니다.",
+      "final": "Stats 계산기의 스탯을 사용합니다. 이는 추정치이며, 마크, 버프, 특수 효과가 있는 특성 및 대상의 취약성은 무시합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "117",
+      "source": "+2 armor · +2 INT",
+      "group": "wiki",
+      "context": "wiki:pets",
+      "draft": "방어력 +2 · INT +2",
+      "corrected": "방어력 +2 · INT +2",
+      "final": "방어력 +2 · INT +2",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "118",
+      "source": "They target the nearest player.",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "가장 가까운 플레이어를 목표로 합니다.",
+      "corrected": "가장 가까운 플레이어를 목표로 합니다.",
+      "final": "가장 가까운 플레이어를 목표로 합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "119",
+      "source": "Past 50, each STR, INT or DEX point adds less ATK/MATK than the one before (99 counts as about 72). Gear ATK and MATK count in full.",
+      "group": "wiki",
+      "context": "wiki:damage",
+      "draft": "50을 초과하면 STR, INT 또는 DEX 포인트가 추가할 때마다 이전보다 ATK/MATK 증가량이 줄어듭니다(99는 약 72로 계산). 장비의 ATK와 MATK는 전체적으로 계산됩니다.",
+      "corrected": "50을 초과하면 STR, INT 또는 DEX 포인트가 추가될 때마다 이전보다 ATK/MATK 증가량이 줄어듭니다(99는 약 72로 계산). 장비의 ATK와 MATK는 전체적으로 계산됩니다.",
+      "final": "50을 초과하면 STR, INT 또는 DEX 포인트가 추가될 때마다 이전보다 ATK/MATK 증가량이 줄어듭니다(99는 약 72로 계산). 장비의 ATK와 MATK는 전체적으로 계산됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "120",
+      "source": "each point is worth less",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "각 포인트의 가치는 더 낮아집니다",
+      "corrected": "각 포인트의 가치는 더 낮아집니다",
+      "final": "각 포인트의 가치는 더 낮아집니다",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "121",
+      "source": "Mini bosses on schedule and the MVP at the end. They drop gear, cards and pet eggs.",
+      "group": "wiki",
+      "context": "wiki:run",
+      "draft": "정해진 스케줄에 따라 미니 보스가 등장하며, 마지막에는 MVP가 나타납니다. 이들은 장비, 카드, 펫 에그를 드롭합니다.",
+      "corrected": "정해진 스케줄에 따라 미니 보스가 등장하며, 마지막에는 MVP가 나타납니다. 이들은 장비, 카드, 펫 에그를 드롭합니다.",
+      "final": "정해진 스케줄에 따라 미니 보스가 등장하며, 마지막에는 MVP가 나타납니다. 이들은 장비, 카드, 펫 에그를 드롭합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "122",
+      "source": "The plaza is split into named lobbies (Asgard, Midgard…), each with its own channels, chat and parties. You pick one when you enter Prontera (normal, crowded or full) and can switch from the label at the top. Friends, whispers and the Endless Tower are shared by all of them; you can invite a friend from another lobby to your party from the friends list and, if they accept, they move to yours.",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "광장은 이름이 지정된 로비(아스가르드, 미드가르드…)로 나뉘며, 각 로비에는 전용 채널, 채팅 및 파티가 있습니다. 프론테라에 입장할 때(일반, 혼잡 또는 만원) 로비를 선택할 수 있으며, 상단의 라벨을 통해 로비를 전환할 수 있습니다. 친구, 속삭임 및 끝없는 탑은 모든 로비에서 공유됩니다. 친구 목록에서 다른 로비에 있는 친구를 파티로 초대할 수 있으며, 친구가 수락하면 해당 친구가 당신의 로비로 이동합니다.",
+      "corrected": "광장은 이름이 지정된 로비(아스가르드, 미드가르드…)로 나뉘며, 각 로비에는 전용 채널, 채팅 및 파티가 있습니다. 프론테라에 입장할 때(일반, 혼잡 또는 만원) 로비를 선택할 수 있으며, 상단의 라벨을 통해 로비를 전환할 수 있습니다. 친구, 속삭임 및 끝없는 탑은 모든 로비에서 공유됩니다. 친구 목록에서 다른 로비에 있는 친구를 파티로 초대할 수 있으며, 친구가 수락하면 해당 친구가 당신의 로비로 이동합니다.",
+      "final": "광장은 이름이 지정된 로비(아스가르드, 미드가르드…)로 나뉘며, 각 로비에는 전용 채널, 채팅 및 파티가 있습니다. 프론테라에 입장할 때(일반, 혼잡 또는 만원) 로비를 선택할 수 있으며, 상단의 라벨을 통해 로비를 전환할 수 있습니다. 친구, 속삭임 및 끝없는 탑은 모든 로비에서 공유됩니다. 친구 목록에서 다른 로비에 있는 친구를 파티로 초대할 수 있으며, 친구가 수락하면 해당 친구가 당신의 로비로 이동합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "123",
+      "source": "Life Elixir",
+      "group": "wiki",
+      "context": "wiki:run",
+      "draft": "생명 물약",
+      "corrected": "생명 물약",
+      "final": "생명 물약",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "124",
+      "source": "all skills; talents, Deity and Endless Tower upgrades are separate",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "모든 스킬, 재능, 신성 및 끝없는 탑 업그레이드는 별도로 처리됩니다.",
+      "corrected": "모든 스킬, 재능, 신성 및 끝없는 탑 업그레이드는 별도로 처리됩니다.",
+      "final": "모든 스킬, 재능, 신성 및 끝없는 탑 업그레이드는 별도로 처리됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "125",
+      "source": "What the run adds counts in full up to a threshold; past it, each point gives less and the total approaches the ceiling without ever reaching it. Each skill's level-up cards go on one side and chests and passives on the other; gear, talents and the Deity always count in full. Area is separate: all its sources together go through a single curve.",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "이번 런에서 얻은 수치는 특정 임계값까지는 전부 합산되며, 그 이후에는 각 포인트가 주는 효과가 점차 감소하여 총합이 상한선에 도달하지는 못하지만 그에 가까워집니다. 각 스킬의 레벨 업 카드는 한쪽에, 상자 및 패시브는 다른 쪽에 배치되며, 장비, 재능, 그리고 신은 항상 전부 합산됩니다. 영역은 별도로 계산됩니다: 영역의 모든 효과원은 함께 단일 곡선을 따릅니다.",
+      "corrected": "이번 런에서 얻은 수치는 특정 임계값까지는 전부 합산되며, 그 이후에는 각 포인트가 주는 효과가 점차 감소하여 총합이 상한선에 도달하지는 못하지만 그에 가까워집니다. 각 스킬의 레벨 업 카드는 한쪽에, 상자 및 패시브는 다른 쪽에 배치되며, 장비, 재능, 그리고 신은 항상 전부 합산됩니다. 영역은 별도로 계산됩니다: 영역의 모든 효과원은 함께 단일 곡선을 따릅니다.",
+      "final": "이번 런에서 얻은 수치는 특정 임계값까지는 전부 합산되며, 그 이후에는 각 포인트가 주는 효과가 점차 감소하여 총합이 상한선에 도달하지는 못하지만 그에 가까워집니다. 각 스킬의 레벨 업 카드는 한쪽에, 상자 및 패시브는 다른 쪽에 배치되며, 장비, 재능, 그리고 신은 항상 전부 합산됩니다. 영역은 별도로 계산됩니다: 영역의 모든 효과원은 함께 단일 곡선을 따릅니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "126",
+      "source": "Bosses",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "보스",
+      "corrected": "보스",
+      "final": "보스",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "127",
+      "source": "What happens during each stage’s minutes",
+      "group": "wiki",
+      "context": "wiki:run",
+      "draft": "각 스테이지의 분 동안 어떤 일이 일어나나요?",
+      "corrected": "각 스테이지의 분 동안 어떤 일이 일어나나요?",
+      "final": "각 스테이지의 분 동안 어떤 일이 일어나나요?",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "128",
+      "source": "On floors that character has already cleared you can speed the run up to x2 or x4 with the speed button on the scoreboard (or the V key); while it is sped up, graphics drop to the minimum. When you reach a floor you have not cleared yet it goes back to normal speed and your graphics on its own. It counts the same as at normal speed.",
+      "group": "wiki",
+      "context": "wiki:tower",
+      "draft": "해당 캐릭터가 이미 클리어한 층에서는 스코어보드에 있는 속도 버튼(또는 V 키)으로 진행 속도를 x2 또는 x4까지 높일 수 있습니다. 속도가 빨라진 동안에는 그래픽이 최소 수준으로 떨어집니다. 아직 클리어하지 않은 층에 도달하면 정상 속도로 돌아가며 그래픽도 자동으로 복원됩니다. 점수는 정상 속도일 때와 동일하게 계산됩니다.",
+      "corrected": "해당 캐릭터가 이미 클리어한 층에서는 스코어보드에 있는 속도 버튼(또는 V 키)으로 진행 속도를 x2 또는 x4까지 높일 수 있습니다. 속도가 빨라진 동안에는 그래픽이 최소 수준으로 떨어집니다. 아직 클리어하지 않은 층에 도달하면 정상 속도로 돌아가며 그래픽도 자동으로 복원됩니다. 점수는 정상 속도일 때와 동일하게 계산됩니다.",
+      "final": "해당 캐릭터가 이미 클리어한 층에서는 스코어보드에 있는 속도 버튼(또는 V 키)으로 진행 속도를 x2 또는 x4까지 높일 수 있습니다. 속도가 빨라진 동안에는 그래픽이 최소 수준으로 떨어집니다. 아직 클리어하지 않은 층에 도달하면 정상 속도로 돌아가며 그래픽도 자동으로 복원됩니다. 점수는 정상 속도일 때와 동일하게 계산됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "129",
+      "source": "gear + STR + 3×DEX",
+      "group": "wiki",
+      "context": "wiki:stats",
+      "draft": "장비 + STR + 3×DEX",
+      "corrected": "장비 + STR + 3×DEX",
+      "final": "장비 + STR + 3×DEX",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "130",
+      "source": "The same five colours for everything you find",
+      "group": "wiki",
+      "context": "wiki:quality",
+      "draft": "발견하는 모든 것에 동일한 다섯 가지 색상 적용",
+      "corrected": "발견하는 모든 것에 동일한 다섯 가지 색상 적용",
+      "final": "발견하는 모든 것에 동일한 다섯 가지 색상 적용",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "131",
+      "source": "Saves 3 presets per character with their stats, talents, gear with its cards, cosmetics, dye and pet, and puts them back on with one click. Account only.",
+      "group": "wiki",
+      "context": "wiki:plaza",
+      "draft": "캐릭터당 스탯, 재능, 카드가 장착된 장비, 코스메틱, 염색, 펫이 포함된 3개의 프리셋을 저장하고, 클릭 한 번으로 다시 적용할 수 있습니다. 계정 단위로만 적용됩니다.",
+      "corrected": "캐릭터당 스탯, 재능, 카드가 장착된 장비, 코스메틱, 염색, 펫이 포함된 3개의 프리셋을 저장하고, 클릭 한 번으로 다시 적용할 수 있습니다. 계정 단위로만 적용됩니다.",
+      "final": "캐릭터당 스탯, 재능, 카드가 장착된 장비, 코스메틱, 염색, 펫이 포함된 3개의 프리셋을 저장하고, 클릭 한 번으로 다시 적용할 수 있습니다. 계정 단위로만 적용됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "132",
+      "source": "Orc Village MVP",
+      "group": "wiki",
+      "context": "wiki:stages",
+      "draft": "오크 마을 MVP",
+      "corrected": "오크 마을 MVP",
+      "final": "오크 마을 MVP",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "133",
+      "source": "ranged basic attacks and Arrow Repel; Deity, talents and gear are separate",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "원거리 기본 공격과 화살 격퇴; 신성, 재능 및 장비는 별도로 처리됩니다.",
+      "corrected": "원거리 기본 공격과 화살 격퇴; 신성, 재능 및 장비는 별도입니다.",
+      "final": "원거리 기본 공격과 화살 격퇴; 신성, 재능 및 장비는 별도입니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "134",
+      "source": "Stories cannot be played in a party: leave the party to play them. If another character on your account already cleared one, you can skip it and get its reward (no EXP).",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "스토리는 파티 내에서 플레이할 수 없습니다. 스토리를 플레이하려면 파티를 나가세요. 계정에 있는 다른 캐릭터가 이미 스토리를 클리어했다면, 스토리를 건너뛰고 보상을 받을 수 있습니다(EXP는 제공되지 않음).",
+      "corrected": "스토리는 파티 내에서 플레이할 수 없습니다. 스토리를 플레이하려면 파티를 나가세요. 계정에 있는 다른 캐릭터가 이미 스토리를 클리어했다면, 스토리를 건너뛰고 보상을 받을 수 있습니다(EXP는 제공되지 않음).",
+      "final": "스토리는 파티 내에서 플레이할 수 없습니다. 스토리를 플레이하려면 파티를 나가세요. 계정에 있는 다른 캐릭터가 이미 스토리를 클리어했다면, 스토리를 건너뛰고 보상을 받을 수 있습니다(EXP는 제공되지 않음).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "135",
+      "source": "Area · reach · speed",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "범위 · 도달 거리 · 속도",
+      "corrected": "범위 · 도달 거리 · 속도",
+      "final": "범위 · 도달 거리 · 속도",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "136",
+      "source": "Swaps the cards of a level-up or a chest for new ones. Up to 5 uses per run.",
+      "group": "wiki",
+      "context": "wiki:run",
+      "draft": "레벨 업 또는 상자 속 카드를 새 카드로 교체합니다. 한 번의 플레이에서 최대 5회 사용할 수 있습니다.",
+      "corrected": "레벨 업 또는 상자 속 카드를 새 카드로 교체합니다. 한 번의 플레이에서 최대 5회 사용할 수 있습니다.",
+      "final": "레벨 업 또는 상자 속 카드를 새 카드로 교체합니다. 한 번의 플레이에서 최대 5회 사용할 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "137",
+      "source": "The Expedition Captain sends you to a stage. Every run starts at run level 1 with only your basic attack.",
+      "group": "wiki",
+      "context": "wiki:start",
+      "draft": "원정대장이 당신을 특정 단계로 보냅니다. 모든 런은 기본 공격만 갖춘 런 레벨 1에서 시작됩니다.",
+      "corrected": "원정대장이 당신을 특정 단계로 보냅니다. 모든 런은 기본 공격만 갖춘 런 레벨 1에서 시작됩니다.",
+      "final": "원정대장이 당신을 특정 단계로 보냅니다. 모든 런은 기본 공격만 갖춘 런 레벨 1에서 시작됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "138",
+      "source": "Hunting",
+      "group": "wiki",
+      "context": "wiki:more",
+      "draft": "사냥",
+      "corrected": "사냥",
+      "final": "사냥",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "139",
+      "source": "+4% critical · +0.6 HP/s while moving · +3% movement speed",
+      "group": "wiki",
+      "context": "wiki:pets",
+      "draft": "치명타 +4% · 이동 중 HP/s +0.6 · 이동 속도 +3%",
+      "corrected": "치명타 +4% · 이동 중 HP/s +0.6 · 이동 속도 +3%",
+      "final": "치명타 +4% · 이동 중 HP/s +0.6 · 이동 속도 +3%",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "140",
+      "source": "It comes from AGI (0.67 per point), each skill’s cooldown upgrades (+6 per common upgrade), potions, blessings, gear and buffs. 100 points halve cooldowns; 300 leave a quarter. Cast speed works the same way, after DEX has trimmed the cast (instant at 100 DEX for single target and 150 DEX for area skills).",
+      "group": "wiki",
+      "context": "wiki:curves",
+      "draft": "AGI(포인트당 0.67), 각 스킬의 재사용 대기시간 업그레이드(일반 업그레이드당 +6), 물약, 축복, 장비 및 버프에서 비롯됩니다. 100포인트는 재사용 대기시간을 절반으로 줄이고, 300포인트는 4분의 1로 줄입니다. 시전 속도도 동일한 방식으로 작동하며, DEX가 시전 시간을 단축한 후 적용됩니다(단일 대상 시 100 DEX, 광역 스킬 시 150 DEX에서 즉시 시전).",
+      "corrected": "AGI(포인트당 0.67), 각 스킬의 재사용 대기시간 업그레이드(일반 업그레이드당 +6), 물약, 축복, 장비 및 버프에서 비롯됩니다. 100포인트는 재사용 대기시간을 절반으로 줄이고, 300포인트는 4분의 1로 줄입니다. 시전 속도도 동일한 방식으로 작동하며, DEX가 시전 시간을 단축한 후 적용됩니다(단일 대상 시 100 DEX, 광역 스킬 시 150 DEX에서 즉시 시전).",
+      "final": "AGI(포인트당 0.67), 각 스킬의 재사용 대기시간 업그레이드(일반 업그레이드당 +6), 물약, 축복, 장비 및 버프에서 비롯됩니다. 100포인트는 재사용 대기시간을 절반으로 줄이고, 300포인트는 4분의 1로 줄입니다. 시전 속도도 동일한 방식으로 작동하며, DEX가 시전 시간을 단축한 후 적용됩니다(단일 대상 시 100 DEX, 광역 스킬 시 150 DEX에서 즉시 시전).",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "141",
+      "source": "Average with Flee",
+      "group": "wiki",
+      "context": "wiki:survival",
+      "draft": "도망 사용 시 평균",
+      "corrected": "도망 사용 시 평균",
+      "final": "도망 사용 시 평균",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "142",
+      "source": "removes another percentage on top.",
+      "group": "wiki",
+      "context": "wiki:survival",
+      "draft": "추가로 다른 퍼센트가 제거됩니다.",
+      "corrected": "추가로 다른 퍼센트가 제거됩니다.",
+      "final": "추가로 다른 퍼센트가 제거됩니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "143",
+      "source": "The game’s mail: notices and gifts from the team, and anything we recover for your account. Attached items are collected here. A “!” means new mail. Account only.",
+      "group": "wiki",
+      "context": "wiki:plaza",
+      "draft": "게임의 메일: 팀에서 보내는 공지 및 선물, 그리고 당신의 계정을 위해 회수한 모든 항목이 포함됩니다. 첨부된 아이템은 여기에 수집됩니다. “!”는 새로운 메일을 의미합니다. 계정당 하나만 표시됩니다.",
+      "corrected": "게임의 메일: 팀에서 보내는 공지 및 선물, 그리고 당신의 계정을 위해 회수한 모든 항목이 포함됩니다. 첨부된 아이템은 여기에 수집됩니다. “!”는 새로운 메일을 의미합니다. 계정당 하나만 표시됩니다.",
+      "final": "게임의 메일: 팀에서 보내는 공지 및 선물, 그리고 당신의 계정을 위해 회수한 모든 항목이 포함됩니다. 첨부된 아이템은 여기에 수집됩니다. “!”는 새로운 메일을 의미합니다. 계정당 하나만 표시됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "144",
+      "source": "+1% Flee → +5% Flee",
+      "group": "wiki",
+      "context": "wiki:run",
+      "draft": "+1% 도망 → +5% 도망",
+      "corrected": "+1% 도망 → +5% 도망",
+      "final": "+1% 도망 → +5% 도망",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "145",
+      "source": "Sells your pets’ accessories and evolves them.",
+      "group": "wiki",
+      "context": "wiki:plaza",
+      "draft": "펫의 액세서리를 판매하고 진화시킵니다.",
+      "corrected": "펫의 액세서리를 판매하고 진화시킵니다.",
+      "final": "펫의 액세서리를 판매하고 진화시킵니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "146",
+      "source": "Intimacy rises by playing runs with the pet (about 3 long runs to Loyal). At Cordial, the Pet Keeper sells its accessory for 200 Kafra Points: the bonus goes ×1.5. Evolving needs the pet at Loyal and its boss beaten 5 times (by any character on the account).",
+      "group": "wiki",
+      "context": "wiki:pets",
+      "draft": "펫과 함께 던전을 돌면 친밀도가 상승합니다(충성 단계까지 약 3회 장거리 던전 완료 필요). 우호 단계에 도달하면 펫 키퍼가 액세서리를 200 카프라 포인트에 판매하며, 보너스는 ×1.5가 적용됩니다. 진화시키려면 펫이 충성 단계에 있어야 하며, 해당 보스를 5회 처치해야 합니다(계정의 모든 캐릭터로 가능).",
+      "corrected": "펫과 함께 런을 플레이하면 친밀도가 상승합니다(충성까지 약 3회 장거리 런 완료 필요). 우호 단계에서 펫 키퍼가 액세서리를 200 카프라 포인트에 판매하며, 보너스는 ×1.5가 적용됩니다. 진화시키려면 펫이 충성 단계에 있어야 하고 해당 보스를 5회 처치해야 합니다(계정의 모든 캐릭터로 가능).",
+      "final": "펫과 함께 런을 플레이하면 친밀도가 상승합니다(충성까지 약 3회 장거리 런 완료 필요). 우호 단계에서 펫 키퍼가 액세서리를 200 카프라 포인트에 판매하며, 보너스는 ×1.5가 적용됩니다. 진화시키려면 펫이 충성 단계에 있어야 하고 해당 보스를 5회 처치해야 합니다(계정의 모든 캐릭터로 가능).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "147",
+      "source": "If the game crashes",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "게임이 충돌하면",
+      "corrected": "게임이 충돌하면",
+      "final": "게임이 충돌하면",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "148",
+      "source": "Each lobby has several channels; you can jump to a friend’s from their menu.",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "각 로비에는 여러 채널이 있으며, 친구의 메뉴에서 해당 채널로 바로 이동할 수 있습니다.",
+      "corrected": "각 로비에는 여러 채널이 있으며, 친구의 메뉴에서 해당 채널로 바로 이동할 수 있습니다.",
+      "final": "각 로비에는 여러 채널이 있으며, 친구의 메뉴에서 해당 채널로 바로 이동할 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "149",
+      "source": "If the game closes or reloads in the middle of a party run, within the first minute you can go back to it from the plaza in the same tab, with your skills and upgrades, if your party is still playing.",
+      "group": "wiki",
+      "context": "wiki:online",
+      "draft": "파티 플레이 도중 게임이 종료되거나 재로드되는 경우, 파티가 아직 플레이 중이라면 첫 1분 이내에 동일한 탭의 광장에서 스킬과 업그레이드를 유지한 채 다시 참여할 수 있습니다.",
+      "corrected": "파티 플레이 도중 게임이 종료되거나 재로드되는 경우, 파티가 아직 플레이 중이라면 첫 1분 이내에 동일한 탭의 광장에서 스킬과 업그레이드를 유지한 채 다시 참여할 수 있습니다.",
+      "final": "파티 플레이 도중 게임이 종료되거나 재로드되는 경우, 파티가 아직 플레이 중이라면 첫 1분 이내에 동일한 탭의 광장에서 스킬과 업그레이드를 유지한 채 다시 참여할 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "150",
+      "source": "Damage meter",
+      "group": "wiki",
+      "context": "wiki:start",
+      "draft": "피해량 측정기",
+      "corrected": "피해량 계측기",
+      "final": "피해량 계측기",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "151",
+      "source": "Change",
+      "group": "news",
+      "context": "news",
+      "draft": "변경",
+      "corrected": "변경",
+      "final": "변경",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "152",
+      "source": "Level 20 Deity: the \"!\" on the slot can always be tapped while the Deity is missing, on mobile too.",
+      "group": "news",
+      "context": "news",
+      "draft": "20레벨 신: 신이 없는 동안에는 슬롯의 \"!\"를 항상 탭할 수 있으며, 모바일에서도 마찬가지입니다.",
+      "corrected": "20레벨 신: 신이 없는 동안에는 슬롯의 \"!\\\"를 항상 탭할 수 있으며, 모바일에서도 마찬가지입니다.",
+      "final": "20레벨 신: 신이 없는 동안에는 슬롯의 \"!\"를 항상 탭할 수 있으며, 모바일에서도 마찬가지입니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "153",
+      "source": "Chest and passive cards show what you have and what it becomes, like skill upgrades. The % on upgrade cards only counts the cards from the run.",
+      "group": "news",
+      "context": "news",
+      "draft": "상자와 패시브 카드는 스킬 업그레이드처럼 현재 보유한 것과 그것이 어떻게 변하는지를 보여줍니다. 업그레이드 카드의 %는 해당 런에서 획득한 카드만 계산합니다.",
+      "corrected": "상자와 패시브 카드는 스킬 업그레이드처럼 현재 보유한 것과 그것이 어떻게 변하는지를 보여줍니다. 업그레이드 카드의 %는 해당 런에서 획득한 카드만 계산합니다.",
+      "final": "상자와 패시브 카드는 스킬 업그레이드처럼 현재 보유한 것과 그것이 어떻게 변하는지를 보여줍니다. 업그레이드 카드의 %는 해당 런에서 획득한 카드만 계산합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "154",
+      "source": "General",
+      "group": "news",
+      "context": "news",
+      "draft": "일반",
+      "corrected": "일반",
+      "final": "일반",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "155",
+      "source": "Sword Dance: repeated pulses on the same enemy hit at 80%.",
+      "group": "news",
+      "context": "news",
+      "draft": "검무: 동일한 적에게 반복적으로 가하는 공격의 80%가 적중합니다.",
+      "corrected": "검무: 동일한 적에게 반복적으로 가하는 공격의 80%가 적중합니다.",
+      "final": "검무: 동일한 적에게 반복적으로 가하는 공격의 80%가 적중합니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "156",
+      "source": "Artifacts of Avarice and Wisdom: besides zeny or EXP, they give 4–12% discovery per roll, depending on quality.",
+      "group": "news",
+      "context": "news",
+      "draft": "탐욕과 지혜의 유물: 제니나 EXP 외에도 등급에 따라 한 번의 획득 시 4–12%의 아이템 희귀도를 부여합니다.",
+      "corrected": "탐욕과 지혜의 유물: 제니나 EXP 외에도 등급에 따라 한 번의 획득 시 4–12%의 아이템 희귀도를 부여합니다.",
+      "final": "탐욕과 지혜의 유물: 제니나 EXP 외에도 등급에 따라 한 번의 획득 시 4–12%의 아이템 희귀도를 부여합니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "157",
+      "source": "Gear and cards",
+      "group": "news",
+      "context": "news",
+      "draft": "장비와 카드",
+      "corrected": "장비와 카드",
+      "final": "장비와 카드",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "158",
+      "source": "When a skill's area cards reach their cap (+200%), the skill marks it.",
+      "group": "news",
+      "context": "news",
+      "draft": "스킬의 영역 카드가 상한치(+200%)에 도달하면 스킬에 표시됩니다.",
+      "corrected": "스킬의 영역 카드가 상한치(+200%)에 도달하면 스킬에 표시됩니다.",
+      "final": "스킬의 영역 카드가 상한치(+200%)에 도달하면 스킬에 표시됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "159",
+      "source": "A chest opened by the party no longer takes away the card you're choosing: it shows up when you're done.",
+      "group": "news",
+      "context": "news",
+      "draft": "일행이 여는 상자에서는 더 이상 선택 중인 카드가 제거되지 않습니다. 선택이 끝나면 카드가 표시됩니다.",
+      "corrected": "일행이 여는 상자에서는 더 이상 선택 중인 카드가 제거되지 않으며, 선택이 끝나면 카드가 표시됩니다.",
+      "final": "일행이 여는 상자에서는 더 이상 선택 중인 카드가 제거되지 않으며, 선택이 끝나면 카드가 표시됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "160",
+      "source": "Improvement",
+      "group": "news",
+      "context": "news",
+      "draft": "개량",
+      "corrected": "개량",
+      "final": "개량",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "161",
+      "source": "Run stats window: names no longer get squashed, and on landscape mobile it uses two columns.",
+      "group": "news",
+      "context": "news",
+      "draft": "런 스탯 창: 이름이 더 이상 압축되지 않으며, 가로 모드 모바일에서는 2열로 표시됩니다.",
+      "corrected": "런 스탯 창: 이름이 더 이상 압축되지 않으며, 가로 모드 모바일에서는 2열로 표시됩니다.",
+      "final": "런 스탯 창: 이름이 더 이상 압축되지 않으며, 가로 모드 모바일에서는 2열로 표시됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "162",
+      "source": "Vending: 25% more damage, stays for 3.5 s instead of 2 and its cooldown drops from 16 to 13 s. The final burst reaches the circle you see, which is 15% bigger and grows with area.",
+      "group": "news",
+      "context": "news",
+      "draft": "판매기: 피해량이 25% 증가하고, 지속 시간이 2초에서 3.5초로 늘어나며, 재사용 대기시간이 16초에서 13초로 단축됩니다. 최종 폭발은 보이는 원까지 도달하며, 이 원은 15% 더 크고 영역에 따라 확장됩니다.",
+      "corrected": "판매기: 피해량이 25% 증가하고, 지속 시간이 2초에서 3.5초로 늘어나며, 재사용 대기시간이 16초에서 13초로 단축됩니다. 최종 폭발은 보이는 원까지 도달하며, 이 원은 15% 더 크고 영역에 따라 확장됩니다.",
+      "final": "판매기: 피해량이 25% 증가하고, 지속 시간이 2초에서 3.5초로 늘어나며, 재사용 대기시간이 16초에서 13초로 단축됩니다. 최종 폭발은 보이는 원까지 도달하며, 이 원은 15% 더 크고 영역에 따라 확장됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "163",
+      "source": "Archer",
+      "group": "news",
+      "context": "news",
+      "draft": "궁수",
+      "corrected": "궁수",
+      "final": "궁수",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "164",
+      "source": "Assassin: Enchant Poison, Venom Dust and Venom Knife poison 10% more.",
+      "group": "news",
+      "context": "news",
+      "draft": "암살자: 마법 부여 독, 독가루, 독칼의 독 효과가 10% 증가합니다.",
+      "corrected": "암살자: 마법 부여 독, 독가루, 독칼의 독 효과가 10% 더 증가합니다.",
+      "final": "암살자: 마법 부여 독, 독가루, 독칼의 독 효과가 10% 더 증가합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "165",
+      "source": "Run Down (talent): instead of stunning, Cart Rush has a 20% chance per rank to cast Cart Revolution when it stops, with its upgrades if you have it. It still reaches farther.",
+      "group": "news",
+      "context": "news",
+      "draft": "약화 (재능): 기절 효과 대신, 카트 러시는 등급당 20% 확률로 정지 시 카트 리볼루션을 시전하며, 해당 업그레이드를 보유하고 있다면 업그레이드 효과도 적용됩니다. 이동 거리는 여전히 더 길어집니다.",
+      "corrected": "약화 (재능): 기절 효과 대신, 카트 러시는 등급당 20% 확률로 정지 시 카트 리볼루션을 시전하며, 해당 업그레이드를 보유하고 있다면 업그레이드 효과도 적용됩니다. 이동 거리는 여전히 더 길어집니다.",
+      "final": "약화 (재능): 기절 효과 대신, 카트 러시는 등급당 20% 확률로 정지 시 카트 리볼루션을 시전하며, 해당 업그레이드를 보유하고 있다면 업그레이드 효과도 적용됩니다. 이동 거리는 여전히 더 길어집니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "166",
+      "source": "Merchant",
+      "group": "news",
+      "context": "news",
+      "draft": "상인",
+      "corrected": "상인",
+      "final": "상인",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "167",
+      "source": "Arrow Shower: each volley hits for 90% of the previous one (was 80%).",
+      "group": "news",
+      "context": "news",
+      "draft": "화살 소나기: 각 연사는 이전 연사의 90% 피해를 줍니다(이전: 80%).",
+      "corrected": "화살 소나기: 각 연사는 이전 연사의 90% 피해를 줍니다(이전: 80%).",
+      "final": "화살 소나기: 각 연사는 이전 연사의 90% 피해를 줍니다(이전: 80%).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "168",
+      "source": "Cart Rush: double damage, wider, reaches farther and its cooldown drops from 9 to 7 s. You are immune to damage while charging and, when you stop, you stun enemies within 3 m for 1 s.",
+      "group": "news",
+      "context": "news",
+      "draft": "카트 러시: 피해량이 두 배로 증가하고, 폭이 넓어지며, 도달 거리도 길어집니다. 재사용 대기시간이 9초에서 7초로 단축됩니다. 충전 중에는 피해를 받지 않으며, 충전을 멈추면 3m 내의 적을 1초 동안 기절시킵니다.",
+      "corrected": "카트 러시: 피해량이 두 배로 증가하고, 폭이 넓어지며, 도달 거리도 길어집니다. 재사용 대기시간이 9초에서 7초로 단축됩니다. 충전 중에는 피해를 받지 않으며, 충전을 멈추면 3m 내의 적을 1초 동안 기절시킵니다.",
+      "final": "카트 러시: 피해량이 두 배로 증가하고, 폭이 넓어지며, 도달 거리도 길어집니다. 재사용 대기시간이 9초에서 7초로 단축됩니다. 충전 중에는 피해를 받지 않으며, 충전을 멈추면 3m 내의 적을 1초 동안 기절시킵니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "169",
+      "source": "Prontera",
+      "group": "news",
+      "context": "news",
+      "draft": "프론테라",
+      "corrected": "프론테라",
+      "final": "프론테라",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "170",
+      "source": "Sand Attack Deity: the Sandstorm also slows by 50% for 3 s.",
+      "group": "news",
+      "context": "news",
+      "draft": "모래 공격 신: 모래폭풍은 또한 3초 동안 50%의 속도를 감소시킵니다.",
+      "corrected": "모래 공격 신: 모래폭풍은 또한 3초 동안 50% 둔화합니다.",
+      "final": "모래 공격 신: 모래폭풍은 또한 3초 동안 50% 둔화합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "171",
+      "source": "Eternal Quicken",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "영원한 가속",
+      "corrected": "영원한 가속",
+      "final": "영원한 가속",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "172",
+      "source": "With that ghost gone, the stairs to the hold have opened. Haru must be down there. Come on!",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "그 유령이 사라지면서 화물칸으로 가는 계단이 열렸어. 하루는 분명 저 아래에 있을 거야. 가자!",
+      "corrected": "그 유령이 사라지면서 화물칸으로 가는 계단이 열렸어. 하루는 분명 저 아래에 있을 거야. 가자!",
+      "final": "그 유령이 사라지면서 화물칸으로 가는 계단이 열렸어. 하루는 분명 저 아래에 있을 거야. 가자!",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "173",
+      "source": "You left before the run ended: whatever you win in the party loot will reach you through the Prontera Mail Carrier.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "레이드가 끝나기 전에 떠났습니다. 파티 전리품에서 획득한 아이템은 프론테라 우편 배달원을 통해 전달됩니다.",
+      "corrected": "레이드가 끝나기 전에 떠났습니다. 파티 전리품에서 획득한 아이템은 프론테라 우편 배달원을 통해 전달됩니다.",
+      "final": "레이드가 끝나기 전에 떠났습니다. 파티 전리품에서 획득한 아이템은 프론테라 우편 배달원을 통해 전달됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "174",
+      "source": "Insect",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "곤충",
+      "corrected": "곤충",
+      "final": "곤충",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "175",
+      "source": "{name} is down. Stay next to them to revive them.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "{name}이 쓰러졌습니다. 옆에 머물러서 부활시켜 주세요.",
+      "corrected": "{name}이 쓰러졌습니다. 옆에 머물러서 부활시켜 주세요.",
+      "final": "{name}이 쓰러졌습니다. 옆에 머물러서 부활시켜 주세요.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "176",
+      "source": "Root of Yggdrasil: plants a circle of life where you cast it; inside you heal twice as much and take {0}% less damage",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "이그드라실의 뿌리: 시전 위치에 생명의 원을 심습니다. 원 안에서는 회복량이 두 배가 되고, 피해를 {0}% 감소시킵니다.",
+      "corrected": "이그드라실의 뿌리: 시전 위치에 생명의 원을 심습니다. 원 안에서는 회복량이 두 배가 되고, 받는 피해가 {0}% 감소합니다.",
+      "final": "이그드라실의 뿌리: 시전 위치에 생명의 원을 심습니다. 원 안에서는 회복량이 두 배가 되고, 받는 피해가 {0}% 감소합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "177",
+      "source": "targets",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "목표",
+      "corrected": "대상",
+      "final": "대상",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "178",
+      "source": "{pet} is born! Take it along from the character’s Pets tab.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "{pet}이 태어났습니다! 캐릭터의 펫 탭에서 함께 데리고 다닐 수 있습니다.",
+      "corrected": "{pet}이 태어났습니다! 캐릭터의 펫 탭에서 함께 데리고 다닐 수 있습니다.",
+      "final": "{pet}이 태어났습니다! 캐릭터의 펫 탭에서 함께 데리고 다닐 수 있습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "179",
+      "source": "You turn invisible for {0} s: enemies can't touch you, you move {1}% faster and deal {2}% more damage.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "{0}초 동안 투명 상태가 됩니다: 적들은 당신을 건드릴 수 없으며, 이동 속도가 {1}% 증가하고, 피해량이 {2}% 증가합니다.",
+      "corrected": "{0}초 동안 투명 상태가 됩니다: 적들은 당신을 건드릴 수 없으며, 이동 속도가 {1}% 빨라지고, 피해량이 {2}% 증가합니다.",
+      "final": "{0}초 동안 투명 상태가 됩니다: 적들은 당신을 건드릴 수 없으며, 이동 속도가 {1}% 빨라지고, 피해량이 {2}% 증가합니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "180",
+      "source": "Run, run!",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "달려, 달려!",
+      "corrected": "달려, 달려!",
+      "final": "달려, 달려!",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "181",
+      "source": "There is no account character called {name}.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "{name}이라는 계정이 존재하지 않습니다.",
+      "corrected": "{name}이라는 계정 캐릭터가 존재하지 않습니다.",
+      "final": "{name}이라는 계정 캐릭터가 존재하지 않습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "182",
+      "source": "All of this character's tower upgrades go back to rank 0 and you get the {pts} spent points back to spend again.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "이 캐릭터의 모든 타워 업그레이드는 랭크 0으로 되돌아가며, 사용한 {pts} 포인트를 다시 사용할 수 있도록 돌려받습니다.",
+      "corrected": "이 캐릭터의 모든 타워 업그레이드는 랭크 0으로 되돌아가며, 사용한 {pts} 포인트를 다시 사용할 수 있도록 돌려받습니다.",
+      "final": "이 캐릭터의 모든 타워 업그레이드는 랭크 0으로 되돌아가며, 사용한 {pts} 포인트를 다시 사용할 수 있도록 돌려받습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "183",
+      "source": "Frost",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "얼음",
+      "corrected": "얼음",
+      "final": "얼음",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "184",
+      "source": "{p}% success. If it fails, the item breaks and is lost along with its cards.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "{p}% 성공. 실패 시 아이템은 파손되며 카드와 함께 소실됩니다.",
+      "corrected": "{p}% 성공. 실패 시 아이템은 파손되며 카드와 함께 소실됩니다.",
+      "final": "{p}% 성공. 실패 시 아이템은 파손되며 카드와 함께 소실됩니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "185",
+      "source": "Casting Spear Quicken gives you damage, speed and crit, and while it is active your Peco tramples twice as hard.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "Casting Spear Quicken은 피해량, 속도, 치명타 확률을 부여하며, 활성화된 동안 Peco는 두 배 더 강하게 짓밟습니다.",
+      "corrected": "Casting Spear Quicken은 피해량, 속도, 치명타를 부여하며, 활성화된 동안 Peco는 두 배 더 강하게 짓밟습니다.",
+      "final": "Casting Spear Quicken은 피해량, 속도, 치명타를 부여하며, 활성화된 동안 Peco는 두 배 더 강하게 짓밟습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "186",
+      "source": "Attack: Fists",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "공격: 주먹",
+      "corrected": "공격: 주먹",
+      "final": "공격: 주먹",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "187",
+      "source": "Time left to defeat the MVP",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "MVP를 격파할 남은 시간",
+      "corrected": "MVP를 격파할 남은 시간",
+      "final": "MVP를 격파할 남은 시간",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "188",
+      "source": "Poisons from different skills stack on the same enemy. Without this talent, only the strongest one deals damage.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "서로 다른 스킬로 인한 독이 동일한 적에게 중첩됩니다. 이 특성 없이는 가장 강한 독만 피해를 줍니다.",
+      "corrected": "서로 다른 스킬로 인한 독이 동일한 적에게 중첩됩니다. 이 특성 없이는 가장 강한 독만 피해를 줍니다.",
+      "final": "서로 다른 스킬로 인한 독이 동일한 적에게 중첩됩니다. 이 특성 없이는 가장 강한 독만 피해를 줍니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "189",
+      "source": "+0.3 s of freeze.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "+0.3초 동안 얼음 상태가 됩니다.",
+      "corrected": "빙결 지속 시간 +0.3초.",
+      "final": "빙결 지속 시간 +0.3초.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "190",
+      "source": "Warmth of the Sun leaves enemies burning: +{0} damage per second for {1} s.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "태양의 온기는 적을 불태웁니다: {1}초 동안 초당 +{0}의 피해를 줍니다.",
+      "corrected": "태양의 온기는 적을 불태웁니다: {1}초 동안 초당 +{0}의 피해를 줍니다.",
+      "final": "태양의 온기는 적을 불태웁니다: {1}초 동안 초당 +{0}의 피해를 줍니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "191",
+      "source": "The save on this device was missing part of your account, so it was not uploaded. The server save has been loaded.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "이 기기의 저장 파일에는 계정 정보가 일부 누락되어 업로드되지 않았습니다. 서버 저장 파일이 로드되었습니다.",
+      "corrected": "이 기기의 저장 파일에는 계정 정보가 일부 누락되어 업로드되지 않았습니다. 서버 저장 파일이 로드되었습니다.",
+      "final": "이 기기의 저장 파일에는 계정 정보가 일부 누락되어 업로드되지 않았습니다. 서버 저장 파일이 로드되었습니다.",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "192",
+      "source": "+{0} cast speed",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "+{0} 시전 속도",
+      "corrected": "+{0} 시전 속도",
+      "final": "+{0} 시전 속도",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "193",
+      "source": "+{0}% duration of the damage on exit",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "+{0}% 탈출 시 피해 지속 시간",
+      "corrected": "+{0}% 탈출 시 피해 지속 시간",
+      "final": "+{0}% 탈출 시 피해 지속 시간",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "194",
+      "source": "Welcome, friends. Today we do not only marry my daughter: we also honor those who have protected this kingdom.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "환영합니다, 친구들. 오늘 우리는 제 딸과 결혼식을 올릴 뿐만 아니라, 이 왕국을 지켜온 이들을 기리기도 합니다.",
+      "corrected": "환영합니다, 친구들. 오늘 우리는 제 딸과 결혼식을 올릴 뿐만 아니라, 이 왕국을 지켜온 이들을 기립니다.",
+      "final": "환영합니다, 친구들. 오늘 우리는 제 딸과 결혼식을 올릴 뿐만 아니라, 이 왕국을 지켜온 이들을 기립니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "195",
+      "source": "Improved Bash",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "개선된 강타",
+      "corrected": "개선된 강타",
+      "final": "개선된 강타",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "196",
+      "source": "The trade didn't go through: what each of you gives isn't worth the same (10% difference at most).",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "거래가 실패했습니다: 서로가 제공한 아이템의 가치가 동일하지 않습니다(최대 10% 차이).",
+      "corrected": "거래가 실패했습니다: 서로가 제공한 아이템의 가치가 동일하지 않습니다(최대 10% 차이).",
+      "final": "거래가 실패했습니다: 서로가 제공한 아이템의 가치가 동일하지 않습니다(최대 10% 차이).",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "197",
+      "source": "Your critical hits splash: the {0} enemies closest to the target, within {1} m, take {2}% of the hit.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "당신의 치명타는 주변으로 퍼져나갑니다: 대상에서 {1}m 이내의 가장 가까운 적 {0}명에게 공격력의 {2}% 피해를 줍니다.",
+      "corrected": "당신의 치명타는 주변으로 퍼져나갑니다: 대상에서 {1}m 이내의 가장 가까운 적 {0}명에게 피해량의 {2}% 피해를 줍니다.",
+      "final": "당신의 치명타는 주변으로 퍼져나갑니다: 대상에서 {1}m 이내의 가장 가까운 적 {0}명에게 피해량의 {2}% 피해를 줍니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "198",
+      "source": "Bleeding Edges",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "피 흘리는 가장자리",
+      "corrected": "피 흘리는 가장자리",
+      "final": "피 흘리는 가장자리",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "199",
+      "source": "Go down the stairs to the hold",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "계단을 내려가 선실로 가세요",
+      "corrected": "계단을 내려가 홀로 가세요",
+      "final": "계단을 내려가 홀로 가세요",
+      "verdict": "REJECT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    },
+    {
+      "id": "200",
+      "source": "Throw Stone deals +{0}% damage and the stone bursts into shards: nearby enemies take {1}% of the hit.",
+      "group": "ui",
+      "context": "game/talent language table",
+      "draft": "돌 투척은 +{0}%의 피해를 입히며, 돌이 파편으로 폭발합니다: 주변 적들은 공격의 {1}% 피해를 입습니다.",
+      "corrected": "돌 투척은 +{0}%의 피해를 입히며, 돌이 파편으로 폭발합니다: 주변 적은 공격의 {1}% 피해를 입습니다.",
+      "final": "돌 투척은 +{0}%의 피해를 입히며, 돌이 파편으로 폭발합니다: 주변 적은 공격의 {1}% 피해를 입습니다.",
+      "verdict": "ACCEPT",
+      "final_checks": {
+        "hangul": true,
+        "placeholders": true,
+        "numbers": true,
+        "abbreviations": true,
+        "terms": true,
+        "format": true,
+        "duration_semantics": true,
+        "unsupported_effect": true
+      }
+    }
+  ]
+}
