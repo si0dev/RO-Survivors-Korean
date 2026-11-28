@@ -67,7 +67,8 @@ jobs:
           source benchmark/tools/colab-benchmark-workflow.sh
           mkdir -m 700 -p "$tmp"
           node historical/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
-          node benchmark/tools/colab-benchmark-memory.mjs benchmark benchmark/tools/colab-benchmark-chain-run57.json "$tmp/chain-memory.json"
+          # The 200-row sample is frozen. Never mix it with the moving PR merge catalog.
+          node benchmark/tools/colab-benchmark-memory.mjs reference benchmark/tools/colab-benchmark-chain-run57.json "$tmp/chain-memory.json" --frozen-benchmark
           python benchmark/tools/colab-benchmark-chain.py restore "$tmp" "$RUNNER_TEMP/ro-benchmark" historical/tools
           pending=$(python -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$tmp/chain-drafts.json")
           echo "pending=$pending" >> "$GITHUB_OUTPUT"

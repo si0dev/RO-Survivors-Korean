@@ -50,16 +50,31 @@ export function buildMemory(entries,decisions={}){
  }
  return {lookup,terms};
 }
+export function assertFrozenCatalog(rows,entries){
+ for(const r of rows){
+  const record=entries[r.recordId];
+  if(!record||record.sourceHash!==hash(r.source)||record.ko!==r.reference)
+   throw Error('MEMORY_FROZEN_CATALOG_MISMATCH '+r.id);
+ }
+}
 async function main(){
- const [root,snapshotPath,outPath]=process.argv.slice(2);
+ const [root,snapshotPath,outPath,mode]=process.argv.slice(2);
+ if(mode!==undefined&&mode!=='--frozen-benchmark')throw Error('MEMORY_MODE');
  const {loadCatalog,mergeRecords}=await import(pathToFileURL(resolve(root,'tools/records.mjs')));
  const catalog=await loadCatalog(resolve(root,'translations'));
- const memory=buildMemory(mergeRecords(catalog.base,catalog.extra).entries,catalog.decisions);
+ const entries=mergeRecords(catalog.base,catalog.extra).entries;
+ const memory=buildMemory(entries,catalog.decisions);
  const snapshot=JSON.parse(await readFile(snapshotPath,'utf8'));
  const failed=snapshot.rows.filter(r=>!r.excluded&&(r.verdict!=='ACCEPT'||!Object.values(r.final_checks).every(Boolean)));
  if(failed.length!==28)throw Error('MEMORY_RETRY_COUNT');
  const fixture=JSON.parse(await readFile(new URL('./colab-benchmark-fixture.json',import.meta.url),'utf8'));
  const refs=new Map(fixture.rows.map(r=>[r.id,r]));
+ if(mode==='--frozen-benchmark'){
+  // This is an integrity check of the pinned benchmark catalog, not a
+  // semantic model evaluation or a fallback for a changed production source.
+  assertFrozenCatalog(fixture.rows,entries);
+  console.log('CHAIN_MEMORY_FROZEN_CATALOG_MATCH='+fixture.rows.length+'/'+fixture.rows.length);
+ }
  const rows=failed.map(r=>{
   const ref=refs.get(r.id);
   if(!ref||['source','group','context'].some(k=>ref[k]!==r[k]))throw Error('MEMORY_SOURCE_MISMATCH '+r.id);
