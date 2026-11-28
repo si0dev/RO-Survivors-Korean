@@ -158,51 +158,52 @@ function showStatus(state,engineVersion){
   node.dataset.roKoMode=mode;
   node.dataset.roKoNotice=String(hasGameNotice(state));
   statusRefresh=()=>showStatus(state,engineVersion);
-  const title=document.createElement('span');
-  title.textContent='비공식 한국어 패치';
-  title.style.display='inline';
-  const version=document.createElement('span');
-  version.textContent=' / 엔진 v'+engineVersion;
-  version.style.display='inline';
-  version.style.color='inherit';
   const inGame=mode==='game';
   if(!state.engineUpdateAvailable)engineInstallRequested=false;
-  const parts=inGame?[]:[title,version];
-  const prefix=()=>parts.length?' · ':'';
+  node.replaceChildren(...patchStatusContent(document,state,engineVersion,inGame,engineInstallRequested,()=>{
+    engineInstallRequested=true;
+    // Keep the clicked link intact until the browser opens its installation tab.
+    setTimeout(()=>statusRefresh?.(),0);
+  }));
+  statusSync();
+}
+export function patchStatusContent(doc,state,engineVersion,inGame,installRequested,onInstall){
+  const parts=[];
+  if(!inGame){
+    const title=doc.createElement('div');
+    title.textContent='비공식 한국어 패치 / 엔진 v'+engineVersion;
+    parts.push(title);
+  }
   function add(text,color){
-    const span=document.createElement('span');
-    span.textContent=prefix()+text;span.style.color=color;parts.push(span);
+    const span=doc.createElement(inGame?'span':'div');
+    span.textContent=(inGame&&parts.length?' · ':'')+text;
+    span.style.color=color;
+    parts.push(span);
   }
   const label=stateLabel(state);
   if(!inGame&&label)add(label,state.scanFailed?'var(--ro-ko-warning)':'inherit');
   if(state.engineUpdated&&!state.engineUpdateAvailable)add('최신 한국어 패치가 적용되었습니다.','var(--ro-ko-success)');
   if(state.engineUpdateAvailable){
-    const {message,link:linkText,suffix}=engineNoticeText(engineInstallRequested,inGame);
-    const link=document.createElement('a');
+    const {message,link:linkText,suffix}=engineNoticeText(installRequested,inGame);
+    const link=doc.createElement('a');
     link.textContent=linkText;
     link.href=DATA_URL+'ro-ko.user.js';
     link.target='_blank';link.rel='noopener noreferrer';
     link.title='한국어 패치 스크립트 업데이트';
     Object.assign(link.style,{color:'var(--ro-ko-warning)',pointerEvents:'auto',textDecoration:'underline',cursor:'pointer'});
-    link.addEventListener('click',()=>{
-      engineInstallRequested=true;
-      // Keep the clicked link intact until the browser opens its installation tab.
-      setTimeout(()=>statusRefresh?.(),0);
-    });
-    const notice=document.createElement('span');
+    link.addEventListener('click',onInstall);
+    const notice=doc.createElement(inGame?'span':'div');
     notice.style.color='var(--ro-ko-warning)';
     if(message){
       if(!inGame){
-        notice.style.display='block';
-        const instruction=document.createElement('div');
+        const instruction=doc.createElement('div');
         instruction.textContent=message;
         notice.append(instruction,link);
       }else notice.append(message,link,suffix??'');
-    }else notice.append(prefix(),link);
+    }else notice.append(link);
     parts.push(notice);
   }
-  node.replaceChildren(...parts);
-  statusSync();
+  return parts;
 }
 function sameOriginBuild(value,base=location.href){
   try{
