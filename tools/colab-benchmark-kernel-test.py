@@ -60,6 +60,18 @@ class KernelTests(unittest.TestCase):
         self.assertEqual(rc,124)
         self.assertIn("GPU_READY",raw)
         self.assertEqual(seen,["GPU_READY"])
+    def test_heartbeat_and_safe_retry_logs(self):
+        seen=[]
+        rc,raw=k.invoke([sys.executable,"-u","-c","import time;time.sleep(0.25)"],2,
+            on_wait=seen.append,heartbeat=0.05)
+        self.assertEqual(rc,0)
+        self.assertTrue(seen)
+        out=[]
+        emit=lambda s,**kw:out.append(s)
+        k.safe_progress('TRANSLATION_RETRY={"id":"001","attempt":1,"failures":["format"]}',emit)
+        k.safe_progress('TRANSLATION_RETRY={"id":"secret","attempt":1,"failures":["format"]}',emit)
+        self.assertEqual(len(out),1)
+        self.assertIn("format",out[0])
     def test_four_way_concurrency_and_asynchronous_checkpoint(self):
         started=threading.Event()
         release=threading.Event()

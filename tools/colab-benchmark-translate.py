@@ -46,16 +46,24 @@ def check_output(source,ko,terms):
         "format":bool(ko) and "\n" not in ko and not ko.startswith(("\"", "'", "**")) and not ko.endswith(("\"", "'","**"))
     }
 # Use the model family's constrained translation structure, not a generic chat prompt.
-def request_for(row):
+def request_for(row, failures=()):
     terms=required_terms(row["source"])
     hard="保留所有占位符、数字、正负号、百分号、单位和属性缩写，不得遗漏或增添信息。"
     if terms:
         hard+="严格使用术语："+", ".join(f"{k}:{v}" for k,v in terms.items())+"。"
-    request=("请将以下英文游戏文本翻译为韩语。\n〖源文〗"+row["source"]+
-             "\n1. 〖硬性要求〗"+hard+
-             "\n2. 〖注意〗游戏本地化语境："+row["context"]+"。自然、准确、简洁的韩语游戏用语；技能说明保留全部效果和条件。"+
-             "\n直接输出翻译结果，不要进行任何解释。")
+    # All instructions precede the source. The source is the final field,
+    # so the translation model cannot treat trailing instructions as source text.
+    request=("请将以下英文游戏文本翻译为韩语。只输出一行韩语译文，不要解释。\n"
+             +hard+"\n游戏语境："+row["context"]+"。使用自然准确的游戏术语，保留全部效果和条件。\n")
+    if failures:
+        request+="重新核对："+", ".join(failures)+"。\n"
+    request+="〖源文〗"+row["source"]
     return terms,request,[{"role":"user","content":request}]
+
+def initial_token_budget(source):
+    # Short labels must not consume the same generation budget as long descriptions.
+    return min(512,max(64,32+2*len(source)))
+
 class TranslationFailure(Exception):
     def __init__(self, kind, status=0, retryable=False):
         super().__init__(kind)
@@ -65,7 +73,7 @@ def generate_one(messages, base, max_tokens=512):
     payload={"messages":messages,"temperature":0,"max_tokens":max_tokens,
              "stream":False,"chat_template_kwargs":{"enable_thinking":False}}
     try:
-        response=requests.post(base+"/v1/chat/completions",json=payload,timeout=(10,180))
+        response=requests.post(base+"/v1/chat/completions",json=payload,timeout=(10,90))
     except requests.Timeout:
         raise TranslationFailure("HTTP_TIMEOUT",retryable=True) from None
     except requests.ConnectionError:
@@ -87,7 +95,7 @@ def generate_one(messages, base, max_tokens=512):
 
 def translate_one(row,base,emit=print,pause=time.sleep):
     terms,request,messages=request_for(row)
-    max_tokens=512
+    max_tokens=initial_token_budget(row["source"])
     for attempt in range(1,4):
         try:
             ko,truncated=generate_one(messages,base,max_tokens)
@@ -98,12 +106,15 @@ def translate_one(row,base,emit=print,pause=time.sleep):
             pause(attempt*2)
             continue
         checks=check_output(row["source"],ko,terms)
+        if re.search(r"〖(?:필수 요구사항|주의사항|硬性要求|注意|源文)〗",ko):
+            checks["format"]=False
         if truncated:
             checks["format"]=False
-            max_tokens=1024
+            max_tokens=min(1024,max_tokens*2)
         if not all(checks.values()) and attempt<3:
-            failures=", ".join(k for k,v in checks.items() if not v)
-            messages=[{"role":"user","content":request+"\n必须重新核对以下未通过的要求："+failures+"。不要省略数值、变量或术语。"}]
+            failures=[k for k,v in checks.items() if not v]
+            emit("TRANSLATION_RETRY="+json.dumps({"id":row["id"],"attempt":attempt,"failures":failures}),flush=True)
+            terms,request,messages=request_for(row,failures)
             continue
         return {"id":row["id"],"ko":ko,"checks":checks,"attempts":attempt}
     raise AssertionError("Unreachable translation loop")

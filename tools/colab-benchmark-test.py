@@ -44,10 +44,23 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(row["attempts"],2)
         self.assertTrue(all(row["checks"].values()))
         self.assertIn("numbers",post.call_args.kwargs["json"]["messages"][0]["content"])
+    def test_source_is_last_and_short_output_budget(self):
+        short=dict(ROW,source="Frost")
+        _,prompt,_=mod.request_for(short,["format","numbers"])
+        self.assertTrue(prompt.endswith("〖源文〗Frost"))
+        self.assertEqual(mod.initial_token_budget("Frost"),64)
+    def test_instruction_echo_retries_without_accepting_extra_text(self):
+        bad="120% ATK 피해를 줍니다. 〖주의사항〗"
+        row,post,out=self.run_row([response(content=bad),response()])
+        self.assertEqual(row["attempts"],2)
+        self.assertEqual(row["ko"],KO)
+        self.assertTrue(all(row["checks"].values()))
+        self.assertIn("TRANSLATION_RETRY=",out[0])
+        self.assertTrue(post.call_args.kwargs["json"]["messages"][0]["content"].endswith(ROW["source"]))
     def test_truncation_repair(self):
         row,post,_=self.run_row([response(finish="length"),response()])
         self.assertEqual(row["attempts"],2)
-        self.assertEqual(post.call_args.kwargs["json"]["max_tokens"],1024)
+        self.assertEqual(post.call_args.kwargs["json"]["max_tokens"],2*mod.initial_token_budget(ROW["source"]))
     def test_persistent_truncation_counts_as_failure(self):
         row,_,_=self.run_row([response(finish="length") for _ in range(3)])
         self.assertFalse(row["checks"]["format"])

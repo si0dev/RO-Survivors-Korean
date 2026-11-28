@@ -27,7 +27,7 @@ def assignment_count():
     from colab_cli.common import state
     state.auth_provider=AuthProvider.ADC
     return len(state.client.list_assignments())
-def invoke(args,limit,on_line=None):
+def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
     lines=[]
     q=queue.Queue()
     with subprocess.Popen(args,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,
@@ -37,12 +37,18 @@ def invoke(args,limit,on_line=None):
                 for line in p.stdout: q.put(line)
             finally: q.put(None)
         t=threading.Thread(target=reader,daemon=True);t.start()
-        deadline=time.monotonic()+limit
+        started=time.monotonic()
+        deadline=started+limit
+        next_heartbeat=started+heartbeat
         try:
             while True:
-                remaining=deadline-time.monotonic()
+                now=time.monotonic()
+                if on_wait and now>=next_heartbeat:
+                    on_wait(int(now-started))
+                    next_heartbeat=now+heartbeat
+                remaining=deadline-now
                 if remaining<=0: raise subprocess.TimeoutExpired(args,limit)
-                try: line=q.get(timeout=min(remaining,10))
+                try: line=q.get(timeout=min(remaining,10,max(0.01,next_heartbeat-now) if on_wait else 10))
                 except queue.Empty: continue
                 if line is None: break
                 lines.append(line)
@@ -63,6 +69,23 @@ def invoke(args,limit,on_line=None):
 def safe_progress(line,emit):
     if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart)|CACHE_COPY_PERCENT=(?:manifest|model|llama|cudart):(?:100|[0-9]{1,2}))",line):
         emit(line,flush=True)
+    for marker in ("TRANSLATION_RETRY=","TRANSLATION_ERROR="):
+        if not line.startswith(marker): continue
+        try:
+            data=json.loads(line[len(marker):])
+            if not re.fullmatch(r"[0-9]{1,3}",data["id"]) or type(data["attempt"]) is not int or not 1<=data["attempt"]<=3:
+                return
+            if marker=="TRANSLATION_RETRY=":
+                failures=data["failures"]
+                if not isinstance(failures,list) or not all(v in ("hangul","placeholders","numbers","abbreviations","terms","format") for v in failures):
+                    return
+                safe={"id":data["id"],"attempt":data["attempt"],"failures":failures}
+            else:
+                if data["kind"] not in ("HTTP_TIMEOUT","HTTP_CONNECTION","HTTP_TRANSPORT","HTTP_STATUS","RESPONSE_SCHEMA") or type(data["status"]) is not int or not 0<=data["status"]<=599:
+                    return
+                safe={"id":data["id"],"attempt":data["attempt"],"kind":data["kind"],"status":data["status"]}
+            emit(marker+json.dumps(safe),flush=True)
+        except (ValueError,KeyError,TypeError): pass
     # Only numeric, fixed-schema fields; never echo raw CLI logs.
     for marker,keys in (("LOCAL_MODEL_COPY=",("bytes","copy_seconds","verify_seconds")),("INDEX_GPU_DIAGNOSTIC=",("server_gpu_mib","gpu_free_mib","gpu_total_mib"))):
         if not line.startswith(marker): continue
@@ -107,11 +130,13 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
             if not s.endswith("\n"): f.write("\n")
     def record(row):
         append("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")))
-    def execute(source,limit,on_line):
+    def execute(source,limit,on_line,phase):
         script=log.with_name("kernel-call.py")
         script.write_text(source,encoding="utf-8")
         args=[*cli,"exec","-s",session,"--timeout",str(limit),"-f",str(script)]
-        if run is invoke: return run(args,limit+30,on_line=on_line)
+        if run is invoke:
+            return run(args,limit+30,on_line=on_line,
+                on_wait=lambda elapsed:emit(f"COLAB_WAIT phase={phase} elapsed={elapsed}s completed={len(saved)}/200",flush=True))
         rc,raw=run(args,limit+30)
         for line in raw.splitlines(): on_line(line)
         return rc,raw
@@ -125,7 +150,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
     init=("ro_bench_ns={'__name__':'__main__'}\n"
         "exec(compile("+repr(worker)+",'benchmark-model.py','exec'),ro_bench_ns)\n"
         "print("+repr(ready)+",flush=True)\n")
-    rc,raw=execute(init,1800,lambda line:safe_progress(line,emit))
+    rc,raw=execute(init,1800,lambda line:safe_progress(line,emit),"MODEL_INIT")
     append(raw)
     if rc or ready not in raw.splitlines():
         return report_failure("INIT",raw,probe,emit)
@@ -161,7 +186,10 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
                 "        print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
                 "if ro_errors: raise ro_errors[0]\n"
                 "print("+repr(done)+",flush=True)\n")
-            rc,raw=execute(code,1500,on_line)
+            emit(f"COLAB_BATCH_START={len(saved)+1}-{len(saved)+len(batch)}/200",flush=True)
+            # Three bounded HTTP attempts fit within this limit. Recover a
+            # disconnected or stalled batch promptly instead of waiting 25 min.
+            rc,raw=execute(code,360,on_line,"TRANSLATION_BATCH")
             if commit is not None:
                 commit.result()
                 emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)
