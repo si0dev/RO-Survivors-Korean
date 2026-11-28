@@ -89,13 +89,8 @@ def assess(rows,verdicts,emit=print):
     # Small screening test, not proof of production accuracy.
     return 0 if stats["correct"]==stats["total"] else 1
 
-def main(tmp,session):
-    tmp=pathlib.Path(tmp)
-    spec=importlib.util.spec_from_file_location("kernel",ROOT/"colab-benchmark-kernel.py")
-    kernel=importlib.util.module_from_spec(spec);spec.loader.exec_module(kernel)
-    rows=selected_rows()
-    ids={r["id"] for r in rows}
-    marker="RO_REVIEW_"+uuid.uuid4().hex+"="
+def build_remote(tmp,payload,marker):
+    cleanup_marker=None
     bootstrap=json.loads((tmp/"bootstrap.json").read_text())
     body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\nREVIEW_ONLY=True\n"
     for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
@@ -109,7 +104,7 @@ def main(tmp,session):
     if shared:
         cleanup_marker=marker+"CLEANUP"
         body+="proc=None; root=None; server_log=None\ntry:\n"
-        block=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+remote_source(rows,marker)
+        block=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+payload
         body+="".join("    "+line+"\n" for line in block.splitlines())
         body+="finally:\n"
         body+="    child=globals().get('proc')\n"
@@ -123,7 +118,18 @@ def main(tmp,session):
         body+="    shutil.rmtree(cache,ignore_errors=True)\n"
         body+="    print("+repr(cleanup_marker)+",flush=True)\n"
     else:
-        body+=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+remote_source(rows,marker)
+        body+=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+payload
+    return body,cleanup_marker
+
+def main(tmp,session):
+    tmp=pathlib.Path(tmp)
+    spec=importlib.util.spec_from_file_location("kernel",ROOT/"colab-benchmark-kernel.py")
+    kernel=importlib.util.module_from_spec(spec);spec.loader.exec_module(kernel)
+    rows=selected_rows()
+    ids={r["id"] for r in rows}
+    marker="RO_REVIEW_"+uuid.uuid4().hex+"="
+    body,cleanup_marker=build_remote(tmp,remote_source(rows,marker),marker)
+    shared=os.environ.get("RO_REVIEW_SHARED_ROOT")
     compile(body,"semantic-review.py","exec")
     path=tmp/"semantic-review.py";path.write_text(body,encoding="utf-8")
     verdicts={}

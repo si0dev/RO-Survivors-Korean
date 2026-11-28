@@ -107,7 +107,11 @@ rm -f "$tmp/short.conf"
 if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
   echo "COLAB_PHASE=SEMANTIC_REVIEW"
   session_rc=0
-  timeout 1800 python benchmark/tools/colab-benchmark-review.py "$tmp" "$gpu" </dev/null || session_rc=$?
+  if [ "${RO_CHAINED_REVIEW:-0}" = 1 ]; then
+    timeout 1800 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$RO_CHAIN_STAGE" </dev/null || session_rc=$?
+  else
+    timeout 1800 python benchmark/tools/colab-benchmark-review.py "$tmp" "$gpu" </dev/null || session_rc=$?
+  fi
   return 0
 fi
 python - "$RUNNER_TEMP/ro-benchmark/inputs.json" "$tmp/benchmark.py" <<'PY'
@@ -223,6 +227,21 @@ run_comparison_model() {
   else
     echo "COMPARISON_ABORT=SESSION_OR_TRANSPORT_UNCONFIRMED"
   fi
+  return "$session_rc"
+}
+run_chain_model() {
+  local name="$1"
+  export RO_CHAIN_STAGE="$2"
+  select_comparison_model "$name"
+  gpu="ro-translate-$GITHUB_RUN_ID-1"
+  test "$(cat "$tmp/comparison-session")" = "$gpu"
+  test -s "$tmp/sessions.json"
+  allocation_started=1
+  allocation_ready=1
+  export RO_REVIEW_SHARED_ROOT="/tmp/ro-review-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+  cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
+  echo "CHAIN_SESSION_REUSED=$RO_CHAIN_STAGE"
+  run_session 1 "$((SECONDS+1800))"
   return "$session_rc"
 }
 summarize_comparison() {

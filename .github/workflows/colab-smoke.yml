@@ -1,4 +1,4 @@
-name: Colab three-model semantic review comparison (temporary)
+name: Colab chained translation correction and verification (temporary)
 on:
   pull_request:
     branches: [main]
@@ -16,13 +16,14 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
-    name: Sequential review - three models, one T4 session
+    name: Cached Index draft → Hy-MT3 correction → Qwen3 verification
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       RO_BENCHMARK_MODE: semantic-review
       RO_REVIEW_COMPARISON: '1'
       RO_REVIEW_SCOPE: duration
+      RO_CHAINED_REVIEW: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +34,11 @@ jobs:
           ref: 1533e8cd8b4507fa4cfd5b709dc0f6a722ba7b81
           persist-credentials: false
           path: reference
+      - uses: actions/checkout@v4
+        with:
+          ref: 97616b2423e1e04e13f33987a8aeac4ee4778f95
+          persist-credentials: false
+          path: historical
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -45,7 +51,9 @@ jobs:
           reference-dir: reference
           browser: 'false'
       - name: Independent semantic reviewer contract tests
-        run: python benchmark/tools/colab-benchmark-review-test.py -v
+        run: |
+          python benchmark/tools/colab-benchmark-review-test.py -v
+          python benchmark/tools/colab-benchmark-chain-test.py -v
       - name: Restore pinned rclone archive
         id: rclone
         uses: actions/cache/restore@v4
@@ -82,11 +90,12 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           comparison_profiles > "$tmp/profiles.tsv"
-      - name: Drive cache - Index-Translate-9B-Q6_K
+      - name: Restore actual Index-Translate drafts (read only, no inference)
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          prepare_comparison_model_cache 'Index-Translate-9B-Q6_K'
+          node historical/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
+          python benchmark/tools/colab-benchmark-chain.py restore "$tmp" "$RUNNER_TEMP/ro-benchmark" historical/tools
       - name: Drive cache - Hy-MT3-7B-Q8_0
         shell: bash
         run: |
@@ -103,35 +112,24 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           allocate_comparison_session
-      - name: Load, review and unload - Index-Translate-9B-Q6_K
-        id: review_index
-        continue-on-error: true
+      - name: Hy-MT3 - correct existing Index-Translate drafts
+        id: correct
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          run_comparison_model 'Index-Translate-9B-Q6_K'
-      - name: Load, review and unload - Hy-MT3-7B-Q8_0
-        id: review_hymt
-        if: ${{ !cancelled() && steps.review_index.outputs.safe_to_continue == 'true' }}
-        continue-on-error: true
+          run_chain_model 'Hy-MT3-7B-Q8_0' correct
+      - name: Qwen3 - verify Hy-MT3 corrected drafts against English
+        id: verify
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          run_comparison_model 'Hy-MT3-7B-Q8_0'
-      - name: Load, review and unload - Qwen3-14B-Q4_K_M
-        id: review_qwen
-        if: ${{ !cancelled() && steps.review_hymt.outputs.safe_to_continue == 'true' }}
-        continue-on-error: true
-        shell: bash
-        run: |
-          source benchmark/tools/colab-benchmark-workflow.sh
-          run_comparison_model 'Qwen3-14B-Q4_K_M'
-      - name: Report three model results
+          run_chain_model 'Qwen3-14B-Q4_K_M' verify
+      - name: Report chained translation results
         if: ${{ !cancelled() && steps.allocate.outcome == 'success' }}
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          summarize_comparison
+          python benchmark/tools/colab-benchmark-chain.py report "$tmp" "$RUNNER_TEMP/ro-benchmark"
       - name: Close Colab session, verify zero active sessions and clean up
         if: always()
         shell: bash

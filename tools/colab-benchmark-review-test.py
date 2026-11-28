@@ -81,12 +81,12 @@ class ReviewTests(unittest.TestCase):
         compile((r.ROOT/"colab-cache-populate.py").read_text(),"cache-populate.py","exec")
         workflow=(r.ROOT.parent/".github/workflows/colab-smoke.yml").read_text()
         self.assertNotIn("matrix:",workflow)
-        self.assertEqual(workflow.count("prepare_comparison_model_cache "),3)
-        self.assertEqual(workflow.count("run_comparison_model "),3)
+        self.assertEqual(workflow.count("prepare_comparison_model_cache "),2)
+        self.assertEqual(workflow.count("run_chain_model "),2)
         self.assertEqual(workflow.count("allocate_comparison_session"),1)
-        self.assertIn("summarize_comparison",workflow)
-        self.assertIn("steps.review_index.outputs.safe_to_continue",workflow)
-        self.assertIn("steps.review_hymt.outputs.safe_to_continue",workflow)
+        self.assertIn("colab-benchmark-chain.py restore",workflow)
+        self.assertIn("colab-benchmark-chain.py report",workflow)
+        self.assertLess(workflow.index("run_chain_model 'Hy-MT3"),workflow.index("run_chain_model 'Qwen3"))
         self.assertIn("RO_REVIEW_COMPARISON: '1'",workflow)
 
     def test_session_survives_distinct_workflow_shells(self):
