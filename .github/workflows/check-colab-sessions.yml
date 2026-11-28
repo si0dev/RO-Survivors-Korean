@@ -1,0 +1,53 @@
+name: Query live Colab assignments
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-colab-sessions.yml'
+permissions:
+  contents: read
+jobs:
+  query:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r tools/llm/colab-requirements.txt
+      - name: Query actual provider assignments without creating or stopping sessions
+        env:
+          COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
+        run: |
+          set -euo pipefail
+          umask 077
+          temp=$(mktemp -d)
+          trap 'rm -rf "$temp"' EXIT
+          export GOOGLE_APPLICATION_CREDENTIALS="$temp/adc.json"
+          export XDG_CONFIG_HOME="$temp/config"
+          python - <<'PY'
+          import os,json
+          data=json.loads(os.environ["COLAB_ADC_JSON"])
+          assert data["type"]=="authorized_user"
+          with open(os.environ["GOOGLE_APPLICATION_CREDENTIALS"],"w") as f:
+              json.dump(data,f)
+          PY
+          unset COLAB_ADC_JSON
+          python - <<'PY'
+          from datetime import datetime,timezone
+          from colab_cli.auth import AuthProvider
+          from colab_cli.common import state
+          state.auth_provider=AuthProvider.ADC
+          try:
+              assignments=state.client.list_assignments()
+              count=len(assignments)
+          except Exception as e:
+              print("COLAB_LIVE_QUERY_FAILED="+type(e).__name__,flush=True)
+              raise SystemExit(1) from None
+          print("COLAB_LIVE_QUERY_UTC="+datetime.now(timezone.utc).isoformat(),flush=True)
+          print("COLAB_LIVE_ACTIVE_ASSIGNMENTS="+str(count),flush=True)
+          PY
