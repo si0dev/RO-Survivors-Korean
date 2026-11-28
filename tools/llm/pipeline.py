@@ -257,9 +257,14 @@ def run(tmp,session,stage):
     if active:
         if not (tmp/"chain-prefetch-ready").is_file(): raise RuntimeError("LLM_PREFETCH_REQUIRED")
         marker="RO_LLM_"+uuid.uuid4().hex+"="
-        body,cleanup_marker=review.build_remote(tmp,payload(active,marker,stage,review,audit_refs),marker,preloaded=True)
-        if not cleanup_marker: raise RuntimeError("LLM_SHARED_SESSION_REQUIRED")
-        body="CHAIN_FULL_SCOPE=True\n"+body
+        reuse=os.environ.get("RO_AUDIT_REUSE_MODEL")=="1"
+        if reuse:
+            from live_audit_session import batch_source
+            body,cleanup_marker=batch_source(stage,payload(active,marker,stage,review,audit_refs),marker)
+        else:
+            body,cleanup_marker=review.build_remote(tmp,payload(active,marker,stage,review,audit_refs),marker,preloaded=True)
+            if not cleanup_marker: raise RuntimeError("LLM_SHARED_SESSION_REQUIRED")
+            body="CHAIN_FULL_SCOPE=True\n"+body
         compile(body,"llm-remote.py","exec")
         path=tmp/"llm-remote.py";path.write_text(body,encoding="utf-8")
         expected={r["id"] for r in active}
@@ -269,7 +274,7 @@ def run(tmp,session,stage):
             nonlocal cleaned,last_signal
             if line==cleanup_marker:
                 cleaned=True;last_signal=time.monotonic()
-                print("LLM_MODEL_RELEASED="+stage,flush=True)
+                print(("LLM_BATCH_DONE=" if reuse else "LLM_MODEL_RELEASED=")+stage,flush=True)
             elif line.startswith(marker):
                 item=json.loads(line[len(marker):])
                 i,value=item["id"],item["value"]
@@ -296,6 +301,10 @@ def run(tmp,session,stage):
             print(f"LLM_WAIT={stage}:{elapsed}s {len(results)}/{len(active)} signal_age={age}s",flush=True)
             return age<900
         limit=6000 if audit else 4200
+        if reuse:
+            remaining=int(float(os.environ["RO_AUDIT_DEADLINE"])-time.monotonic())-120
+            if remaining<60: raise RuntimeError("AUDIT_TIME_BUDGET")
+            limit=min(limit,remaining)
         args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout",str(limit),"-f",str(path)]
         rc,raw=kernel.invoke(args,limit+30,on_line=on_line,on_wait=waiting)
         if rc or not cleaned or set(results)!=expected:

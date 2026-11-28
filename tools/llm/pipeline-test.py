@@ -20,6 +20,17 @@ class Contract(unittest.TestCase):
             self.assertEqual("PRIVATE_BASELINE" in code,stage=="verify")
         code=p.payload([row],"marker=","verify",review)
         self.assertNotIn("audit_reference",code)
+    def test_single_session_batch_sources(self):
+        import live_audit_session as s
+        bootstrap={k:"x" for k in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC")}
+        for stage in s.MODELS:
+            compile(s.start_source(bootstrap,"/tmp/test",stage,"READY"),"start","exec")
+            code,marker=s.batch_source(stage,"print('test')","marker")
+            compile(code,"batch","exec")
+            self.assertIn("builtins._ro_audit_model",code)
+            self.assertNotIn("subprocess.Popen",code)
+            self.assertNotIn("new -s",code)
+            compile(s.stop_source(stage,"DONE"),"stop","exec")
     def test_gate_and_fallback(self):
         row={"id":"1","source":"Damage +2","terms":{},"draft":"피해 +2","corrected":"피해 +3","index_status":"COMPLETED","correction_status":"COMPLETED"}
         self.assertEqual(p.choose(row,{"original":"ACCEPT","corrected":"ACCEPT"})["ko"],row["draft"])
