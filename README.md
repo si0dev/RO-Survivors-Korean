@@ -1,5 +1,7 @@
 # RO Survivors 한국어 패치
 
+**한국어** | [English](README.en.md)
+
 [RO Survivors](https://ro-survivors.com/)를 한국어로 즐길 수 있도록 만든 **AI 번역 기반의 비공식 팬 번역 패치**입니다.
 
 ## 한국어 패치 설치
