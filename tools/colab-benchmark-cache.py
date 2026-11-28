@@ -1,7 +1,11 @@
 import os,json,time,tempfile,pathlib,hashlib,uuid,requests,shutil,subprocess,re,threading
-TAG="b12343"
-REPO="IndexTeam/Index-Translate-9B-GGUF"
-MODEL="Index-Translate-9B.Q6_K.gguf"
+# The standalone direct-copy test uses a local REMOTE without a profile.
+_spec=globals().get("CACHE_SPEC",{})
+TAG=_spec.get("engine","b12343")
+REPO=_spec.get("repo","IndexTeam/Index-Translate-9B-GGUF")
+MODEL=_spec.get("filename","Index-Translate-9B.Q6_K.gguf")
+ENGINE_REMOTE=_spec.get("engine_remote",REMOTE)
+MIN_MODEL_BYTES=_spec.get("min_bytes",7_000_000_000)
 manifest_path=cache/"manifest.json"
 def hash_file(p):
     with p.open("rb") as f: return hashlib.file_digest(f,"sha256").hexdigest()
@@ -15,7 +19,7 @@ def verified_manifest():
         assert pathlib.PurePath(x["name"]).name==x["name"] and x["name"] not in (".","..")
         assert len(x["sha256"])==64
         if x["kind"]=="model":
-            assert x["name"]==MODEL and x["size"]>7_000_000_000
+            assert x["name"]==MODEL and x["size"]>=MIN_MODEL_BYTES
     return d
 
 def copy_asset(config,name,local_path,entry=None):
@@ -26,7 +30,8 @@ def copy_asset(config,name,local_path,entry=None):
     complete=False
     try:
         try:
-            args=[RCLONE,"--config",config,"copyto",REMOTE+"/"+name,str(local_path),
+            remote=ENGINE_REMOTE if kind in ("llama","cudart") else REMOTE
+            args=[RCLONE,"--config",config,"copyto",remote+"/"+name,str(local_path),
                 "--contimeout","30s","--timeout","120s","--retries","1","--low-level-retries","1",
                 "--stats","5s","--stats-one-line","--stats-log-level","NOTICE"]
             messages=[]

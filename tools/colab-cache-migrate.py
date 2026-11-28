@@ -34,9 +34,11 @@ def main():
     # Confirm the new credential can access Drive and that source digests exist before deleting.
     assert all(e.get("sha256") and len(e["sha256"])==64 for e,_ in entries),"UPSTREAM_DIGEST_REQUIRED"
     cache.rc("mkdir",cache.REMOTE)
+    cache.rc("mkdir",cache.ENGINE_REMOTE)
     current=cache.listing()
     if "manifest.json" in current:
         d=json.loads(cache.rc("cat",cache.REMOTE+"/manifest.json"))
+        current=cache.promote_legacy_engine(d,current)
         if cache.valid(d,current):
             print("MIGRATION_ALREADY_COMPLETE",flush=True)
             return

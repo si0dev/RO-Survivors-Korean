@@ -79,7 +79,9 @@ t=json.loads(c["rocache"]["token"]);t["expiry"]="2000-01-01T00:00:00Z"
 c["rocache"]["token"]=json.dumps(t)
 with (p/"drive.conf").open("w") as f: c.write(f)
 PY
-check drive-refresh 120 rclone --config "$tmp/drive.conf" lsjson rocache:RO-Survivors-Korean-cache-v2/index-translate-9b-q6k-b12343-v1 --files-only
+local cache_remote
+cache_remote=$(python benchmark/tools/colab_cache_layout.py)
+check drive-refresh 120 rclone --config "$tmp/drive.conf" lsjson "$cache_remote" --files-only
 python - <<'PY'
 import configparser,json,os,pathlib,datetime
 p=pathlib.Path(os.environ["RO_CACHE_TMP"])
@@ -107,7 +109,7 @@ assert len(inputs)==200 and all("reference" not in row for row in inputs)
 root=pathlib.Path("benchmark/tools")
 body="import json\nINPUTS=json.loads("+repr(json.dumps(inputs,ensure_ascii=False))+")\nCONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
 bootstrap=json.loads((pathlib.Path(os.environ["RO_CACHE_TMP"])/"bootstrap.json").read_text())
-for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA"): body+=key+"="+repr(bootstrap[key])+"\n"
+for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"): body+=key+"="+repr(bootstrap[key])+"\n"
 for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py","colab-benchmark-translate.py"):
     body+=(root/name).read_text()+"\n"
 # The kernel transport calls translate_one on pending batches after initialization.

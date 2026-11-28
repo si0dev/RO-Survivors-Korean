@@ -79,7 +79,7 @@ def main(tmp,session):
     marker="RO_REVIEW_"+uuid.uuid4().hex+"="
     bootstrap=json.loads((tmp/"bootstrap.json").read_text())
     body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
-    for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA"):
+    for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
         body+=key+"="+repr(bootstrap[key])+"\n"
     for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"):
         body+=(ROOT/name).read_text()+"\n"
