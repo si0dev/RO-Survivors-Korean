@@ -1,6 +1,11 @@
 name: Automatic translation update
 on:
   workflow_dispatch:
+  # Validate the real integration when the production workflow itself changes.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/auto-translate.yml'
   schedule:
     - cron: '30 2 * * *'
   pull_request:
