@@ -59,6 +59,25 @@ class ChainTests(unittest.TestCase):
         self.assertEqual(c.correction_issues(source,"2.5초 동안 잠들게 됩니다(보스는 절반 시간)."),[])
         self.assertIn("numeric_tokens_changed",c.correction_issues(source,"2.5초 동안 잠들게 되며 보스는 1.25초 동안 잠듭니다."))
         self.assertEqual(c.correction_issues("Frozen for 3 seconds.","3초 동안 빙결됩니다."),[])
+    def test_prompt_isolation_and_unsupported_effect(self):
+        source="You throw magic sand on a group of enemies: they fall asleep for 2.5 s (bosses, half as long)."
+        draft="적 그룹에게 마법 모래를 던지면 2.5초 동안 잠들게 됩니다(보스는 절반 시간)."
+        contaminated="적 그룹에게 마법 모래를 던지면 중독 지속 시간 2.5초 동안 잠들게 되며, 보스는 절반입니다."
+        self.assertIn("unsupported_poison_effect",c.correction_issues(source,contaminated))
+        self.assertNotIn("unsupported_poison_effect",c.correction_issues("Poison for 2 seconds.","2초 동안 중독됩니다."))
+        responses=[]
+        for text in (contaminated,draft):
+            response=Mock()
+            response.json.return_value={"choices":[{"message":{"content":text},"finish_reason":"stop"}]}
+            responses.append(response)
+        with patch.object(requests,"post",side_effect=responses) as post:
+            self.assertEqual(c.correct_one({"source":source,"draft":draft,"context":"skill"},"mock"),draft)
+            self.assertEqual(post.call_count,2)
+            first=post.call_args_list[0].kwargs["json"]["messages"][0]["content"]
+            self.assertNotIn("중독",first)
+            self.assertNotIn("属性时长变化量",first)
+            self.assertIn("相对时长条件",first)
+            self.assertIn("unsupported_poison_effect",post.call_args.kwargs["json"]["messages"][0]["content"])
     def test_correction_retries_wrong_duration(self):
         responses=[]
         for text in ("+0.3초 동안 빙결 상태가 됩니다.","동빙 시간 +0.3초."):

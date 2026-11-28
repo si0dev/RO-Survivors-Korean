@@ -74,6 +74,9 @@ def restore(tmp,bench,historical):
         print("CHAIN_INDEX_CHECKPOINT_RESTORED=200 SELECTED=2 INDEX_INFERENCE=0",flush=True)
     write(tmp/"chain-drafts.json",selected)
 
+def is_duration_modifier(source):
+    return bool(re.fullmatch(r"[+-]\d+(?:\.\d+)?\s*(?:s|sec|seconds?)\s+of\s+[^.!?]+[.]?",source.strip(),re.I))
+
 def correction_issues(source,text):
     from collections import Counter
     numbers=r"[+-]?\d+(?:\.\d+)?%?"
@@ -81,23 +84,30 @@ def correction_issues(source,text):
     if Counter(re.findall(numbers,source))!=Counter(re.findall(numbers,text)):
         issues.append("numeric_tokens_changed")
     # Only target terse signed duration modifiers, not ordinary fixed-duration effects.
-    if re.fullmatch(r"[+-]\d+(?:\.\d+)?\s*(?:s|sec|seconds?)\s+of\s+[^.!?]+[.]?",source.strip(),re.I):
+    if is_duration_modifier(source):
         if not re.search(r"(?:지속\s*시간|시간|증가|감소|연장|단축)",text) or re.search(r"초\s*동안",text):
             issues.append("duration_modifier_rendered_as_fixed_duration")
     if re.search(r"\bhalf as long\b",source,re.I) and not re.search(r"절반|반으로|반만|반의",text):
         issues.append("relative_duration_not_preserved")
+    # Narrow regression guard: a status introduced by a prior prompt example
+    # is not supported by an unrelated source sentence.
+    if re.search(r"중독|독\s*상태|독\s*피해",text) and not re.search(r"\b(?:poison\w*|toxic\w*|toxins?|venom\w*|intoxicat\w*)\b",source,re.I):
+        issues.append("unsupported_poison_effect")
     return issues
 
 def correct_one(row,base):
     import json,requests
-    prompt=("你是英韩游戏翻译校订员。英文原文是事实依据，韩语初稿是需要校订的已有译文。"
-            "保留初稿中正确的部分，仅修正错误、遗漏或术语问题；不得从头自由重译。"
-            "原文的前置正负号是属性变化量，不是固定状态持续时间。"
-            "属性词条必须保留属性变化的语法，不能变成施加状态的描述。"
-            "例如：+2 s of poison 表示 중독 지속 시간 +2초，而不是 +2초 동안 중독됩니다。"
-            "保留相对时长表达，如 half as long 应保留为 절반，不计算新的绝对秒数。"
-            "必须保留全部数值、变量、单位、目标、条件、频率及否定。使用自然韩语游戏用语。"
-            "若初稿准确，原样返回。只输出最终一行韩语译文，不要解释。\n")
+    prompt=("你是英韩游戏翻译校订员。以英文原文为依据检查已有韩语译文。"
+            "如果初稿没有语义错误，逐字原样返回；仅修正明确错误，不要为润色而重写。"
+            "不得添加原文没有的状态、伤害、对象或条件。保留原文的数字、符号、变量、单位和关系。"
+            "只输出最终一行韩语译文，不要解释。\n")
+    if is_duration_modifier(row["source"]):
+        prompt+=("本条是带正负号的属性时长变化量。"
+                 "韩语必须采用属性名称加持续时间加带符号的数值的简短词条形式，"
+                 "不得改写为施加状态若干秒的句子。\n")
+    if re.search(r"\bhalf as long\b",row["source"],re.I):
+        prompt+=("本条有相对时长条件。必须保留相对于前述时长的比例关系，"
+                 "不得计算或写入新的绝对秒数。\n")
     data={"English":row["source"],"Korean draft":row["draft"],"Context":row["context"]}
     for attempt in range(1,4):
         response=requests.post(base+"/v1/chat/completions",json={"messages":[{"role":"user","content":prompt+json.dumps(data,ensure_ascii=False)}],
@@ -123,7 +133,7 @@ def payload(rows,marker,stage,review):
     else:
         worker=review.review_one
         public=[{"id":r["id"],"source":r["source"],"candidate":r["corrected"]} for r in rows]
-    helpers=inspect.getsource(correction_issues)+"\n" if stage=="correct" else ""
+    helpers=(inspect.getsource(is_duration_modifier)+"\n"+inspect.getsource(correction_issues)+"\n") if stage=="correct" else ""
     return ("\nimport json,re\n"+helpers+inspect.getsource(worker)+"\n"
         +"chain_rows=json.loads("+repr(json.dumps(public,ensure_ascii=False))+")\n"
         +"for row in chain_rows:\n"
@@ -217,7 +227,8 @@ def run(tmp,session,stage):
             value=results[row["id"]]
             checks=translator.check_output(row["source"],value,translator.required_terms(row["source"]))
             issues=correction_issues(row["source"],value)
-            checks["duration_semantics"]=not any(i!="numeric_tokens_changed" for i in issues)
+            checks["duration_semantics"]=not any(i in ("duration_modifier_rendered_as_fixed_duration","relative_duration_not_preserved") for i in issues)
+            checks["unsupported_effect"]= "unsupported_poison_effect" not in issues
             if not all(checks.values()):
                 print("CHAIN_STRUCTURAL_FAILURE="+row["id"]+":"+",".join(k for k,v in checks.items() if not v),flush=True)
             corrected.append({**row,"corrected":value,"checks":checks})
