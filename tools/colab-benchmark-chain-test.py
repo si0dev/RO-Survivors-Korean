@@ -31,8 +31,34 @@ class ChainTests(unittest.TestCase):
         self.assertIn("original-draft",first)
         self.assertNotIn("corrected-draft",first)
         self.assertIn("corrected-draft",second)
-        self.assertNotIn("original-draft",second)
+        self.assertIn("original-draft",second)
+        self.assertIn("verify_task",second)
         self.assertNotIn("secret-reference",first+second)
+    def test_full_scope_and_exclusion(self):
+        import os
+        refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]
+        inputs=[{k:r[k] for k in ("id","source","group","context")} for r in refs]
+        with patch.dict(os.environ,{"RO_CHAIN_SCOPE":"all"}):
+            rows=c.restore_logged_drafts(inputs,refs)
+        self.assertEqual(len(rows),200)
+        self.assertEqual([r["id"] for r in rows if r.get("excluded")],["084"])
+        self.assertTrue(all("reference" not in r for r in rows))
+        self.assertEqual(next(r["draft"] for r in rows if r["id"]=="175"),"{name}이 쓰러졌습니다. 옆에 머물러서 부활시켜 주세요.")
+    def test_verified_original_fallback_and_summary(self):
+        row={"id":"001","source":"Damage 2","group":"skill","draft":"피해 2","corrected":"피해 3","correction_status":"COMPLETED","draft_checks":{"terms":True,"numbers":True},"checks":{"terms":True,"numbers":False}}
+        final=c.finalize(row,{"original":"ACCEPT","corrected":"REJECT"})
+        self.assertEqual(final["final"],row["draft"])
+        self.assertEqual(final["selection"],"verified_original")
+        totals,groups=c.summarize([final],{"001":row["draft"]})
+        self.assertEqual(totals["corrected_semantic_regressed"],1)
+        self.assertEqual(totals["final_combined_pass"],1)
+        self.assertEqual(totals["corrected_combined_pass"],0)
+        self.assertEqual(groups["skill"]["evaluated"],1)
+    def test_review_deduplicates_unchanged_draft(self):
+        with patch.object(c,"review_one",create=True,return_value="ACCEPT") as review:
+            result=c.verify_task({"source":"x","draft":"가","candidate":"가"},"mock")
+            self.assertEqual(result,{"original":"ACCEPT","corrected":"ACCEPT"})
+            self.assertEqual(review.call_count,1)
     def test_prefetch_and_execution_are_separate(self):
         import os,tempfile
         review=c.load("review",ROOT/"colab-benchmark-review.py")

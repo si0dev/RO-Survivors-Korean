@@ -257,7 +257,7 @@ run_chain_model() {
   cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
   echo "CHAIN_SESSION_REUSED=$stage"
   # Local model files already verified; no Drive token upload or model copy.
-  timeout 1800 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$stage" </dev/null
+  timeout 4350 python benchmark/tools/colab-benchmark-chain.py run "$tmp" "$gpu" "$stage" </dev/null
 }
 summarize_comparison() {
   local overall=0 name profile rc

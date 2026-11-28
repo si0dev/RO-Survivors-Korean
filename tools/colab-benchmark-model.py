@@ -111,8 +111,9 @@ if help_result.returncode:
 help_text=help_result.stdout
 # Small review prompts do not require a large KV cache; keep identical
 # settings across all reviewer models and leave translation mode unchanged.
-context_size="4096" if globals().get("REVIEW_ONLY",False) else "16384"
-cmd=[str(server),"-m",str(model_path),"-ngl","all","--load-mode","none","-c",context_size,"-np","4","--host","127.0.0.1","--port","18080"]
+context_size="8192" if globals().get("CHAIN_FULL_SCOPE",False) else "4096" if globals().get("REVIEW_ONLY",False) else "16384"
+parallel="2" if globals().get("CHAIN_FULL_SCOPE",False) else "4"
+cmd=[str(server),"-m",str(model_path),"-ngl","all","--load-mode","none","-c",context_size,"-np",parallel,"--host","127.0.0.1","--port","18080"]
 for flag,values in (("--fit",["off"]),("--log-verbosity",["4"]),("--log-file",[str(root/"llama.log")]),("--jinja",[]),("--reasoning",["off"])):
     if re.search(r"(?<![\w-])"+re.escape(flag)+r"(?![\w-])",help_text): cmd.extend([flag,*values])
     else: print("ENGINE_OPTION_UNAVAILABLE "+flag,flush=True)

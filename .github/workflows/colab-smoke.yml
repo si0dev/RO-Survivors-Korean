@@ -16,13 +16,14 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
-    name: Cached Index draft → Hy-MT3 correction → Qwen3 verification
+    name: 200 cached Index drafts → Hy-MT3 correction → Qwen3 before/after verification
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       RO_BENCHMARK_MODE: semantic-review
       RO_REVIEW_COMPARISON: '1'
       RO_REVIEW_SCOPE: duration
+      RO_CHAIN_SCOPE: all
       RO_CHAINED_REVIEW: '1'
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +124,7 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           run_chain_model 'Hy-MT3-7B-Q8_0' correct
-      - name: Qwen3 - verify Hy-MT3 corrected drafts against English
+      - name: Qwen3 - verify original and corrected drafts against English
         id: verify
         shell: bash
         run: |
