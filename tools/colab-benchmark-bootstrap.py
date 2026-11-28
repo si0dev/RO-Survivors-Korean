@@ -15,12 +15,19 @@ def run(*args):
     if p.returncode: raise RuntimeError("RCLONE_BOOTSTRAP_DRIVE_IO")
     return p.stdout
 dest=spec["bootstrap_remote"]+"/"+name
-run("copyto",str(archive),dest,"--checksum")
-entry=json.loads(run("lsjson",dest,"--stat","--hash"))
-assert entry["Size"]==archive.stat().st_size and re.fullmatch(r"[A-Za-z0-9_-]+",entry["ID"])
-remote_md5=entry.get("Hashes",{}).get("MD5")
-if remote_md5:
-    with archive.open("rb") as f: assert hashlib.file_digest(f,"md5").hexdigest()==remote_md5,"RCLONE_REMOTE_HASH_MISMATCH"
+shared=tmp/"rclone-bootstrap-verified.json"
+if shared.exists():
+    prior=json.loads(shared.read_text())
+    assert prior["sha256"]==matches[0] and prior["dest"]==dest
+    entry=prior["entry"]
+else:
+    run("copyto",str(archive),dest,"--checksum")
+    entry=json.loads(run("lsjson",dest,"--stat","--hash"))
+    assert entry["Size"]==archive.stat().st_size and re.fullmatch(r"[A-Za-z0-9_-]+",entry["ID"])
+    remote_md5=entry.get("Hashes",{}).get("MD5")
+    if remote_md5:
+        with archive.open("rb") as f: assert hashlib.file_digest(f,"md5").hexdigest()==remote_md5,"RCLONE_REMOTE_HASH_MISMATCH"
+    shared.write_text(json.dumps({"sha256":matches[0],"dest":dest,"entry":entry}))
 manifest=run("cat",remote+"/manifest.json")
 (tmp/"bootstrap.json").write_text(json.dumps({"RCLONE_DRIVE_ID":entry["ID"],"RCLONE_ZIP_SHA":matches[0],"MANIFEST_SHA":hashlib.sha256(manifest).hexdigest(),"CACHE_SPEC":spec}))
 print("RCLONE_BOOTSTRAP_CACHE_READY",flush=True)

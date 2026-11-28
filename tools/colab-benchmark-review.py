@@ -81,13 +81,40 @@ def main(tmp,session):
     body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\nREVIEW_ONLY=True\n"
     for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
         body+=key+"="+repr(bootstrap[key])+"\n"
-    for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"):
+    shared=os.environ.get("RO_REVIEW_SHARED_ROOT")
+    if shared:
+        body+="REVIEW_SHARED_ROOT="+repr(shared)+"\n"
+    for name in ("colab-cache-mount.py","colab-benchmark-cache.py"):
         body+=(ROOT/name).read_text()+"\n"
-    body+=remote_source(rows,marker)
+    # Explicit process cleanup before the next model in the same VM.
+    if shared:
+        cleanup_marker=marker+"CLEANUP"
+        body+="proc=None; root=None; server_log=None\ntry:\n"
+        block=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+remote_source(rows,marker)
+        body+="".join("    "+line+"\n" for line in block.splitlines())
+        body+="finally:\n"
+        body+="    child=globals().get('proc')\n"
+        body+="    if child is not None and child.poll() is None:\n"
+        body+="        child.terminate()\n"
+        body+="        try: child.wait(timeout=30)\n"
+        body+="        except subprocess.TimeoutExpired: child.kill(); child.wait(timeout=30)\n"
+        body+="    if globals().get('server_log') is not None: server_log.close()\n"
+        body+="    if globals().get('root') is not None: shutil.rmtree(root)\n"
+        body+="    pathlib.Path(CONFIG).unlink(missing_ok=True)\n"
+        body+="    shutil.rmtree(cache,ignore_errors=True)\n"
+        body+="    print("+repr(cleanup_marker)+",flush=True)\n"
+    else:
+        body+=(ROOT/"colab-benchmark-model.py").read_text()+"\n"+remote_source(rows,marker)
     compile(body,"semantic-review.py","exec")
     path=tmp/"semantic-review.py";path.write_text(body,encoding="utf-8")
     verdicts={}
+    cleaned=False
     def on_line(line):
+        nonlocal cleaned
+        if shared and line==cleanup_marker:
+            cleaned=True
+            print("SEMANTIC_REVIEW_MODEL_RELEASED",flush=True)
+            return
         match=re.fullmatch(re.escape(marker)+r"(\d{2}):(ACCEPT|REJECT|ERROR|INVALID)",line)
         if match:
             if match[1] not in ids or match[1] in verdicts:
@@ -103,7 +130,10 @@ def main(tmp,session):
         on_wait=lambda elapsed:print(f"SEMANTIC_REVIEW_WAIT elapsed={elapsed}s completed={len(verdicts)}/{len(rows)}",flush=True))
     if rc:
         kernel.report_failure("SEMANTIC_REVIEW",raw,kernel.assignment_count,print)
-        return 1
+        return 2 if shared and not cleaned else 1
+    if shared and not cleaned:
+        print("SEMANTIC_REVIEW_CLEANUP_UNCONFIRMED",flush=True)
+        return 2
     return assess(rows,verdicts)
 
 if __name__=="__main__":

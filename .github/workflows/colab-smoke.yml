@@ -7,6 +7,7 @@ on:
       - 'tools/colab-benchmark-*'
       - 'tools/colab_cache_layout.py'
       - 'tools/colab-cache-populate.py'
+      - 'tools/colab-cache-mount.py'
 permissions:
   contents: read
 concurrency:
@@ -15,24 +16,12 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
-    name: Semantic review - ${{ matrix.model }}
+    name: Sequential review - three models, one T4 session
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - model: Index-Translate-9B-Q6_K
-            profile: '{"slug":"index-translate-9b","quant":"q6_k","repo":"IndexTeam/Index-Translate-9B-GGUF","filename":"Index-Translate-9B.Q6_K.gguf","engine":"b12343","min_bytes":7000000000}'
-          - model: Hy-MT3-7B-Q8_0
-            profile: '{"slug":"hy-mt3-7b","quant":"q8_0","repo":"tencent/Hy-MT3-7B-GGUF","filename":"Hy-MT3-7B-Q8_0.gguf","engine":"b12343","min_bytes":8000000000}'
-          - model: Qwen3-14B-Q4_K_M
-            profile: '{"slug":"qwen3-14b","quant":"q4_k_m","repo":"Qwen/Qwen3-14B-GGUF","filename":"Qwen3-14B-Q4_K_M.gguf","engine":"b12343","min_bytes":8000000000}'
+    timeout-minutes: 180
     env:
       RO_BENCHMARK_MODE: semantic-review
-      RO_CACHE_PROFILE_JSON: ${{ matrix.profile }}
-      RO_REVIEW_MODEL: ${{ matrix.model }}
+      RO_REVIEW_COMPARISON: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -87,12 +76,12 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_auth
-      - name: Verify Drive cache and prepare rclone bootstrap
+      - name: Prepare all three model caches and shared engine
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          prepare_cache
-      - name: GPU semantic review only (12 candidate verdicts, zero translations)
+          prepare_comparison_cache
+      - name: One T4 session - sequential model review (36 verdicts, zero translations)
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh

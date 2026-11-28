@@ -8,6 +8,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="$tmp/adc.json"
 cli=(colab --auth=adc --config "$tmp/sessions.json")
 gpu="ro-translate-$GITHUB_RUN_ID"
 allocation_started=0
+allocation_ready=0
 # Never emit raw authentication or session logs into this public repository.
 check() {
   local phase="$1" limit="$2"
@@ -59,17 +60,21 @@ release_session() {
   timeout 60 "${cli[@]}" stop -s "$gpu" >"$tmp/stop.log" 2>&1 </dev/null || true
   timeout 180 python benchmark/tools/colab-session-cleanup.py POST || return $?
   allocation_started=0
+  allocation_ready=0
   rm -f "$tmp/sessions.json"
 }
 run_session() {
-allocation_started=1
 gpu="ro-translate-$GITHUB_RUN_ID-$1"
 export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$1.conf"
+if [ "$allocation_ready" = 0 ]; then
+allocation_started=1
 # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
 # The CLI handles its own bounded retries of transient server failures.
 export COLAB_CLI_ASSIGN_RETRIES=3
 echo "COLAB_PHASE=GPU_ALLOCATION"
 check gpu-session 600 "${cli[@]}" new -s "$gpu" --gpu T4 || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|service unavailable|502|503|504" "$tmp/gpu-session.log" && ! grep -Eqi "401|403|412|429|quota|usage limit|permission denied|invalid_grant|TooManyAssignmentsError|resource exhausted" "$tmp/gpu-session.log"; then session_rc=75; fi; return 0; }
+allocation_ready=1
+fi
 # Refresh on the runner immediately before passing a short-lived credential.
 python - <<'PY'
 import configparser,json,os,pathlib
@@ -93,7 +98,7 @@ short=configparser.ConfigParser(interpolation=None)
 short["rocache"]={"type":"drive","scope":"drive.file","client_id":c["rocache"]["client_id"],"token":json.dumps({k:t[k] for k in ("access_token","token_type","expiry")})}
 with (p/"short.conf").open("w") as f: short.write(f)
 PY
-check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG" || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|file or directory not found|502|503|504" "$tmp/token-upload.log" && ! grep -Eqi "401|403|429|quota|permission denied|invalid_grant" "$tmp/token-upload.log"; then session_rc=75; fi; return 0; }
+check token-upload 60 "${cli[@]}" upload -s "$gpu" "$tmp/short.conf" "$REMOTE_CONFIG" || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|file or directory not found|502|503|504" "$tmp/token-upload.log" && ! grep -Eqi "401|403|429|quota|permission denied|invalid_grant" "$tmp/token-upload.log"; then session_rc=75; fi; if [ "${RO_REVIEW_COMPARISON:-0}" = 1 ]; then session_rc=2; fi; return 0; }
 # Keep the refresh-capable Drive config only on the runner until cleanup.
 rm -f "$tmp/short.conf"
 if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
@@ -159,6 +164,37 @@ for line in open(sys.argv[1]):
 PY
   python benchmark/tools/colab-benchmark-bootstrap.py "$tmp" "$HOME/.cache/ro-llm/rclone"
 }
+comparison_profiles() {
+  python -c 'import json; rows=json.load(open("benchmark/tools/colab-benchmark-profiles.json")); assert len(rows)==3; [print(x["name"]+"\t"+json.dumps(x["profile"],separators=(",",":"))) for x in rows]'
+}
+prepare_comparison_cache() {
+  local name profile
+  comparison_profiles > "$tmp/profiles.tsv"
+  while IFS=$'\t' read -r name profile; do
+    export RO_CACHE_PROFILE_JSON="$profile"
+    echo "CACHE_MODEL=$name"
+    prepare_cache
+    cp "$tmp/bootstrap.json" "$tmp/bootstrap-$name.json"
+  done < "$tmp/profiles.tsv"
+}
+run_comparison() {
+  local overall=0 name profile
+  export RO_REVIEW_SHARED_ROOT="/tmp/ro-review-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+  while IFS=$'\t' read -r name profile; do
+    export RO_CACHE_PROFILE_JSON="$profile" RO_REVIEW_MODEL="$name"
+    cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
+    run_session 1 "$((SECONDS+1800))"
+    echo "COMPARISON_RESULT=$name:$session_rc"
+    if [ "$session_rc" != 0 ]; then overall=1; fi
+    # Do not start another model if transport or cleanup was not confirmed.
+    if [ "$allocation_ready" != 1 ] || [ "$session_rc" -gt 1 ]; then
+      echo "COMPARISON_ABORT=SESSION_OR_TRANSPORT_UNCONFIRMED"
+      break
+    fi
+  done < "$tmp/profiles.tsv"
+  release_session
+  return "$overall"
+}
 run_benchmark() {
   cleanup_on_exit() {
     local rc=$?
@@ -171,6 +207,10 @@ run_benchmark() {
   trap cleanup_on_exit EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
+  if [ "${RO_REVIEW_COMPARISON:-0}" = 1 ]; then
+    run_comparison
+    return $?
+  fi
   if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
     run_session 1 "$((SECONDS+1800))"
     local rc="$session_rc"

@@ -1,4 +1,4 @@
-import importlib.util,pathlib,unittest
+import importlib.util,pathlib,unittest,json,os,subprocess,tempfile,re,contextlib,io
 from unittest.mock import Mock,patch
 import requests
 
@@ -38,6 +38,38 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(r.assess(rows,verdicts,emit),1)
         verdicts[bad["id"]]="INVALID"
         self.assertEqual(r.assess(rows,verdicts,emit),1)
+
+    def test_shared_remote_body_and_cleanup_gate(self):
+        rows=r.sample_rows()
+        with tempfile.TemporaryDirectory() as d:
+            tmp=pathlib.Path(d)
+            (tmp/"bootstrap.json").write_text(json.dumps({"RCLONE_DRIVE_ID":"fake","RCLONE_ZIP_SHA":"0"*64,"MANIFEST_SHA":"1"*64,"CACHE_SPEC":{}}))
+            for cleanup,expected in ((True,0),(False,2)):
+                fake=Mock()
+                def invoke(args,limit,on_line,on_wait):
+                    body=pathlib.Path(args[-1]).read_text()
+                    compile(body,"remote.py","exec")
+                    self.assertIn("REVIEW_SHARED_ROOT=",body)
+                    self.assertIn("child.wait(timeout=30)",body)
+                    self.assertNotIn('"expected"',body)
+                    marker=re.search(r"RO_REVIEW_[a-f0-9]{32}=",body).group()
+                    for row in rows: on_line(marker+row["id"]+":"+row["expected"])
+                    if cleanup: on_line(marker+"CLEANUP")
+                    return 0,""
+                fake.invoke.side_effect=invoke
+                loader=Mock()
+                with patch.object(r.importlib.util,"spec_from_file_location",return_value=loader), patch.object(r.importlib.util,"module_from_spec",return_value=fake), patch.dict(os.environ,{"REMOTE_CONFIG":"/tmp/test.conf","RO_REVIEW_SHARED_ROOT":"/tmp/test-shared"}), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(r.main(tmp,"one-session"),expected)
+    def test_comparison_profiles_and_shell_syntax(self):
+        profiles=json.loads((r.ROOT/"colab-benchmark-profiles.json").read_text())
+        self.assertEqual(len(profiles),3)
+        self.assertEqual(len({x["name"] for x in profiles}),3)
+        self.assertEqual(len({x["profile"]["engine"] for x in profiles}),1)
+        subprocess.run(["bash","-n",str(r.ROOT/"colab-benchmark-workflow.sh")],check=True)
+        workflow=(r.ROOT.parent/".github/workflows/colab-smoke.yml").read_text()
+        self.assertNotIn("matrix:",workflow)
+        self.assertIn("prepare_comparison_cache",workflow)
+        self.assertIn("RO_REVIEW_COMPARISON: '1'",workflow)
 
 if __name__=="__main__":
     unittest.main()

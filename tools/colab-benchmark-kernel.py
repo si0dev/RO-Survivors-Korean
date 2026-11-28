@@ -71,7 +71,7 @@ def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
             if p.poll() is None: p.kill();p.wait()
             t.join(timeout=5)
 def safe_progress(line,emit):
-    if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart)|CACHE_COPY_PERCENT=(?:manifest|model|llama|cudart):(?:100|[0-9]{1,2}))",line):
+    if re.fullmatch(r"(?:GPU_READY|RCLONE_BOOTSTRAP_START|RCLONE_BOOTSTRAP_READY|RCLONE_BOOTSTRAP_REUSED|SHARED_ENGINE_REUSED|LOCAL_MODEL_COPY_START|LOCAL_MODEL_READY|MODEL_SERVER_START|MODEL_READY|INDEX_FULL_GPU_OFFLOAD \d+/\d+|MODEL_(?:SERVER|LOAD)_SECONDS \d+(?:\.\d+)?|CACHE_COPY_(?:START|DONE)=(?:manifest|model|llama|cudart)|CACHE_COPY_PERCENT=(?:manifest|model|llama|cudart):(?:100|[0-9]{1,2}))",line):
         emit(line,flush=True)
     for marker in ("TRANSLATION_RETRY=","TRANSLATION_ERROR="):
         if not line.startswith(marker): continue
