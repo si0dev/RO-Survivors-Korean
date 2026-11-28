@@ -7,7 +7,7 @@ const escape=s=>s.replace(/[.*+?^$\x7b\x7d()|[\]\\]/g,'\\$&');
 // Candidate vocabulary only. Korean values always come from matching approved hashes.
 // Longest match wins (e.g. Ore Discovery is not the stat Discovery).
 export const candidates=[
- 'Ore Discovery','Hindsight','Affixes','Haste','Flee','Discovery','Sword Dance','Sand Attack','Spear Quicken','Peco Peco','Peco','Unhealed Wound','Caltrops','Caltrop','Mage','Wizard','Deity','Talent','Talents','Epic','Legendary','Crit','Critical','Critical Hit','Area','Pierce','Shadow','Undead','Freeze','Frozen','Sleep','Stun','Damage','Healing','Cast Speed','Cast Time','Cooldown','Zeny','EXP','Armor','Gear','Card','Boss','Job','Skill','Skills','ATK','MATK','HP','SP','STR','AGI','VIT','INT','DEX','LUK'
+ 'Ore Discovery','Hindsight','Affixes','Haste','Flee','Discovery','Sword Dance','Sand Attack','Spear Quicken','Peco Peco','Peco','Unhealed Wound','Caltrops','Caltrop','Mage','Wizard','Deity','Talent','Talents','Epic','Legendary','Crit','Critical','Critical Hit','Area','Freeze','Frozen','Sleep','Stun','Cast Speed','Cast Time','Cooldown','Zeny','EXP','Gear','Boss','Job','Skill','Skills','ATK','MATK','HP','SP','STR','AGI','VIT','INT','DEX','LUK'
 ];
 export function buildMemory(entries,decisions={}){
  const exact=new Map(),labels=new Map();
@@ -20,7 +20,16 @@ export function buildMemory(entries,decisions={}){
   }
  }
  const unique=(m,k)=>m.get(k)?.size===1?[...m.get(k)][0]:null;
- function lookup(source){return unique(exact,hash(source));}
+ function lookup(source,recordId){
+  const h=hash(source);
+  // A contextual record ID resolves ambiguity only when the English hash
+  // is unchanged. A changed or missing known record is never reused.
+  if(recordId!==undefined){
+   const r=Object.hasOwn(entries,recordId)?entries[recordId]:null;
+   return r?.sourceHash===h&&typeof r.ko==='string'&&r.ko.trim()?r.ko:null;
+  }
+  return unique(exact,h);
+ }
  function terms(source){
   const result={},ranges=[];
   for(const term of [...candidates].sort((a,b)=>b.length-a.length)){
@@ -49,7 +58,14 @@ async function main(){
  const snapshot=JSON.parse(await readFile(snapshotPath,'utf8'));
  const failed=snapshot.rows.filter(r=>!r.excluded&&(r.verdict!=='ACCEPT'||!Object.values(r.final_checks).every(Boolean)));
  if(failed.length!==28)throw Error('MEMORY_RETRY_COUNT');
- const rows=failed.map(r=>({id:r.id,source:r.source,terms:memory.terms(r.source),exact:memory.lookup(r.source)}));
+ const fixture=JSON.parse(await readFile(new URL('./colab-benchmark-fixture.json',import.meta.url),'utf8'));
+ const refs=new Map(fixture.rows.map(r=>[r.id,r]));
+ const rows=failed.map(r=>{
+  const ref=refs.get(r.id);
+  if(!ref||['source','group','context'].some(k=>ref[k]!==r[k]))throw Error('MEMORY_SOURCE_MISMATCH '+r.id);
+  const exact=memory.lookup(r.source,ref.recordId);
+  return {id:r.id,source:r.source,terms:exact===null?memory.terms(r.source):{},exact};
+ });
  await writeFile(outPath,JSON.stringify(rows),{mode:0o600});
  console.log('CHAIN_MEMORY_EXACT_HITS='+rows.filter(r=>r.exact!==null).length+'/28');
  console.log('CHAIN_MEMORY_TERM_ROWS='+rows.filter(r=>Object.keys(r.terms).length).length+'/28');

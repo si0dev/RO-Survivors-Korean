@@ -16,7 +16,7 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
-    name: Retry 28 rejected translations with approved term memory
+    name: Reuse approved translations before allocating Colab
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
@@ -24,6 +24,7 @@ jobs:
       RO_REVIEW_COMPARISON: '1'
       RO_REVIEW_SCOPE: duration
       RO_CHAIN_SCOPE: retry
+      RO_CHAIN_MEMORY_REUSE: '1'
       RO_CHAINED_REVIEW: '1'
     steps:
       - uses: actions/checkout@v4
@@ -54,17 +55,31 @@ jobs:
       - name: Independent semantic reviewer contract tests
         env:
           RO_CHAIN_SCOPE: duration
+          RO_CHAIN_MEMORY_REUSE: '0'
         run: |
           python benchmark/tools/colab-benchmark-review-test.py -v
           python benchmark/tools/colab-benchmark-chain-test.py -v
           node --test benchmark/tools/colab-benchmark-memory-test.mjs
+      - name: Resolve approved translation memory before Colab allocation
+        id: plan
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          mkdir -m 700 -p "$tmp"
+          node historical/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
+          node benchmark/tools/colab-benchmark-memory.mjs benchmark benchmark/tools/colab-benchmark-chain-run57.json "$tmp/chain-memory.json"
+          python benchmark/tools/colab-benchmark-chain.py restore "$tmp" "$RUNNER_TEMP/ro-benchmark" historical/tools
+          pending=$(python -c 'import json,sys; print(len(json.load(open(sys.argv[1]))))' "$tmp/chain-drafts.json")
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
       - name: Restore pinned rclone archive
+        if: steps.plan.outputs.pending != '0'
         id: rclone
         uses: actions/cache/restore@v4
         with:
           path: ~/.cache/ro-llm/rclone
           key: ro-rclone-v1.70.3-linux-amd64-v1
       - name: Verify pinned rclone archive
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         run: |
           set -euo pipefail
@@ -76,12 +91,13 @@ jobs:
           fi
           grep -E '[[:space:]]\*?rclone-v1\.70\.3-linux-amd64\.zip$' SHA256SUMS | sha256sum -c -
       - name: Save pinned rclone archive
-        if: steps.rclone.outputs.cache-hit != 'true'
+        if: steps.plan.outputs.pending != '0' && steps.rclone.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ~/.cache/ro-llm/rclone
           key: ro-rclone-v1.70.3-linux-amd64-v1
       - name: Authenticate and verify zero active sessions
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         env:
           COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
@@ -90,52 +106,52 @@ jobs:
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_auth
       - name: Initialize comparison profiles
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           comparison_profiles > "$tmp/profiles.tsv"
-      - name: Restore 28 rejected drafts and resolve approved translation memory
-        shell: bash
-        run: |
-          source benchmark/tools/colab-benchmark-workflow.sh
-          node historical/tools/colab-benchmark-prepare.mjs reference "$RUNNER_TEMP/ro-benchmark"
-          node benchmark/tools/colab-benchmark-memory.mjs benchmark benchmark/tools/colab-benchmark-chain-run57.json "$tmp/chain-memory.json"
-          python benchmark/tools/colab-benchmark-chain.py restore "$tmp" "$RUNNER_TEMP/ro-benchmark" historical/tools
       - name: Drive cache - Hy-MT3-7B-Q8_0
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_comparison_model_cache 'Hy-MT3-7B-Q8_0'
       - name: Drive cache - Qwen3-14B-Q4_K_M
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_comparison_model_cache 'Qwen3-14B-Q4_K_M'
       - name: Allocate one Colab T4 session
+        if: steps.plan.outputs.pending != '0'
         id: allocate
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           allocate_comparison_session
       - name: Common Colab preparation - copy and verify both models and shared engine
+        if: steps.plan.outputs.pending != '0'
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prefetch_chain_models
       - name: Hy-MT3 - correct existing Index-Translate drafts
+        if: steps.plan.outputs.pending != '0'
         id: correct
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           run_chain_model 'Hy-MT3-7B-Q8_0' correct
       - name: Qwen3 - verify original and corrected drafts against English
+        if: steps.plan.outputs.pending != '0'
         id: verify
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           run_chain_model 'Qwen3-14B-Q4_K_M' verify
       - name: Report chained translation results
-        if: ${{ !cancelled() && steps.allocate.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.plan.outcome == 'success' }}
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh

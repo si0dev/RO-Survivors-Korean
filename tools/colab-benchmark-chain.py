@@ -71,14 +71,21 @@ def restore_retry(tmp,bench):
     by_id={r["id"]:r for r in memory}
     if len(memory)!=28 or set(by_id)!={r["id"] for r in active}:
         raise RuntimeError("CHAIN_MEMORY_IDS")
-    drafts=[]
+    drafts=[];reused=[]
+    reuse=os.environ.get("RO_CHAIN_MEMORY_REUSE")=="1"
     for row in active:
         hint=by_id[row["id"]]
         if hint["source"]!=row["source"]: raise RuntimeError("CHAIN_MEMORY_SOURCE")
-        # Exact whole-sentence memory is evaluated separately, never sent to LLM.
-        drafts.append({k:row[k] for k in ("id","source","group","context")}|{"draft":row["final"],"terms":hint["terms"]})
+        # Exact memory reuse is not an LLM quality verdict. Keep it outside
+        # model requests and measure it independently.
+        if reuse and isinstance(hint.get("exact"),str) and hint["exact"].strip():
+            reused.append({"id":row["id"],"source":row["source"],"approved":hint["exact"],"selection":"approved_memory"})
+        else:
+            drafts.append({k:row[k] for k in ("id","source","group","context")}|{"draft":row["final"],"terms":hint["terms"]})
     write(tmp/"chain-drafts.json",drafts)
-    print("CHAIN_RETRY_REUSED=171 EXCLUDED=1 PENDING=28 INDEX_INFERENCE=0",flush=True)
+    if reuse:
+        write(tmp/"chain-memory-reused.json",reused)
+    print(f"CHAIN_RETRY_REUSED=171 APPROVED_MEMORY={len(reused)} EXCLUDED=1 PENDING={len(drafts)} INDEX_INFERENCE=0",flush=True)
 
 def restore(tmp,bench,historical):
     if os.environ.get("RO_CHAIN_SCOPE")=="retry":
@@ -397,7 +404,34 @@ def summarize(rows,refs):
         return out
     return result(total),{name:result(counts) for name,counts in groups.items()}
 
+def report_memory_reuse(tmp,bench):
+    refs={r["id"]:r["reference"] for r in read(bench/"references.json")}
+    reused=read(tmp/"chain-memory-reused.json")
+    pending=read(tmp/"chain-drafts.json")
+    all_ids=[r["id"] for r in reused+pending]
+    if len(all_ids)!=28 or len(set(all_ids))!=28:
+        raise RuntimeError("CHAIN_MEMORY_ROUTING_INCOMPLETE")
+    path=tmp/"chain-verified.json"
+    results=read(path) if path.exists() else []
+    result_ids=[r["id"] for r in results]
+    if len(result_ids)!=len(set(result_ids)) or not set(result_ids)<={r["id"] for r in pending}:
+        raise RuntimeError("CHAIN_MEMORY_RESULT_IDS")
+    passed=sum(r["verdict"]=="ACCEPT" and all(r["final_checks"].values()) and r["correction_status"]!="ERROR" and r["draft_verdict"] in ("ACCEPT","REJECT") and r["corrected_verdict"] in ("ACCEPT","REJECT") for r in results)
+    for row in reused:
+        print("CHAIN_MEMORY_REUSED="+json.dumps(row,ensure_ascii=False),flush=True)
+    for row in results:
+        print("CHAIN_RESULT="+json.dumps({**row,"reference":refs[row["id"]]},ensure_ascii=False),flush=True)
+    stats={"prior_model_pass":171,"approved_memory_reused":len(reused),
+           "memory_matches_frozen_reference":sum(r["approved"]==refs[r["id"]] for r in reused),
+           "new_model_evaluated":len(results),"new_model_pass":passed,"pending_model":len(pending),
+           "resolved":171+len(reused)+passed,"evaluated":199,"excluded":1,
+           "unresolved":len(pending)-passed}
+    print("CHAIN_MEMORY_ROUTING_SUMMARY="+json.dumps(stats),flush=True)
+    return 0 if len(results)==len(pending) and passed==len(pending) else 1
+
 def report(tmp,bench):
+    if os.environ.get("RO_CHAIN_MEMORY_REUSE")=="1":
+        return report_memory_reuse(tmp,bench)
     path=tmp/"chain-verified.json"
     if not path.exists():
         print("CHAIN_REPORT=INCOMPLETE",flush=True)

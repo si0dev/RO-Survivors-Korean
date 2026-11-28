@@ -53,6 +53,34 @@ class ChainTests(unittest.TestCase):
             self.assertTrue(all("exact" not in row and "reference" not in row for row in drafts))
             self.assertEqual({r["id"] for r in drafts},{r["id"] for r in rejected})
             self.assertNotIn("DO_NOT_SEND",c.payload(drafts,"marker=","correct",None))
+    def test_memory_reuse_routing_excludes_approved_rows_from_models(self):
+        import tempfile,os,contextlib,io
+        refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]
+        snap=c.read(ROOT/"colab-benchmark-chain-run57.json")
+        rejected=[r for r in snap["rows"] if not r.get("excluded") and r["verdict"]!="ACCEPT"]
+        ref_by_id={r["id"]:r["reference"] for r in refs}
+        with tempfile.TemporaryDirectory() as d, patch.dict(os.environ,{"RO_CHAIN_MEMORY_REUSE":"1"}):
+            tmp=pathlib.Path(d)
+            c.write(tmp/"references.json",refs)
+            c.write(tmp/"chain-memory.json",[{"id":r["id"],"source":r["source"],"terms":{},"exact":ref_by_id[r["id"]]} for r in rejected])
+            c.restore_retry(tmp,tmp)
+            self.assertEqual(c.read(tmp/"chain-drafts.json"),[])
+            self.assertEqual(len(c.read(tmp/"chain-memory-reused.json")),28)
+            out=io.StringIO()
+            with contextlib.redirect_stdout(out):
+                self.assertEqual(c.report(tmp,tmp),0)
+            summary=json.loads(next(line.split("=",1)[1] for line in out.getvalue().splitlines() if line.startswith("CHAIN_MEMORY_ROUTING_SUMMARY=")))
+            self.assertEqual(summary["approved_memory_reused"],28)
+            self.assertEqual(summary["new_model_evaluated"],0)
+            self.assertEqual(summary["resolved"],199)
+            memory=c.read(tmp/"chain-memory.json")
+            memory[0]["exact"]=None
+            c.write(tmp/"chain-memory.json",memory)
+            c.restore_retry(tmp,tmp)
+            self.assertEqual(len(c.read(tmp/"chain-drafts.json")),1)
+            self.assertEqual(len(c.read(tmp/"chain-memory-reused.json")),27)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(c.report(tmp,tmp),1)
     def test_full_scope_and_exclusion(self):
         import os
         refs=c.read(ROOT/"colab-benchmark-fixture.json")["rows"]
