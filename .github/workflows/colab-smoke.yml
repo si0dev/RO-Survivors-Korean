@@ -1,10 +1,12 @@
-name: Colab Index-Translate Q6_K semantic review only (temporary)
+name: Colab three-model semantic review comparison (temporary)
 on:
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/colab-smoke.yml'
       - 'tools/colab-benchmark-*'
+      - 'tools/colab_cache_layout.py'
+      - 'tools/colab-cache-populate.py'
 permissions:
   contents: read
 concurrency:
@@ -13,10 +15,24 @@ concurrency:
 jobs:
   smoke:
     if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'test/colab-adc-smoke' && github.event.pull_request.user.login == 'si0dev'
+    name: Semantic review - ${{ matrix.model }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - model: Index-Translate-9B-Q6_K
+            profile: '{"slug":"index-translate-9b","quant":"q6_k","repo":"IndexTeam/Index-Translate-9B-GGUF","filename":"Index-Translate-9B.Q6_K.gguf","engine":"b12343","min_bytes":7000000000}'
+          - model: Hy-MT3-7B-Q8_0
+            profile: '{"slug":"hy-mt3-7b","quant":"q8_0","repo":"tencent/Hy-MT3-7B-GGUF","filename":"Hy-MT3-7B-Q8_0.gguf","engine":"b12343","min_bytes":8000000000}'
+          - model: Qwen3-14B-Q4_K_M
+            profile: '{"slug":"qwen3-14b","quant":"q4_k_m","repo":"Qwen/Qwen3-14B-GGUF","filename":"Qwen3-14B-Q4_K_M.gguf","engine":"b12343","min_bytes":8000000000}'
     env:
       RO_BENCHMARK_MODE: semantic-review
+      RO_CACHE_PROFILE_JSON: ${{ matrix.profile }}
+      RO_REVIEW_MODEL: ${{ matrix.model }}
     steps:
       - uses: actions/checkout@v4
         with:

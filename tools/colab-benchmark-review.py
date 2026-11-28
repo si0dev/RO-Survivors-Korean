@@ -78,7 +78,7 @@ def main(tmp,session):
     ids={r["id"] for r in rows}
     marker="RO_REVIEW_"+uuid.uuid4().hex+"="
     bootstrap=json.loads((tmp/"bootstrap.json").read_text())
-    body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\n"
+    body="CONFIG="+repr(os.environ["REMOTE_CONFIG"])+"\nREVIEW_ONLY=True\n"
     for key in ("RCLONE_DRIVE_ID","RCLONE_ZIP_SHA","MANIFEST_SHA","CACHE_SPEC"):
         body+=key+"="+repr(bootstrap[key])+"\n"
     for name in ("colab-cache-mount.py","colab-benchmark-cache.py","colab-benchmark-model.py"):
@@ -96,6 +96,7 @@ def main(tmp,session):
             print(f"SEMANTIC_REVIEW_PROGRESS={len(verdicts)}/{len(rows)} id={match[1]} verdict={match[2]}",flush=True)
         else:
             kernel.safe_progress(line,print)
+    print("SEMANTIC_REVIEW_MODEL="+os.environ.get("RO_REVIEW_MODEL","default"),flush=True)
     print(f"SEMANTIC_REVIEW_START={len(rows)} TRANSLATION_REQUESTS=0",flush=True)
     args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout","1500","-f",str(path)]
     rc,raw=kernel.invoke(args,1530,on_line=on_line,
