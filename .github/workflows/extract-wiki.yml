@@ -6,15 +6,9 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/extract-wiki.yml'
-      # Shared runtime modules can change how the wiki is rendered.
-      - 'src/core.mjs'
-      - 'src/language-adapter.mjs'
-      - 'src/browser.mjs'
-      - 'src/session.mjs'
+      # Only direct wiki data/extractor changes trigger an immediate scan.
+      # Shared translation runtime changes are evaluated at the daily check.
       - 'tools/extract-wiki.mjs'
-      - 'tools/build.mjs'
-      - 'tools/records.mjs'
       - 'translations/wiki-fixed.json'
       - 'translations/wiki-variable.json'
       - 'translations/common.json'
@@ -51,13 +45,17 @@ jobs:
           if(!build)throw Error('Build missing');
           appendFileSync(process.env.GITHUB_OUTPUT,'id='+build+'\n');
           NODE
+      - name: Fingerprint translation-relevant runtime inputs
+        id: inputs
+        shell: bash
+        run: echo "hash=$(node tools/wiki-verification-key.mjs)" >> "$GITHUB_OUTPUT"
       - name: Restore successful verification marker
         id: verified
         uses: actions/cache@v4
         with:
           path: .wiki-verification
-          # Daily checks also cover indirect changes in game translation labels.
-          key: wiki-verified-${{ steps.build.outputs.id }}-${{ hashFiles('src/**', 'tools/**', 'translations/**', 'package.json', '.github/workflows/extract-wiki.yml') }}
+          # UI-only edits and engine version bumps do not invalidate wiki results.
+          key: wiki-verified-v2-${{ steps.build.outputs.id }}-${{ steps.inputs.outputs.hash }}-${{ hashFiles('src/core.mjs', 'src/language-adapter.mjs', 'tools/extract-wiki.mjs', 'tools/records.mjs', 'tools/build.mjs', 'tools/wiki-verification-key.mjs', 'translations/**', '.github/workflows/extract-wiki.yml') }}
       - if: github.event_name == 'workflow_dispatch' || steps.verified.outputs.cache-hit != 'true'
         run: npm run build
       - if: github.event_name == 'workflow_dispatch' || steps.verified.outputs.cache-hit != 'true'
