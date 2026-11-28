@@ -1,6 +1,6 @@
 import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
-import {readFile} from 'node:fs/promises';
+import {readFile,writeFile} from 'node:fs/promises';
 import {loadRecords} from './records.mjs';
 import {identify} from '../src/core.mjs';
 
@@ -8,6 +8,9 @@ const origin='https://ro-survivors.com';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const verify=process.argv.includes('--verify');
+const outputIndex=process.argv.indexOf('--output');
+const output=outputIndex===-1?null:process.argv[outputIndex+1];
+if(outputIndex!==-1&&!output)throw Error('Missing wiki output path');
 async function scanWiki(korean=false){
  const page=await browser.newPage({locale:'en-US'});
  try{
@@ -174,7 +177,8 @@ try{
  const unmatched=Object.entries(records.entries).filter(([,r])=>r.scope==='wiki'&&!hashes.has(r.sourceHash));
  console.log('AUDIT '+JSON.stringify({build:currentBuild,scope:'wiki',unmatched:unmatched.length}));
  for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
- for(const row of missing)console.log('WIKIROW '+JSON.stringify(row));
+ if(output)await writeFile(output,JSON.stringify({build:currentBuild,rows:missing}),{mode:0o600});
+ else for(const row of missing)console.log('WIKIROW '+JSON.stringify(row));
  if(verify){
   const korean=await scanWiki(true);
   if(korean.currentBuild!==currentBuild)throw Error('Game updated during wiki verification');

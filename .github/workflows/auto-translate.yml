@@ -1,0 +1,182 @@
+name: Automatic translation update
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 2 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/auto-translate.yml'
+      - 'tools/llm/**'
+      - 'tools/extract-wiki.mjs'
+      - 'test/llm-update.test.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: ro-colab-drive-cache-benchmark
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install requests
+          python tools/llm/pipeline-test.py -v
+          python -m compileall -q tools/llm
+          bash -n tools/llm/workflow.sh
+          node --test test/llm-update.test.mjs
+  update:
+    needs: contract
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Initialize temporary paths
+        run: |
+          echo "UPDATE_DIR=$RUNNER_TEMP/ro-update" >> "$GITHUB_ENV"
+          echo "LLM_DIR=$RUNNER_TEMP/ro-update-llm" >> "$GITHUB_ENV"
+      - name: Check for existing automated update PR
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count=$(gh pr list --state open --head automation/translation-update --json number --jq length)
+          echo "run=$([[ $count == 0 ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Extract current game and wiki changes
+        id: plan
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          umask 077
+          mkdir -p "$UPDATE_DIR" "$LLM_DIR"
+          node tools/llm/extract-update.mjs "$UPDATE_DIR/game.json"
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node tools/extract-wiki.mjs --output "$UPDATE_DIR/wiki.json"
+          node tools/llm/update.mjs plan "$UPDATE_DIR" "$LLM_DIR"
+          pending=$(node -p 'require(process.env.LLM_DIR+"/pending.json").length')
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        with:
+          python-version: '3.12'
+      - name: Restore and install model dependencies
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          python -m pip install -r tools/llm/colab-requirements.txt
+          python -m pip check
+          if ! command -v rclone >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq rclone; fi
+          mkdir -p "$HOME/.cache/ro-llm/rclone"
+          cd "$HOME/.cache/ro-llm/rclone"
+          curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/SHA256SUMS -o SHA256SUMS
+          curl -fsSL --retry 2 https://downloads.rclone.org/v1.70.3/rclone-v1.70.3-linux-amd64.zip -o rclone-v1.70.3-linux-amd64.zip
+          grep -E '[[:space:]]\*?rclone-v1\.70\.3-linux-amd64\.zip$' SHA256SUMS | sha256sum -c -
+      - name: Authenticate and check for unrelated active sessions
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        env:
+          COLAB_ADC_JSON: ${{ secrets.COLAB_ADC_JSON }}
+          RCLONE_CONFIG_SECRET: ${{ secrets.RCLONE_CONFIG_V2 }}
+        run: |
+          source tools/llm/workflow.sh
+          prepare_auth
+          comparison_profiles > "$tmp/profiles.tsv"
+      - name: Drive cache - Index-Translate
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          prepare_comparison_model_cache 'Index-Translate-9B-Q6_K'
+      - name: Drive cache - Hy-MT3
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          prepare_comparison_model_cache 'Hy-MT3-7B-Q8_0'
+      - name: Drive cache - Qwen3
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          prepare_comparison_model_cache 'Qwen3-14B-Q4_K_M'
+      - name: Allocate one Colab T4 and copy three models with shared engine
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          allocate_comparison_session
+          prefetch_models
+      - name: Index-Translate - translate only unresolved sources
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          run_model 'Index-Translate-9B-Q6_K' index
+      - name: Hy-MT3 - correct existing Index drafts
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          run_model 'Hy-MT3-7B-Q8_0' correct
+      - name: Qwen3 - independently verify original and corrected drafts
+        if: steps.plan.outcome == 'success' && steps.plan.outputs.pending != '0'
+        run: |
+          source tools/llm/workflow.sh
+          run_model 'Qwen3-14B-Q4_K_M' verify
+      - name: Integrate only verified candidates
+        if: steps.plan.outcome == 'success'
+        id: apply
+        run: |
+          node tools/llm/update.mjs apply "$UPDATE_DIR" "$LLM_DIR"
+          count=$(node -p 'require(process.env.UPDATE_DIR+"/summary.json").candidates')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          node -e 'const s=require(process.env.UPDATE_DIR+"/summary.json"); console.log("Approved memory:",s.memory,"Model candidates:",s.model,"Unresolved:",s.unresolved.length); for(const r of s.unresolved) console.log("UNRESOLVED "+JSON.stringify(r));' >> "$GITHUB_STEP_SUMMARY"
+      - name: Release Colab and erase credentials
+        if: always()
+        run: |
+          source tools/llm/workflow.sh
+          cleanup
+      - name: Validate candidate translation build
+        if: success() && steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
+        run: |
+          npm test
+          npm run build
+          node --check dist/ro-ko.user.js
+          node tools/extract-wiki.mjs --verify
+          expected=$(node -p 'require(process.env.UPDATE_DIR+"/summary.json").build')
+          test "$(node tools/llm/extract-update.mjs --build-only)" = "$expected"
+      - name: Open candidate update pull request
+        if: success() && steps.apply.outcome == 'success' && steps.apply.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.TRANSLATION_UPDATE_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote --exit-code origin refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          branch=automation/translation-update
+          test "$(gh pr list --state open --head "$branch" --json number --jq length)" = 0
+          git switch -c "$branch"
+          git add translations/
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Prepare verified Korean translation update"
+          gh auth setup-git
+          old=$(git ls-remote origin "refs/heads/$branch" | cut -f1)
+          git push --force-with-lease="refs/heads/$branch:$old" origin "HEAD:refs/heads/$branch"
+          summary=$(node -p 'const s=require(process.env.UPDATE_DIR+"/summary.json"); "Build "+s.build+"; memory "+s.memory+"; model candidates "+s.model+"; unresolved "+s.unresolved.length')
+          gh pr create --base main --head "$branch" --title "Korean translation update" --body "$summary. Model candidates require review before merge. Rejected rows are not imported."
+      - name: Discard extracted sources and temporary candidates
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/ro-update" "$RUNNER_TEMP/ro-update-llm"
