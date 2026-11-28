@@ -27,7 +27,8 @@ jobs:
           node --test test/llm-update.test.mjs test/llm-live-audit.test.mjs
   audit:
     needs: contract
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    # An explicit audit request commit may start the same manual-only job.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'Run full live audit:')))
     concurrency:
       group: ro-colab-drive-cache-benchmark
       cancel-in-progress: false
