@@ -72,6 +72,32 @@ class KernelTests(unittest.TestCase):
         k.safe_progress('TRANSLATION_RETRY={"id":"secret","attempt":1,"failures":["format"]}',emit)
         self.assertEqual(len(out),1)
         self.assertIn("format",out[0])
+    def test_remote_signal_states(self):
+        clock=[0]
+        signal=k.BatchSignal(now=lambda:clock[0])
+        self.assertEqual(signal.status(),("COLAB_CONNECTION_UNVERIFIED",0,True))
+        signal.observe()
+        clock[0]=20
+        self.assertEqual(signal.status(),("COLAB_TRANSLATION_WAIT",20,True))
+        clock[0]=30
+        self.assertEqual(signal.status(),("COLAB_CONNECTION_UNVERIFIED",30,True))
+        clock[0]=120
+        self.assertEqual(signal.status(),("COLAB_HEARTBEAT_TIMEOUT",120,False))
+        signal.observe()
+        self.assertEqual(signal.status(),("COLAB_TRANSLATION_WAIT",0,True))
+    def test_missing_heartbeat_aborts_and_is_not_confirmed_disconnect(self):
+        rc,raw=k.invoke([sys.executable,"-u","-c","import time;time.sleep(5)"],4,
+            on_wait=lambda _:False,heartbeat=0.05)
+        self.assertEqual(rc,124)
+        self.assertIn("COLAB_HEARTBEAT_TIMEOUT",raw)
+        out=[]
+        emit=lambda s,**kw:out.append(s)
+        self.assertEqual(k.report_failure("BATCH",raw,lambda:1,emit),75)
+        self.assertTrue(any(s.startswith("COLAB_CONNECTION_UNVERIFIED") for s in out))
+        self.assertFalse(any(s.startswith("COLAB_CONNECTION_LOST ") for s in out))
+        out.clear()
+        self.assertEqual(k.report_failure("BATCH","Connection was lost",lambda:1,emit),75)
+        self.assertTrue(any(s.startswith("COLAB_CONNECTION_LOST ") for s in out))
     def test_four_way_concurrency_and_asynchronous_checkpoint(self):
         started=threading.Event()
         release=threading.Event()
@@ -92,6 +118,7 @@ class KernelTests(unittest.TestCase):
             rc=k.collect(["colab"],"test",MODEL,pathlib.Path(t)/"log",INPUTS,{},store,ck.validate_rows,run=kernel.run,probe=lambda:0,emit=lambda *a,**kw:None)
         self.assertEqual(rc,0)
         self.assertIn("max_workers=4",kernel.calls[1])
+        self.assertIn("RO_BATCH_HEARTBEAT_",kernel.calls[1])
         self.assertEqual(len(store.snapshots[-1]),200)
     def test_completed_benchmark_does_not_contact_kernel(self):
         saved={row(i)["id"]:row(i) for i in range(1,201)}

@@ -27,6 +27,9 @@ def assignment_count():
     from colab_cli.common import state
     state.auth_provider=AuthProvider.ADC
     return len(state.client.list_assignments())
+class HeartbeatTimeout(Exception):
+    pass
+
 def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
     lines=[]
     q=queue.Queue()
@@ -44,7 +47,7 @@ def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
             while True:
                 now=time.monotonic()
                 if on_wait and now>=next_heartbeat:
-                    on_wait(int(now-started))
+                    if on_wait(int(now-started)) is False: raise HeartbeatTimeout()
                     next_heartbeat=now+heartbeat
                 remaining=deadline-now
                 if remaining<=0: raise subprocess.TimeoutExpired(args,limit)
@@ -54,7 +57,7 @@ def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
                 lines.append(line)
                 if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
             return p.wait(timeout=max(0.1,deadline-time.monotonic())),"".join(lines)
-        except subprocess.TimeoutExpired:
+        except (subprocess.TimeoutExpired,HeartbeatTimeout) as exc:
             p.kill();p.wait();t.join(timeout=5)
             while True:
                 try: line=q.get_nowait()
@@ -62,7 +65,8 @@ def invoke(args,limit,on_line=None,on_wait=None,heartbeat=30):
                 if line is None: break
                 lines.append(line)
                 if on_line and line.endswith("\n"): on_line(line.rstrip("\r\n"))
-            return 124,"".join(lines)+"\nTimeoutError\n"
+            marker="COLAB_HEARTBEAT_TIMEOUT" if isinstance(exc,HeartbeatTimeout) else "TimeoutError"
+            return 124,"".join(lines)+"\n"+marker+"\n"
         finally:
             if p.poll() is None: p.kill();p.wait()
             t.join(timeout=5)
@@ -97,7 +101,13 @@ def safe_progress(line,emit):
         except (ValueError,KeyError,TypeError): pass
 def report_failure(phase,raw,probe,emit):
     category=transport.classify(raw)
+    if category=="UNCLASSIFIED" and "COLAB_HEARTBEAT_TIMEOUT" in raw.splitlines():
+        category="HEARTBEAT_TIMEOUT"
     emit("COLAB_KERNEL_FAILURE="+phase+":"+category,flush=True)
+    if category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE"):
+        emit("COLAB_CONNECTION_LOST phase="+phase+" evidence="+category,flush=True)
+    elif category in ("HEARTBEAT_TIMEOUT","TIMEOUT"):
+        emit("COLAB_CONNECTION_UNVERIFIED phase="+phase+" reason="+category,flush=True)
     count=None
     try:
         count=probe()
@@ -109,9 +119,23 @@ def report_failure(phase,raw,probe,emit):
         return 1
     if category=="AUTH":
         return 1
-    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT") or re.search(r"RCLONE_BOOTSTRAP_CONNECTION|RCLONE_BOOTSTRAP_HTTP_50[234]|LOCAL_MODEL_COPY_TIMEOUT",raw):
+    if count==0 or category in ("CONNECTION_LOST","KERNEL_GONE","SESSION_GONE","FILE_UNAVAILABLE","TIMEOUT","HEARTBEAT_TIMEOUT") or re.search(r"RCLONE_BOOTSTRAP_CONNECTION|RCLONE_BOOTSTRAP_HTTP_50[234]|LOCAL_MODEL_COPY_TIMEOUT",raw):
         return 75
     return 1
+class BatchSignal:
+    """A remote heartbeat proves recent transport activity, not GPU health."""
+    def __init__(self,now=time.monotonic):
+        self.now=now
+        self.started=now()
+        self.last=None
+    def observe(self):
+        self.last=self.now()
+    def status(self):
+        age=self.now()-(self.last if self.last is not None else self.started)
+        if age>=120: return "COLAB_HEARTBEAT_TIMEOUT",int(age),False
+        if self.last is None or age>=30: return "COLAB_CONNECTION_UNVERIFIED",int(age),True
+        return "COLAB_TRANSLATION_WAIT",int(age),True
+
 def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,probe=assignment_count,emit=print,batch_size=4):
     log=pathlib.Path(log)
     log.write_text("",encoding="utf-8")
@@ -119,6 +143,7 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
     prefix="RO_RESULT_"+nonce+"="
     ready="RO_READY_"+nonce
     done="RO_BATCH_DONE_"+nonce
+    pulse="RO_BATCH_HEARTBEAT_"+nonce
     ids={r["id"] for r in inputs}
     if len(ids)!=200 or len(inputs)!=200 or not set(saved)<=ids:
         raise RuntimeError("CHECKPOINT_INPUTS")
@@ -130,13 +155,27 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
             if not s.endswith("\n"): f.write("\n")
     def record(row):
         append("BENCHMARK_RESULT="+json.dumps(row,ensure_ascii=False,separators=(",",":")))
-    def execute(source,limit,on_line,phase):
+    def execute(source,limit,on_line,phase,progress=None):
         script=log.with_name("kernel-call.py")
         script.write_text(source,encoding="utf-8")
         args=[*cli,"exec","-s",session,"--timeout",str(limit),"-f",str(script)]
         if run is invoke:
-            return run(args,limit+30,on_line=on_line,
-                on_wait=lambda elapsed:emit(f"COLAB_WAIT phase={phase} elapsed={elapsed}s completed={len(saved)}/200",flush=True))
+            signal=BatchSignal() if phase=="TRANSLATION_BATCH" else None
+            def observe(line):
+                if signal and line==pulse:
+                    signal.observe()
+                    return
+                on_line(line)
+                if signal and (line.startswith(prefix) or line==done):
+                    signal.observe()
+            def waiting(elapsed):
+                if signal is None:
+                    emit(f"COLAB_MODEL_INIT_WAIT elapsed={elapsed}s completed={len(saved)}/200",flush=True)
+                    return True
+                status,age,keep=signal.status()
+                emit(f"{status} elapsed={elapsed}s signal_age={age}s completed={progress()}/200",flush=True)
+                return keep
+            return run(args,limit+30,on_line=observe,on_wait=waiting)
         rc,raw=run(args,limit+30)
         for line in raw.splitlines(): on_line(line)
         return rc,raw
@@ -175,21 +214,24 @@ def collect(cli,session,worker,log,inputs,saved,store,validate,*,run=invoke,prob
                 received.update(verified)
                 emit(f"COLAB_TRANSLATED={len(saved)+len(received)}/200",flush=True)
             code=("import base64 as ro_b64,json as ro_json\n"
-                "from concurrent.futures import ThreadPoolExecutor as ro_pool,as_completed as ro_completed\n"
+                "from concurrent.futures import ThreadPoolExecutor as ro_pool,wait as ro_wait,FIRST_COMPLETED as ro_first\n"
                 "ro_batch=ro_json.loads("+repr(json.dumps(batch,ensure_ascii=False))+")\n"
                 "ro_errors=[]\n"
                 "with ro_pool(max_workers=4) as ro_executor:\n"
-                "    ro_futures=[ro_executor.submit(ro_bench_ns['translate_one'],r,ro_bench_ns['base']) for r in ro_batch]\n"
-                "    for ro_future in ro_completed(ro_futures):\n"
-                "        try: ro_row=ro_future.result()\n"
-                "        except Exception as ro_exc: ro_errors.append(ro_exc);continue\n"
-                "        print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
+                "    ro_pending={ro_executor.submit(ro_bench_ns['translate_one'],r,ro_bench_ns['base']) for r in ro_batch}\n"
+                "    while ro_pending:\n"
+                "        print("+repr(pulse)+",flush=True)\n"
+                "        ro_finished,ro_pending=ro_wait(ro_pending,timeout=10,return_when=ro_first)\n"
+                "        for ro_future in ro_finished:\n"
+                "            try: ro_row=ro_future.result()\n"
+                "            except Exception as ro_exc: ro_errors.append(ro_exc);continue\n"
+                "            print("+repr(prefix)+"+ro_b64.b64encode(ro_json.dumps(ro_row,ensure_ascii=False).encode('utf-8')).decode('ascii'),flush=True)\n"
                 "if ro_errors: raise ro_errors[0]\n"
                 "print("+repr(done)+",flush=True)\n")
             emit(f"COLAB_BATCH_START={len(saved)+1}-{len(saved)+len(batch)}/200",flush=True)
             # Three bounded HTTP attempts fit within this limit. Recover a
             # disconnected or stalled batch promptly instead of waiting 25 min.
-            rc,raw=execute(code,360,on_line,"TRANSLATION_BATCH")
+            rc,raw=execute(code,360,on_line,"TRANSLATION_BATCH",lambda:len(saved)+len(received))
             if commit is not None:
                 commit.result()
                 emit(f"COLAB_KERNEL_PROGRESS={len(saved)}/200",flush=True)
