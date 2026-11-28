@@ -121,7 +121,7 @@ prepare_comparison_model_cache() {
   cp "$tmp/bootstrap.json" "$tmp/bootstrap-$RO_REVIEW_MODEL.json"
 }
 allocate_comparison_session() {
-  gpu="ro-translate-$GITHUB_RUN_ID-1"
+  gpu="ro-translate-$GITHUB_RUN_ID-${RO_SESSION_SUFFIX:-1}"
   test ! -e "$tmp/comparison-session"
   printf '%s\n' "$gpu" > "$tmp/comparison-session"
   allocate_gpu
@@ -129,15 +129,15 @@ allocate_comparison_session() {
 }
 
 session_context() {
-  gpu="ro-translate-$GITHUB_RUN_ID-1"
+  gpu="ro-translate-$GITHUB_RUN_ID-${RO_SESSION_SUFFIX:-1}"
   test "$(cat "$tmp/comparison-session")" = "$gpu"
   test -s "$tmp/sessions.json"
-  export RO_REVIEW_SHARED_ROOT="/tmp/ro-update-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+  export RO_REVIEW_SHARED_ROOT="/tmp/ro-update-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${RO_SESSION_SUFFIX:-1}"
 }
 prefetch_models() {
   session_context
   select_comparison_model 'Index-Translate-9B-Q6_K'
-  export REMOTE_CONFIG="/tmp/ro-update-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.conf"
+  export REMOTE_CONFIG="/tmp/ro-update-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-${RO_SESSION_SUFFIX:-1}.conf"
   cp "$tmp/bootstrap-$RO_REVIEW_MODEL.json" "$tmp/bootstrap.json"
 # Refresh on the runner immediately before passing a short-lived credential.
 python - <<'PY'
@@ -173,7 +173,9 @@ run_model() {
   select_comparison_model "$1"
   test -f "$tmp/chain-prefetch-ready"
   cp "$tmp/bootstrap-$RO_REVIEW_MODEL.json" "$tmp/bootstrap.json"
-  timeout 4350 python tools/llm/pipeline.py run "$tmp" "$gpu" "$2" </dev/null
+  local limit=4350
+  if [ "${RO_LIVE_AUDIT:-0}" = 1 ] && [ "$2" = verify ]; then limit=6150; fi
+  timeout "$limit" python tools/llm/pipeline.py run "$tmp" "$gpu" "$2" </dev/null
 }
 cleanup() {
   local rc=0

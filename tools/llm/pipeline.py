@@ -118,6 +118,36 @@ def verify_task(row,base):
     corrected=original if row["candidate"]==row["draft"] else review_one({"source":row["source"],"candidate":row["candidate"],**context},base)
     return {"original":original,"corrected":corrected}
 
+def compare_reference(row,base):
+    # This call occurs only after both blind verdicts have been obtained.
+    # A baseline disagreement never changes the production selection.
+    import json,re,requests
+    if not row.get("audit_reference"):
+        return {"reference_original":"NO_REFERENCE","reference_corrected":"NO_REFERENCE"}
+    prompt=("你是英韩游戏翻译质量评估员。原文是唯一事实依据。独立比较两个韩语候选与现有批准译文。"
+            "忽略不改变意义的措辞差异。逐项检查主体、目标、数值、符号、变量、效果、条件、否定及游戏术语。"
+            "对每个候选分别标记 EQUIVALENT（候选与批准译文语义一致且符合原文），"
+            "DIFFERENT（候选有实质语义或术语错误），REFERENCE_ISSUE（批准译文本身可能有错而候选更符合原文），"
+            "UNSURE（无法确认）。只输出 ORIGINAL:<label> CORRECTED:<label>，不得解释。\n")
+    data={"Source":row["source"],"Context":row["context"],"Approved baseline":row["audit_reference"],
+          "Original draft":row["draft"],"Corrected draft":row["candidate"],"Approved terms":row.get("terms",{})}
+    try:
+        res=requests.post(base+"/v1/chat/completions",json={"messages":[{"role":"user","content":prompt+json.dumps(data,ensure_ascii=False)}],
+            "temperature":0,"max_tokens":64,"stream":False,"chat_template_kwargs":{"enable_thinking":False}},timeout=(10,90))
+        res.raise_for_status()
+        choice=res.json()["choices"][0]
+        labels=r"(EQUIVALENT|DIFFERENT|REFERENCE_ISSUE|UNSURE)"
+        match=re.fullmatch(r"ORIGINAL:\s*"+labels+r"\s+CORRECTED:\s*"+labels,choice["message"]["content"].strip())
+        if choice["finish_reason"]=="stop" and match:
+            return {"reference_original":match[1],"reference_corrected":match[2]}
+    except (requests.RequestException,ValueError,KeyError,TypeError,IndexError,AttributeError):
+        pass
+    return {"reference_original":"ERROR","reference_corrected":"ERROR"}
+
+def audit_verify_task(row,base):
+    blind=verify_task(row,base)
+    return {**blind,**compare_reference(row,base)}
+
 def choose(row,verdicts):
     original_ok=(row["index_status"]=="COMPLETED" and verdicts["original"]=="ACCEPT"
                  and all(quality_checks(row["source"],row["draft"],row["terms"]).values()))
@@ -127,7 +157,7 @@ def choose(row,verdicts):
     if original_ok: return {"id":row["id"],"ko":row["draft"],"status":"MODEL_VERIFIED"}
     return {"id":row["id"],"ko":"","status":"REVIEW_REQUIRED"}
 
-def payload(rows,marker,stage,review):
+def payload(rows,marker,stage,review,audit_refs=None):
     code=(ROOT/"colab-translate.py").read_text()
     if stage=="index":
         worker=index_task
@@ -141,6 +171,10 @@ def payload(rows,marker,stage,review):
         worker=verify_task
         public=[{"id":r["id"],"source":r["source"],"draft":r["draft"],"candidate":r["corrected"],"terms":r["terms"],"context":r["context"]} for r in rows]
         helpers=inspect.getsource(review.review_one)+"\n"
+        if audit_refs is not None:
+            worker=audit_verify_task
+            for row in public: row["audit_reference"]=audit_refs[row["id"]]
+            helpers+=inspect.getsource(verify_task)+"\n"+inspect.getsource(compare_reference)+"\n"
     return ("\nimport json,re\n"+helpers+inspect.getsource(worker)+"\n"
         +"rows=json.loads("+repr(json.dumps(public,ensure_ascii=False))+")\n"
         +"from concurrent.futures import ThreadPoolExecutor,as_completed\n"
@@ -215,11 +249,15 @@ def run(tmp,session,stage):
     if len(set(ids))!=len(ids) or any(not re.fullmatch(r"[0-9]{1,6}",i) for i in ids):
         raise RuntimeError("LLM_INPUT_IDS")
     active=rows if stage=="index" else [r for r in rows if r.get("draft")]
+    audit=stage=="verify" and os.environ.get("RO_LIVE_AUDIT")=="1"
+    audit_refs=read(tmp/"audit-references.json") if audit else None
+    if audit and (set(audit_refs)!=set(ids) or any(v is not None and not isinstance(v,str) for v in audit_refs.values())):
+        raise RuntimeError("AUDIT_REFERENCE_SCHEMA")
     results={}
     if active:
         if not (tmp/"chain-prefetch-ready").is_file(): raise RuntimeError("LLM_PREFETCH_REQUIRED")
         marker="RO_LLM_"+uuid.uuid4().hex+"="
-        body,cleanup_marker=review.build_remote(tmp,payload(active,marker,stage,review),marker,preloaded=True)
+        body,cleanup_marker=review.build_remote(tmp,payload(active,marker,stage,review,audit_refs),marker,preloaded=True)
         if not cleanup_marker: raise RuntimeError("LLM_SHARED_SESSION_REQUIRED")
         body="CHAIN_FULL_SCOPE=True\n"+body
         compile(body,"llm-remote.py","exec")
@@ -238,8 +276,11 @@ def run(tmp,session,stage):
                 if i not in expected or i in results or not isinstance(value,dict):
                     raise RuntimeError("LLM_RESULT_CONFLICT")
                 if stage=="verify":
-                    if set(value)!={"original","corrected"} or any(v not in ("ACCEPT","REJECT","ERROR","INVALID") for v in value.values()):
+                    keys={"original","corrected"}|({"reference_original","reference_corrected"} if audit else set())
+                    if set(value)!=keys or any(value[k] not in ("ACCEPT","REJECT","ERROR","INVALID") for k in ("original","corrected")):
                         raise RuntimeError("LLM_VERDICT_SCHEMA")
+                    if audit and any(value[k] not in ("EQUIVALENT","DIFFERENT","REFERENCE_ISSUE","UNSURE","NO_REFERENCE","ERROR") for k in ("reference_original","reference_corrected")):
+                        raise RuntimeError("AUDIT_VERDICT_SCHEMA")
                 elif set(value)!={"value","status"} or not isinstance(value["value"],str) or value["status"] not in ("COMPLETED","ERROR"):
                     raise RuntimeError("LLM_RESPONSE_SCHEMA")
                 results[i]=value;last_signal=time.monotonic()
@@ -254,7 +295,7 @@ def run(tmp,session,stage):
             age=int(time.monotonic()-last_signal)
             print(f"LLM_WAIT={stage}:{elapsed}s {len(results)}/{len(active)} signal_age={age}s",flush=True)
             return age<900
-        limit=4200
+        limit=6000 if audit else 4200
         args=["colab","--auth=adc","--config",str(tmp/"sessions.json"),"exec","-s",session,"--timeout",str(limit),"-f",str(path)]
         rc,raw=kernel.invoke(args,limit+30,on_line=on_line,on_wait=waiting)
         if rc or not cleaned or set(results)!=expected:
@@ -270,6 +311,7 @@ def run(tmp,session,stage):
         else:
             output.append(choose(row,result) if result else {"id":row["id"],"ko":"","status":"REVIEW_REQUIRED"})
     write(tmp/{"index":"indexed.json","correct":"corrected.json","verify":"verified.json"}[stage],output)
+    if audit: write(tmp/"audit-review.json",results)
 
 if __name__=="__main__":
     mode,tmp,session,*args=sys.argv[1:]

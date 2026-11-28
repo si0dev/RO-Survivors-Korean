@@ -20,6 +20,7 @@ async function getMain(kind='main'){
  return {kind,url,content,build};
 }
 const [output]=process.argv.slice(2);
+const all=process.argv.includes('--all');
 if(!output)throw Error('Output path missing');
 const main=await getMain();
 if(output==='--build-only'){console.log(main.build);}
@@ -29,13 +30,13 @@ else{
  const snapshots=await Promise.all([sourceSnapshot(main,get),sourceSnapshot(talents,get)]);
  if(snapshots[0].newsScanFailed)throw Error('Latest news extraction failed');
  const unique=new Map();
- for(const snapshot of snapshots)for(const row of snapshot.rows){
+ for(const snapshot of snapshots)for(const row of all?[...snapshot.rows,...snapshot.newsHistory]:snapshot.rows){
   const r=await identify(row);
   if(unique.has(r.id)&&unique.get(r.id).sourceHash!==r.sourceHash)throw Error('Conflicting source ID');
   unique.set(r.id,r);
  }
  const records=await loadRecords();
- const rows=(await worklist({rows:[...unique.values()]},records.entries)).filter(r=>r.status!=='translated');
+ const rows=all?[...unique.values()]:(await worklist({rows:[...unique.values()]},records.entries)).filter(r=>r.status!=='translated');
  await writeFile(output,JSON.stringify({build:main.build,rows}),{mode:0o600});
- console.log('GAME_UPDATE_BUILD='+main.build+' NEW_OR_CHANGED='+rows.length);
+ console.log('GAME_UPDATE_BUILD='+main.build+(all?' ALL_EXTRACTED=':' NEW_OR_CHANGED=')+rows.length);
 }

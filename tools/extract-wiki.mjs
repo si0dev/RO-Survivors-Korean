@@ -8,6 +8,7 @@ const origin='https://ro-survivors.com';
 const browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const verify=process.argv.includes('--verify');
+const all=process.argv.includes('--all');
 const outputIndex=process.argv.indexOf('--output');
 const output=outputIndex===-1?null:process.argv[outputIndex+1];
 if(outputIndex!==-1&&!output)throw Error('Missing wiki output path');
@@ -177,7 +178,11 @@ try{
  const unmatched=Object.entries(records.entries).filter(([,r])=>r.scope==='wiki'&&!hashes.has(r.sourceHash));
  console.log('AUDIT '+JSON.stringify({build:currentBuild,scope:'wiki',unmatched:unmatched.length}));
  for(const [id,r] of unmatched)console.log('UNMATCHED '+JSON.stringify({id,sourceHash:r.sourceHash}));
- if(output)await writeFile(output,JSON.stringify({build:currentBuild,rows:missing}),{mode:0o600});
+ if(output){
+  const rows=all?await Promise.all([...source].map(key=>identify({kind:'wiki',key,en:key}))):missing;
+  await writeFile(output,JSON.stringify({build:currentBuild,rows}),{mode:0o600});
+  if(all)console.log('WIKI_ALL_EXTRACTED='+rows.length);
+ }
  else for(const row of missing)console.log('WIKIROW '+JSON.stringify(row));
  if(verify){
   const korean=await scanWiki(true);

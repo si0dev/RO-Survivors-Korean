@@ -11,6 +11,15 @@ class Contract(unittest.TestCase):
             compile(code,stage,"exec")
             self.assertNotIn("SECRET",code)
         self.assertNotIn('"draft"',p.payload([row],"marker=","index",review).split("rows=json.loads(")[1])
+    def test_audit_reference_isolation(self):
+        row={"id":"1","source":"Damage +2","context":"game","terms":{},"draft":"피해 +2","corrected":"피해량 +2"}
+        review=p.load("colab-review")
+        for stage in ("index","correct","verify"):
+            code=p.payload([row],"marker=",stage,review,{"1":"PRIVATE_BASELINE"})
+            compile(code,stage,"exec")
+            self.assertEqual("PRIVATE_BASELINE" in code,stage=="verify")
+        code=p.payload([row],"marker=","verify",review)
+        self.assertNotIn("audit_reference",code)
     def test_gate_and_fallback(self):
         row={"id":"1","source":"Damage +2","terms":{},"draft":"피해 +2","corrected":"피해 +3","index_status":"COMPLETED","correction_status":"COMPLETED"}
         self.assertEqual(p.choose(row,{"original":"ACCEPT","corrected":"ACCEPT"})["ko"],row["draft"])
