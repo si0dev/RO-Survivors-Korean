@@ -69,8 +69,34 @@ class ReviewTests(unittest.TestCase):
         compile((r.ROOT/"colab-cache-populate.py").read_text(),"cache-populate.py","exec")
         workflow=(r.ROOT.parent/".github/workflows/colab-smoke.yml").read_text()
         self.assertNotIn("matrix:",workflow)
-        self.assertIn("prepare_comparison_cache",workflow)
+        self.assertEqual(workflow.count("prepare_comparison_model_cache "),3)
+        self.assertEqual(workflow.count("run_comparison_model "),3)
+        self.assertEqual(workflow.count("allocate_comparison_session"),1)
+        self.assertIn("summarize_comparison",workflow)
+        self.assertIn("steps.review_index.outputs.safe_to_continue",workflow)
+        self.assertIn("steps.review_hymt.outputs.safe_to_continue",workflow)
         self.assertIn("RO_REVIEW_COMPARISON: '1'",workflow)
+
+    def test_session_survives_distinct_workflow_shells(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp=pathlib.Path(d)/"ro-colab-state"; tmp.mkdir()
+            output=pathlib.Path(d)/"outputs"
+            env=dict(os.environ,RUNNER_TEMP=d,GITHUB_RUN_ID="100",GITHUB_RUN_ATTEMPT="1",GITHUB_OUTPUT=str(output))
+            source='source "$1"; shift; '
+            script=str(r.ROOT/"colab-benchmark-workflow.sh")
+            names=[x["name"] for x in json.loads((r.ROOT/"colab-benchmark-profiles.json").read_text())]
+            (tmp/"profiles.tsv").write_text("".join(n+"\t{}\n" for n in names))
+            for n in names: (tmp/("bootstrap-"+n+".json")).write_text("{}")
+            def shell(code,*args):
+                return subprocess.run(["bash","-c",source+code,"test",script,*args],env=env,capture_output=True,text=True)
+            result=shell('allocate_gpu() { echo allocated >> "$tmp/count"; printf "{}" > "$tmp/sessions.json"; }; allocate_comparison_session')
+            self.assertEqual(result.returncode,0,result.stderr)
+            for n in names:
+                result=shell('run_session() { test "$allocation_ready" = 1; test "$gpu" = "ro-translate-100-1"; session_rc=0; }; run_comparison_model "$1"',n)
+                self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual((tmp/"count").read_text().splitlines(),["allocated"])
+            self.assertEqual(output.read_text().splitlines().count("safe_to_continue=true"),3)
+            self.assertEqual(shell("summarize_comparison").returncode,0)
 
 if __name__=="__main__":
     unittest.main()

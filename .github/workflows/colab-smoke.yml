@@ -76,17 +76,62 @@ jobs:
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
           prepare_auth
-      - name: Prepare all three model caches and shared engine
+      - name: Initialize comparison profiles
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          prepare_comparison_cache
-      - name: One T4 session - sequential model review (36 verdicts, zero translations)
+          comparison_profiles > "$tmp/profiles.tsv"
+      - name: Drive cache - Index-Translate-9B-Q6_K
         shell: bash
         run: |
           source benchmark/tools/colab-benchmark-workflow.sh
-          run_benchmark
-      - name: Verify zero active sessions and remove private temporary files
+          prepare_comparison_model_cache 'Index-Translate-9B-Q6_K'
+      - name: Drive cache - Hy-MT3-7B-Q8_0
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          prepare_comparison_model_cache 'Hy-MT3-7B-Q8_0'
+      - name: Drive cache - Qwen3-14B-Q4_K_M
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          prepare_comparison_model_cache 'Qwen3-14B-Q4_K_M'
+      - name: Allocate one Colab T4 session
+        id: allocate
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          allocate_comparison_session
+      - name: Load, review and unload - Index-Translate-9B-Q6_K
+        id: review_index
+        continue-on-error: true
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          run_comparison_model 'Index-Translate-9B-Q6_K'
+      - name: Load, review and unload - Hy-MT3-7B-Q8_0
+        id: review_hymt
+        if: ${{ !cancelled() && steps.review_index.outputs.safe_to_continue == 'true' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          run_comparison_model 'Hy-MT3-7B-Q8_0'
+      - name: Load, review and unload - Qwen3-14B-Q4_K_M
+        id: review_qwen
+        if: ${{ !cancelled() && steps.review_hymt.outputs.safe_to_continue == 'true' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          run_comparison_model 'Qwen3-14B-Q4_K_M'
+      - name: Report three model results
+        if: ${{ !cancelled() && steps.allocate.outcome == 'success' }}
+        shell: bash
+        run: |
+          source benchmark/tools/colab-benchmark-workflow.sh
+          summarize_comparison
+      - name: Close Colab session, verify zero active sessions and clean up
         if: always()
         shell: bash
         run: |

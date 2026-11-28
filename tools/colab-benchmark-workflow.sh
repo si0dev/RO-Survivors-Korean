@@ -63,17 +63,20 @@ release_session() {
   allocation_ready=0
   rm -f "$tmp/sessions.json"
 }
-run_session() {
-gpu="ro-translate-$GITHUB_RUN_ID-$1"
-export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$1.conf"
-if [ "$allocation_ready" = 0 ]; then
+allocate_gpu() {
 allocation_started=1
 # Keep T4 only; do not switch to potentially billable accelerators or bypass quota.
 # The CLI handles its own bounded retries of transient server failures.
 export COLAB_CLI_ASSIGN_RETRIES=3
 echo "COLAB_PHASE=GPU_ALLOCATION"
-check gpu-session 600 "${cli[@]}" new -s "$gpu" --gpu T4 || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|service unavailable|502|503|504" "$tmp/gpu-session.log" && ! grep -Eqi "401|403|412|429|quota|usage limit|permission denied|invalid_grant|TooManyAssignmentsError|resource exhausted" "$tmp/gpu-session.log"; then session_rc=75; fi; return 0; }
+check gpu-session 600 "${cli[@]}" new -s "$gpu" --gpu T4 || { session_rc=$?; if grep -Eqi "connection was lost|connection reset|timed out|timeout|service unavailable|502|503|504" "$tmp/gpu-session.log" && ! grep -Eqi "401|403|412|429|quota|usage limit|permission denied|invalid_grant|TooManyAssignmentsError|resource exhausted" "$tmp/gpu-session.log"; then session_rc=75; fi; return "$session_rc"; }
 allocation_ready=1
+}
+run_session() {
+gpu="ro-translate-$GITHUB_RUN_ID-$1"
+export REMOTE_CONFIG="/tmp/ro-model-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$1.conf"
+if [ "$allocation_ready" = 0 ]; then
+  allocate_gpu || { session_rc=$?; return 0; }
 fi
 # Refresh on the runner immediately before passing a short-lived credential.
 python - <<'PY'
@@ -157,52 +160,82 @@ prepare_cache() {
   local rc=0
   timeout 2400 python benchmark/tools/colab-cache-populate.py </dev/null 2>&1 | python -u -c '
 import sys,re
-safe=re.compile(r"(?:CACHE_STAGE: (?:listing|verify_manifest|repair_invalid_manifest|source_metadata|(?:model|llama|cudart)_(?:recover|download|upload)|publish_manifest)|CACHE_(?:FILE_(?:REUSED|SAVED) (?:model|llama|cudart) [0-9]+|ENGINE_REUSED (?:llama|cudart)|UPLOAD_(?:ATTEMPT|RETRY) (?:model|llama|cudart) [1-3](?: [A-Za-z0-9_: -]+)?|ERROR:[A-Za-z]+:[A-Za-z0-9_:= -]+:line=[0-9]+)|CACHE_PREPARED=\\{.*\\})")
+safe=re.compile(r"(?:CACHE_STAGE: (?:listing|verify_manifest|repair_invalid_manifest|source_metadata|(?:model|llama|cudart)_(?:recover|download|upload)|publish_manifest)|CACHE_(?:FILE_(?:REUSED|SAVED) (?:model|llama|cudart) [0-9]+|ENGINE_REUSED (?:llama|cudart)|UPLOAD_(?:ATTEMPT|RETRY) (?:model|llama|cudart) [1-3](?: [A-Za-z0-9_: -]+)?|ERROR:[A-Za-z]+:[A-Za-z0-9_:= -]+:line=[0-9]+)|CACHE_PREPARED=\{.*\})")
 for line in sys.stdin:
-    line=line.rstrip("\\r\\n")
-    if safe.fullmatch(line): print(line,flush=True)
-' | tee "$tmp/cache-preflight.log" || rc=$?
-  if [ "$rc" != 0 ]; then echo "cache-preflight: FAIL (exit $rc)"; return "$rc"; fi
-  echo "cache-preflight: PASS"
-  python - "$tmp/cache-preflight.log" <<'PY'
-import json,sys
-for line in open(sys.argv[1]):
-    if line.startswith("CACHE_PREPARED="):
+    line=line.rstrip("\r\n")
+    if safe.fullmatch(line) and not line.startswith("CACHE_PREPARED="): print(line,flush=True)
+    elif line.startswith("CACHE_PREPARED="):
+        import json
         obj=json.loads(line.split("=",1)[1])
         assert obj["mode"] in ("hit","created","repaired")
         print("CACHE_PREPARED="+json.dumps({"mode":obj["mode"],"bytes":int(obj["bytes"]),"seconds":float(obj["seconds"])}),flush=True)
-PY
+' | tee "$tmp/cache-preflight.log" || rc=$?
+  if [ "$rc" != 0 ]; then echo "cache-preflight: FAIL (exit $rc)"; return "$rc"; fi
+  echo "cache-preflight: PASS"
   python benchmark/tools/colab-benchmark-bootstrap.py "$tmp" "$HOME/.cache/ro-llm/rclone"
 }
 comparison_profiles() {
   python -c 'import json; rows=json.load(open("benchmark/tools/colab-benchmark-profiles.json")); assert len(rows)==3; [print(x["name"]+"\t"+json.dumps(x["profile"],separators=(",",":"))) for x in rows]'
 }
-prepare_comparison_cache() {
-  local name profile
-  comparison_profiles > "$tmp/profiles.tsv"
-  while IFS=$'\t' read -r name profile; do
-    export RO_CACHE_PROFILE_JSON="$profile"
-    echo "CACHE_MODEL=$name"
-    prepare_cache
-    cp "$tmp/bootstrap.json" "$tmp/bootstrap-$name.json"
-  done < "$tmp/profiles.tsv"
+select_comparison_model() {
+  local name="$1" profile
+  profile=$(python - "$tmp/profiles.tsv" "$name" <<'PY'
+import sys
+rows=[line.rstrip("\n").split("\t",1) for line in open(sys.argv[1])]
+matches=[profile for name,profile in rows if name==sys.argv[2]]
+assert len(matches)==1
+print(matches[0])
+PY
+)
+  export RO_CACHE_PROFILE_JSON="$profile" RO_REVIEW_MODEL="$name"
 }
-run_comparison() {
-  local overall=0 name profile
+prepare_comparison_model_cache() {
+  select_comparison_model "$1"
+  echo "CACHE_MODEL=$RO_REVIEW_MODEL"
+  prepare_cache
+  cp "$tmp/bootstrap.json" "$tmp/bootstrap-$RO_REVIEW_MODEL.json"
+}
+allocate_comparison_session() {
+  gpu="ro-translate-$GITHUB_RUN_ID-1"
+  test ! -e "$tmp/comparison-session"
+  allocate_gpu
+  printf '%s\n' "$gpu" > "$tmp/comparison-session"
+  echo "COMPARISON_SESSION_READY"
+}
+run_comparison_model() {
+  local name="$1"
+  select_comparison_model "$name"
+  gpu="ro-translate-$GITHUB_RUN_ID-1"
+  # Persist the session identity across Actions steps; never allocate a replacement.
+  test "$(cat "$tmp/comparison-session")" = "$gpu"
+  test -s "$tmp/sessions.json"
+  allocation_started=1
+  allocation_ready=1
   export RO_REVIEW_SHARED_ROOT="/tmp/ro-review-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+  cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
+  echo "COMPARISON_SESSION_REUSED"
+  run_session 1 "$((SECONDS+1800))"
+  echo "COMPARISON_RESULT=$name:$session_rc"
+  printf '%s\n' "$session_rc" > "$tmp/result-$name"
+  # Quality failure may continue, but unconfirmed cleanup/transport may not.
+  if [ "$session_rc" -le 1 ]; then
+    printf '%s\n' 'safe_to_continue=true' >> "$GITHUB_OUTPUT"
+  else
+    echo "COMPARISON_ABORT=SESSION_OR_TRANSPORT_UNCONFIRMED"
+  fi
+  return "$session_rc"
+}
+summarize_comparison() {
+  local overall=0 name profile rc
   while IFS=$'\t' read -r name profile; do
-    export RO_CACHE_PROFILE_JSON="$profile" RO_REVIEW_MODEL="$name"
-    cp "$tmp/bootstrap-$name.json" "$tmp/bootstrap.json"
-    run_session 1 "$((SECONDS+1800))"
-    echo "COMPARISON_RESULT=$name:$session_rc"
-    if [ "$session_rc" != 0 ]; then overall=1; fi
-    # Do not start another model if transport or cleanup was not confirmed.
-    if [ "$allocation_ready" != 1 ] || [ "$session_rc" -gt 1 ]; then
-      echo "COMPARISON_ABORT=SESSION_OR_TRANSPORT_UNCONFIRMED"
-      break
+    if [ -f "$tmp/result-$name" ]; then
+      rc=$(cat "$tmp/result-$name")
+    else
+      rc=NOT_RUN
     fi
+    echo "COMPARISON_RESULT=$name:$rc"
+    if [ "$rc" != 0 ]; then overall=1; fi
   done < "$tmp/profiles.tsv"
-  release_session
   return "$overall"
 }
 run_benchmark() {
@@ -218,8 +251,8 @@ run_benchmark() {
   trap 'exit 130' INT
   trap 'exit 143' TERM
   if [ "${RO_REVIEW_COMPARISON:-0}" = 1 ]; then
-    run_comparison
-    return $?
+    echo "Comparison must use the dedicated sequential workflow steps"
+    return 2
   fi
   if [ "${RO_BENCHMARK_MODE:-translation}" = semantic-review ]; then
     run_session 1 "$((SECONDS+1800))"
@@ -233,6 +266,10 @@ run_benchmark() {
 final_cleanup() {
   local rc=0
   if [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+    if [ -f "$tmp/comparison-session" ]; then
+      gpu=$(cat "$tmp/comparison-session")
+      timeout 60 "${cli[@]}" stop -s "$gpu" >"$tmp/stop.log" 2>&1 </dev/null || true
+    fi
     timeout 180 python benchmark/tools/colab-session-cleanup.py POST || rc=$?
   fi
   rm -rf "$tmp" "$RUNNER_TEMP/ro-benchmark"
