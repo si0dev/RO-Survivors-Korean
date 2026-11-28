@@ -149,7 +149,7 @@ function showStatus(state,engineVersion){
     const info=document.createElement('div');
     info.id='ro-ko-game-info';
     info.textContent='비공식 한국어 패치 · v'+engineVersion;
-    Object.assign(info.style,{display:'none',position:'fixed',right:'43px',bottom:'8px',zIndex:'2147483639',fontSize:'11px',lineHeight:'1.4',color:'#fff',opacity:'0.5',textShadow:'0 1px 2px #000',background:'transparent',whiteSpace:'nowrap',pointerEvents:'none',userSelect:'none'});
+    Object.assign(info.style,{display:'none',position:'fixed',right:'43px',bottom:'8px',zIndex:'2147483639',fontSize:'11px',lineHeight:'1.4',color:'#fff',opacity:'1',fontWeight:'600',textShadow:'-1px 0 #000, 1px 0 #000, 0 -1px #000, 0 1px #000, 0 1px 3px #000',background:'transparent',whiteSpace:'nowrap',pointerEvents:'none',userSelect:'none'});
     document.body.append(info);
     bindGamePatchInfo(info);
   }
